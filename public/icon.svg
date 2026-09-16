@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#241e18" />
+      <stop offset="50%" stop-color="#161310" />
+      <stop offset="100%" stop-color="#0c0a09" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffdc82" />
+      <stop offset="50%" stop-color="#e5a93b" />
+      <stop offset="100%" stop-color="#b57a1b" />
+    </linearGradient>
+    <linearGradient id="woodGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8a4117" />
+      <stop offset="100%" stop-color="#54240a" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Background base rounded square -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)" />
+
+  <!-- Outer subtle gold border -->
+  <rect x="12" y="12" width="488" height="488" rx="98" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-opacity="0.35" />
+
+  <!-- Flamenco Guitar Body Silhouette -->
+  <g transform="translate(0, 10)" filter="url(#shadow)">
+    <!-- Lower Bout -->
+    <ellipse cx="256" cy="330" rx="135" ry="115" fill="url(#woodGrad)" stroke="url(#goldGrad)" stroke-width="6" />
+    <!-- Upper Bout -->
+    <ellipse cx="256" cy="190" rx="100" ry="85" fill="url(#woodGrad)" stroke="url(#goldGrad)" stroke-width="6" />
+    <!-- Waist Incurve -->
+    <path d="M 156 190 C 156 245, 121 270, 121 330 C 121 395, 180 445, 256 445 C 332 445, 391 395, 391 330 C 391 270, 356 245, 356 190 C 356 135, 310 105, 256 105 C 202 105, 156 135, 156 190 Z" fill="url(#woodGrad)" stroke="url(#goldGrad)" stroke-width="6" />
+
+    <!-- Golpeador (Flamenco Tap Plate) -->
+    <path d="M 275 225 Q 335 225 350 280 Q 320 310 275 305 Z" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.3" />
+
+    <!-- Soundhole & Rosette (Boca y Roseta) -->
+    <circle cx="256" cy="245" r="46" fill="none" stroke="url(#goldGrad)" stroke-width="7" />
+    <circle cx="256" cy="245" r="54" fill="none" stroke="#e5a93b" stroke-width="2" stroke-dasharray="6,4" />
+    <circle cx="256" cy="245" r="38" fill="#120e0b" />
+
+    <!-- Bridge (Puente) -->
+    <rect x="206" y="372" width="100" height="20" rx="4" fill="#2d170b" stroke="url(#goldGrad)" stroke-width="3" />
+    <rect x="226" y="377" width="60" height="8" rx="2" fill="#fff7e6" />
+
+    <!-- Neck & Fretboard (Mástil) -->
+    <rect x="238" y="45" width="36" height="150" fill="#1c110a" stroke="url(#goldGrad)" stroke-width="3" />
+    <!-- Frets -->
+    <line x1="238" y1="75" x2="274" y2="75" stroke="#d4c39e" stroke-width="2" />
+    <line x1="238" y1="105" x2="274" y2="105" stroke="#d4c39e" stroke-width="2" />
+    <line x1="238" y1="135" x2="274" y2="135" stroke="#d4c39e" stroke-width="2" />
+    <line x1="238" y1="165" x2="274" y2="165" stroke="#d4c39e" stroke-width="2" />
+
+    <!-- Headstock (Pala flamenca traditionnelle) -->
+    <path d="M 234 45 C 230 20, 240 10, 256 12 C 272 10, 282 20, 278 45 Z" fill="#54240a" stroke="url(#goldGrad)" stroke-width="3" />
+
+    <!-- Strings (Cuerdas) -->
+    <line x1="242" y1="45" x2="242" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+    <line x1="247" y1="45" x2="247" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+    <line x1="252" y1="45" x2="252" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+    <line x1="260" y1="45" x2="260" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+    <line x1="265" y1="45" x2="265" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+    <line x1="270" y1="45" x2="270" y2="377" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.5" />
+  </g>
+</svg>

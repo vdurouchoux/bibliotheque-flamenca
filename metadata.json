@@ -1,0 +1,6 @@
+{
+  "name": "Bibliothèque Flamenca",
+  "description": "Compagnon d'étude et de pratique pour la guitare et la danse flamenca : palos, falsetas, montage chorégraphique de la Farruca, marquages, technique de pieds (zapateado), llamadas, compás interactif et vidéos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
