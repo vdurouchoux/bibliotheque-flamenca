@@ -56,7 +56,7 @@ export default function App() {
     const isDance = item.discipline === 'danse' ||
       item.paloName.toLowerCase().includes('danse') ||
       item.paloName.toLowerCase().includes('baile') ||
-      ['marcajes', 'zapateado', 'llamadas', 'maitres', 'structure'].includes(item.section.toLowerCase());
+      ['maitres', 'structure', 'letras & textes'].includes(item.section.toLowerCase());
     return targetDiscipline === 'danse' ? isDance : !isDance;
   };
 
