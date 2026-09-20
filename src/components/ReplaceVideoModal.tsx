@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, Video, AlertCircle } from 'lucide-react';
+import { X, RefreshCw, Video, AlertCircle, Lightbulb } from 'lucide-react';
 import { VideoItem, Level } from '../types';
 import { replaceAnyVideo } from '../utils/storage';
 
@@ -116,32 +116,11 @@ export const ReplaceVideoModal: React.FC<ReplaceVideoModalProps> = ({
             <p className="text-[11px] text-[#8c8173] mt-1">
               Les liens avec minutage (?t=120) ou URL normales sont pris en charge.
             </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#a69c8f] mb-1.5">
-              Niveau d'exigence
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { lvl: 1 as Level, label: 'Niveau 1', desc: 'Initié / Base' },
-                { lvl: 2 as Level, label: 'Niveau 2', desc: 'Intermédiaire' },
-                { lvl: 3 as Level, label: 'Niveau 3', desc: 'Avancé' }
-              ].map(item => (
-                <button
-                  type="button"
-                  key={item.lvl}
-                  onClick={() => setLevel(item.lvl)}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    level === item.lvl
-                      ? 'bg-[#e5a93b]/20 border-[#e5a93b] text-[#e5a93b]'
-                      : 'bg-[#221d17] border-[#383129] text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                >
-                  <div className="font-bold text-xs">{item.label}</div>
-                  <div className="text-[10px] opacity-75">{item.desc}</div>
-                </button>
-              ))}
+            <div className="mt-2 p-2.5 rounded-xl bg-[#1c1813] border border-[#382d20] flex items-start gap-2 text-[11px] text-[#a69c8f] leading-relaxed">
+              <Lightbulb className="w-3.5 h-3.5 text-[#e5a93b] shrink-0 mt-0.5" />
+              <span>
+                <strong className="text-[#e5a93b]">Conseil synchronisation :</strong> Privilégiez les liens web (ex. YouTube en « Non répertorié » <em>(invisible au public et au moteur de recherche)</em>, Vimeo ou Google Drive) pour visionner vos répétitions indifféremment sur votre PC et votre smartphone.
+              </span>
             </div>
           </div>
 

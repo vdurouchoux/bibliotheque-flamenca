@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw } from 'lucide-react';
+import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
+import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
 import { 
   extractYouTubeInfo, getVideoNotes, saveVideoNotes, toggleBookmark, 
   getBookmarks, updateBookmarkStatus, getVideoCustomLandmarks, 
-  saveVideoCustomLandmarks, resetVideoCustomLandmarks 
+  saveVideoCustomLandmarks, resetVideoCustomLandmarks,
+  exportAllSyncData, formatLandmarksAsText
 } from '../utils/storage';
+import { shareVideoItem, getVideoShareData, ShareOptions } from '../utils/shareUtils';
+import { ShareModal } from './ShareModal';
+import { ReplaceVideoModal } from './ReplaceVideoModal';
+import { checkVideoDeviceAvailability, getCurrentDeviceType } from '../utils/deviceUtils';
 
 interface VideoPlayerModalProps {
   video: VideoItem;
@@ -28,16 +35,39 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   onNext,
   onPrevious
 }) => {
+  const [currentVideo, setCurrentVideo] = useState<VideoItem>(video);
+  const [showReplaceModal, setShowReplaceModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    setCurrentVideo(video);
+  }, [video]);
+
+  const availability = checkVideoDeviceAvailability(currentVideo);
+  const currentDevice = getCurrentDeviceType();
+
   const [notes, setNotes] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [status, setStatus] = useState<'to_learn' | 'learning' | 'mastered'>('learning');
   const [notesSavedFeedback, setNotesSavedFeedback] = useState<boolean>(false);
 
+  const resolveInitialLandmarks = (v: VideoItem): VideoLandmark[] => {
+    const custom = getVideoCustomLandmarks(v.id, v.url);
+    if (custom !== null && custom.length > 0) return custom;
+    if (v.landmarks && v.landmarks.length > 0) return v.landmarks;
+
+    // Fallback de sécurité sur les Grands Maîtres connus (Iván Vargas, El Güito, Sara Baras)
+    const ytId = extractYouTubeInfo(v.url, 0).videoId;
+    const matchedMaitre = FARRUCA_BAILE.maitres?.find(
+      m => m.id === v.id || (ytId && extractYouTubeInfo(m.url, 0).videoId === ytId)
+    );
+    if (matchedMaitre?.landmarks && matchedMaitre.landmarks.length > 0) {
+      return matchedMaitre.landmarks;
+    }
+    return [];
+  };
+
   // Editable landmarks state
-  const [landmarks, setLandmarks] = useState<VideoLandmark[]>(() => {
-    const custom = getVideoCustomLandmarks(video.id);
-    return custom !== null ? custom : (video.landmarks || []);
-  });
+  const [landmarks, setLandmarks] = useState<VideoLandmark[]>(() => resolveInitialLandmarks(video));
   const [isEditingLandmarks, setIsEditingLandmarks] = useState<boolean>(false);
   const [newLmTime, setNewLmTime] = useState<string>('');
   const [newLmTitle, setNewLmTitle] = useState<string>('');
@@ -45,34 +75,146 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const [editLmTime, setEditLmTime] = useState<string>('');
   const [editLmTitle, setEditLmTitle] = useState<string>('');
 
-  const parsedInfo = extractYouTubeInfo(video.url, video.startSeconds);
+  const parsedInfo = extractYouTubeInfo(currentVideo.url, 0);
   const videoId = parsedInfo.videoId;
-  const [currentStart, setCurrentStart] = useState<number>(parsedInfo.startSeconds);
+  const initialStart = currentVideo.startSeconds !== undefined ? Math.max(0, currentVideo.startSeconds) : 0;
+  const [currentStart, setCurrentStart] = useState<number>(initialStart);
   const [playerKey, setPlayerKey] = useState<number>(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
+  const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
+  const isFromMontage = sectionName.toLowerCase().includes('montage');
+
+  const handleShareVideo = () => {
+    const opts = getVideoShareData({
+      video,
+      paloName,
+      paloId,
+      sectionName,
+      currentTime: currentStart,
+      discipline: discipline || (isDance ? 'danse' : 'guitare')
+    });
+    setShareModalOptions(opts);
+  };
+
+  const tryPlayVideo = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*'
+      );
+    }
+  };
+
+  const handleIframeLoad = () => {
+    tryPlayVideo();
+    setTimeout(tryPlayVideo, 350);
+    setTimeout(tryPlayVideo, 800);
+    setTimeout(tryPlayVideo, 1400);
+  };
+
+  const changePlaybackSpeed = (rate: number) => {
+    setPlaybackSpeed(rate);
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: 'setPlaybackRate',
+          args: [rate]
+        }),
+        '*'
+      );
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      if (isPlaying) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
+          '*'
+        );
+        setIsPlaying(false);
+      } else {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+          '*'
+        );
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  // Listen to YouTube player state events
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        if (typeof event.data === 'string') {
+          const data = JSON.parse(event.data);
+          if (data.event === 'onReady') {
+            tryPlayVideo();
+          } else if (data.event === 'onStateChange') {
+            if (data.info === 1) setIsPlaying(true);
+            else if (data.info === 2 || data.info === 0) setIsPlaying(false);
+          } else if (data.event === 'infoDelivery' && data.info) {
+            if (data.info.playerState === 1) setIsPlaying(true);
+            else if (data.info.playerState === 2 || data.info.playerState === 0) setIsPlaying(false);
+          }
+        }
+      } catch {
+        // ignore non-json messages
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const isFirstMount = useRef(true);
+  const prevVideoIdRef = useRef(video.id);
+  const prevStartRef = useRef(video.startSeconds);
 
   useEffect(() => {
-    // Reset player start when video changes
-    const nextInfo = extractYouTubeInfo(video.url, video.startSeconds);
-    setCurrentStart(nextInfo.startSeconds);
-    setPlayerKey(k => k + 1);
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      const t1 = setTimeout(tryPlayVideo, 350);
+      const t2 = setTimeout(tryPlayVideo, 800);
+      const t3 = setTimeout(tryPlayVideo, 1400);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
 
-    // Load custom or default landmarks
-    const custom = getVideoCustomLandmarks(video.id);
-    setLandmarks(custom !== null ? custom : (video.landmarks || []));
-    setIsEditingLandmarks(false);
-    setEditingLmIndex(null);
+    if (prevVideoIdRef.current !== video.id || prevStartRef.current !== video.startSeconds) {
+      prevVideoIdRef.current = video.id;
+      prevStartRef.current = video.startSeconds;
 
-    // Load existing notes
-    setNotes(getVideoNotes(video.id));
+      const start = video.startSeconds !== undefined ? Math.max(0, video.startSeconds) : 0;
+      setCurrentStart(start);
+      setPlaybackSpeed(1);
+      setIsPlaying(true);
+      setPlayerKey(k => k + 1);
 
-    // Load existing bookmark
-    const bookmarks = getBookmarks();
-    if (bookmarks[video.id]) {
-      setIsSaved(true);
-      setStatus(bookmarks[video.id].status);
-    } else {
-      setIsSaved(false);
-      setStatus('learning');
+      setLandmarks(resolveInitialLandmarks(video));
+      setIsEditingLandmarks(false);
+      setEditingLmIndex(null);
+
+      // Load existing notes
+      setNotes(getVideoNotes(video.id));
+
+      // Load existing bookmark
+      const bookmarks = getBookmarks();
+      if (bookmarks[video.id]) {
+        setIsSaved(true);
+        setStatus(bookmarks[video.id].status);
+      } else {
+        setIsSaved(false);
+        setStatus('learning');
+      }
     }
   }, [video.id, video.url, video.startSeconds]);
 
@@ -108,8 +250,21 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     : "🔍 Rechercher d'autres versions (Guitare)";
 
   const handleJumpToTime = (seconds: number) => {
-    setCurrentStart(Math.max(0, seconds));
-    setPlayerKey(k => k + 1);
+    const sec = Math.max(0, seconds);
+    setCurrentStart(sec);
+    setIsPlaying(true);
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'seekTo', args: [sec, true] }),
+        '*'
+      );
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*'
+      );
+    } else {
+      setPlayerKey(k => k + 1);
+    }
   };
 
   const parseTimeToSeconds = (input: string): number => {
@@ -135,7 +290,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     // Sort by timestamp
     const sorted = [...updated].sort((a, b) => a.timeSeconds - b.timeSeconds);
     setLandmarks(sorted);
-    saveVideoCustomLandmarks(video.id, sorted);
+    saveVideoCustomLandmarks(video.id, sorted, video.url);
   };
 
   const handleAddLandmark = (e?: React.FormEvent) => {
@@ -182,9 +337,18 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     if (editingLmIndex === index) setEditingLmIndex(null);
   };
 
+  const [copiedLandmarksText, setCopiedLandmarksText] = useState<boolean>(false);
+
+  const handleCopyLandmarksText = () => {
+    const text = formatLandmarksAsText(video.title, landmarks);
+    navigator.clipboard.writeText(text);
+    setCopiedLandmarksText(true);
+    setTimeout(() => setCopiedLandmarksText(false), 3500);
+  };
+
   const handleResetLandmarks = () => {
     if (window.confirm('Rétablir les repères d’origine de cette vidéo ?')) {
-      resetVideoCustomLandmarks(video.id);
+      resetVideoCustomLandmarks(video.id, video.url);
       setLandmarks(video.landmarks || []);
       setIsEditingLandmarks(false);
       setEditingLmIndex(null);
@@ -193,11 +357,13 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   const handleSkipForward = (deltaSeconds: number) => {
     setCurrentStart(prev => prev + deltaSeconds);
+    setIsPlaying(true);
     setPlayerKey(k => k + 1);
   };
 
   const handleRewind = (deltaSeconds: number) => {
     setCurrentStart(prev => Math.max(0, prev - deltaSeconds));
+    setIsPlaying(true);
     setPlayerKey(k => k + 1);
   };
 
@@ -252,15 +418,20 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#1e1a16] border-b border-[#2e2720]">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#2a231b] text-[#e5a93b] border border-[#42372a]">
-              Niveau {video.level}
-            </span>
-            <span className="text-xs text-[#a69c8f] truncate">
+            <span className="text-xs text-[#a69c8f] truncate font-medium">
               {paloName} • {sectionName}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleShareVideo}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Partager cette vidéo avec vos camarades (Web Share ou presse-papier)"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Partager</span>
+            </button>
             {video.url && (
               <a
                 href={video.url}
@@ -282,29 +453,84 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </div>
         </div>
 
+        {/* Share notification toast */}
+        {shareToastMessage && (
+          <div className="px-4 py-2 bg-[#2a2217] border-b border-[#e5a93b]/50 text-[#e5a93b] text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#e5a93b] shrink-0" />
+              <span>{shareToastMessage}</span>
+            </div>
+            <button
+              onClick={() => setShareToastMessage(null)}
+              className="text-[#a69c8f] hover:text-[#f4efe6] p-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Video Player Frame */}
-        <div className="relative w-full aspect-video bg-black">
-          {videoId ? (
+        <div className="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center">
+          {!availability.isAvailableOnCurrentDevice ? (
+            <div className="absolute inset-0 bg-[#171410] border-b border-[#30271e] flex flex-col items-center justify-center text-center p-6 text-[#f4efe6]">
+              <div className="w-14 h-14 rounded-2xl bg-amber-950/70 border border-amber-700/60 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
+                {availability.sourceDevice === 'pc' ? (
+                  <Laptop className="w-7 h-7" />
+                ) : (
+                  <Smartphone className="w-7 h-7" />
+                )}
+              </div>
+
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/80 border border-amber-700/70 text-amber-300 text-xs font-bold mb-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>{availability.message}</span>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#d4c9ba] max-w-md leading-relaxed mb-4">
+                {availability.subMessage}
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowReplaceModal(true)}
+                  className="px-4 py-2 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Remplacer par un lien YouTube / web</span>
+                </button>
+              </div>
+            </div>
+          ) : videoId ? (
             <iframe
+              ref={iframeRef}
               key={playerKey}
-              src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${currentStart}&rel=0&modestbranding=1&playsinline=1`}
-              title={video.title}
+              onLoad={handleIframeLoad}
+              src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${currentStart}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`}
+              title={currentVideo.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="absolute inset-0 w-full h-full border-0"
             />
+          ) : currentVideo.url && (currentVideo.url.startsWith('blob:') || currentVideo.url.match(/\.(mp4|webm|mov|m4v)$/i)) ? (
+            <video
+              controls
+              autoPlay
+              src={currentVideo.url}
+              className="absolute inset-0 w-full h-full object-contain bg-black"
+            />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-[#a69c8f]">
               <p className="text-sm">Vidéo externe.</p>
-              {video.url && (
+              {currentVideo.url && (
                 <a
-                  href={video.url}
+                  href={currentVideo.url}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e5a93b] text-[#121110] font-bold text-xs"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Ouvrir sur YouTube</span>
+                  <span>Ouvrir le lien</span>
                 </a>
               )}
             </div>
@@ -317,27 +543,28 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <button
               onClick={() => handleRewind(10)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer"
-              title="Reculer de 10s pour répéter la séquence"
+              title="Reculer de 10s"
             >
               <Rewind className="w-3.5 h-3.5 text-[#e5a93b]" />
-              <span>-10s (Répéter)</span>
+              <span>-10s</span>
             </button>
 
             <button
-              onClick={() => handleSkipForward(15)}
+              onClick={() => handleSkipForward(10)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer"
-              title="Avancer de 15s"
+              title="Avancer de 10s"
             >
-              <span>+15s</span>
+              <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
+              <span>+10s</span>
             </button>
 
             <button
               onClick={() => handleSkipForward(30)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer"
-              title="Sauter 30 secondes d'introduction"
+              title="Avancer de 30s"
             >
               <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
-              <span>+30s (Passer intro)</span>
+              <span>+30s</span>
             </button>
           </div>
 
@@ -360,6 +587,64 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               </a>
             )}
           </div>
+        </div>
+
+        {/* Slow-motion / Ralenti & Playback Speed Bar with Play/Pause */}
+        <div className="px-3 sm:px-4 py-2 bg-[#13100d] border-b border-[#29221a] flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1.5 text-[#e5a93b] font-semibold text-xs">
+              <Gauge className="w-3.5 h-3.5" />
+              <span>Ralenti :</span>
+            </span>
+            <div className="inline-flex items-center bg-[#1e1914] p-0.5 rounded-lg border border-[#382d21]">
+              {[
+                { label: '0.25x', value: 0.25 },
+                { label: '0.5x', value: 0.5 },
+                { label: '0.75x', value: 0.75 },
+                { label: '1x (Normal)', value: 1 },
+                { label: '1.25x', value: 1.25 }
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => changePlaybackSpeed(opt.value)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    playbackSpeed === opt.value
+                      ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-bold'
+                      : 'text-[#9e9284] hover:text-[#f4efe6] hover:bg-[#282119]'
+                  }`}
+                  title={`Vitesse de lecture à ${opt.label}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Bouton Pause / Play à droite du ralenti */}
+            <button
+              onClick={togglePlayPause}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
+                isPlaying
+                  ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
+                  : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
+              }`}
+              title={isPlaying ? "Mettre en pause (image nette sans barre rouge)" : "Lancer la vidéo"}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-3.5 h-3.5 fill-current" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Lancer la vidéo</span>
+                </>
+              )}
+            </button>
+          </div>
+          <span className="text-[11px] text-[#7a6f62] italic hidden sm:inline">
+            Pratique pour décomposer le zapateado, les compás et les falsetas
+          </span>
         </div>
 
         {/* Other versions search */}
@@ -387,53 +672,64 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   {video.description}
                 </p>
               )}
-
-              {/* Exact Movement Interval Box if available */}
-              {video.danceInterval && (
-                <div className="mt-2.5 p-2.5 rounded-xl bg-[#241c14] border border-[#e5a93b]/40 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-2 w-2 rounded-full bg-[#e5a93b] animate-pulse" />
-                    <span className="text-xs font-bold text-[#e5a93b]">
-                      Intervalle clé : {video.danceInterval.label}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleJumpToTime(video.danceInterval!.start)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] font-bold text-xs transition-colors cursor-pointer"
-                    title="Aller directement au début du passage"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Caler au début ({Math.floor(video.danceInterval.start / 60)}:{(video.danceInterval.start % 60).toString().padStart(2, '0')})</span>
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Bookmark button */}
-            <button
-              onClick={handleBookmarkToggle}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
-                isSaved
-                  ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/60'
-                  : 'bg-[#25201b] text-[#a69c8f] border-[#383129] hover:text-[#f4efe6]'
-              }`}
-            >
-              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-              <span>{isSaved ? 'Enregistré dans mes études' : 'Ajouter à mes études'}</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Share button */}
+              <button
+                onClick={handleShareVideo}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#221c17] hover:bg-[#2c241d] text-[#e5a93b] border border-[#3e3223] hover:border-[#e5a93b]/60 transition-all cursor-pointer shadow-sm"
+                title="Partager cette vidéo et son minutage avec des étudiants"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Partager</span>
+              </button>
+
+              {/* Bookmark button */}
+              <button
+                onClick={handleBookmarkToggle}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  isSaved
+                    ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/60'
+                    : 'bg-[#25201b] text-[#a69c8f] border-[#383129] hover:text-[#f4efe6]'
+                }`}
+              >
+                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                <span>{isSaved ? 'Enregistré' : 'Ajouter à mes études'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Interactive Landmarks (Repères clés chronométrés & Modifiables) */}
           <div className="p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
+            {/* Header of landmarks section */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-bold text-[#f4efe6] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
                 <span>Repères & Découpage de la danse :</span>
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#8c8173]">
-                  {landmarks.length} repère{landmarks.length > 1 ? 's' : ''}
+                <span className="text-[11px] font-normal text-[#8c8173] ml-1">
+                  ({landmarks.length} repère{landmarks.length > 1 ? 's' : ''})
                 </span>
+              </span>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Copy landmarks button */}
+                {landmarks.length > 0 && (
+                  <button
+                    onClick={handleCopyLandmarksText}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                      copiedLandmarksText
+                        ? 'bg-green-600/20 text-green-300 border-green-500/50'
+                        : 'bg-[#221c17] text-[#c9bcaa] hover:text-[#f4efe6] border-[#382e22]'
+                    }`}
+                    title="Copier la liste des repères pour sauvegarde ou pour me les transmettre"
+                  >
+                    {copiedLandmarksText ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[#e5a93b]" />}
+                    <span>{copiedLandmarksText ? 'Repères copiés !' : 'Copier mes repères'}</span>
+                  </button>
+                )}
+
+                {/* Toggle edit button */}
                 <button
                   onClick={() => setIsEditingLandmarks(!isEditingLandmarks)}
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
@@ -444,7 +740,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   title="Modifier ou ajouter des repères et minutages"
                 >
                   <Edit3 className="w-3 h-3" />
-                  <span>{isEditingLandmarks ? 'Terminer' : 'Modifier les repères'}</span>
+                  <span>{isEditingLandmarks ? 'Terminer' : 'Modifier'}</span>
                 </button>
               </div>
             </div>
@@ -477,7 +773,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
             {!isEditingLandmarks && landmarks.length === 0 && (
               <p className="text-xs text-[#8c8173] italic py-1">
-                Aucun repère défini pour cette vidéo. Cliquez sur "Modifier les repères" pour en créer.
+                Aucun repère défini pour cette vidéo. Cliquez sur "Ajouter et modifier des repères" pour en créer.
               </p>
             )}
 
@@ -486,7 +782,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <div className="pt-2 space-y-3 border-t border-[#2d251d]">
                 <div className="flex items-center justify-between text-[11px] text-[#8c8173]">
                   <span>Modifiez les temps (format 1:24 ou secondes) et les intitulés des passages :</span>
-                  {getVideoCustomLandmarks(video.id) !== null && (
+                  {getVideoCustomLandmarks(video.id, video.url) !== null && (
                     <button
                       onClick={handleResetLandmarks}
                       className="text-[#e5a93b] hover:underline cursor-pointer flex items-center gap-1"
@@ -719,14 +1015,37 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <button
               onClick={onClose}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#221c17] hover:bg-[#2d241d] active:bg-[#1b1612] text-[#e5a93b] hover:text-[#f4efe6] border border-[#3e3224] text-xs sm:text-sm font-bold transition-all shadow-md active:scale-98 cursor-pointer"
-              title="Fermer le lecteur et revenir à la liste des vidéos"
+              title={isFromMontage ? "Fermer le lecteur et revenir au studio de montage" : "Fermer le lecteur et revenir à la liste des vidéos"}
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>← Revenir à la liste des vidéos / Fermer</span>
+              <span>← {isFromMontage ? 'Revenir au montage' : 'Revenir à la liste des vidéos'}</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Direct Social & Universal Share Modal */}
+      {shareModalOptions && (
+        <ShareModal
+          options={shareModalOptions}
+          onClose={() => setShareModalOptions(null)}
+        />
+      )}
+
+      {/* Replace Video Modal */}
+      {showReplaceModal && (
+        <ReplaceVideoModal
+          paloId={paloId}
+          paloName={paloName}
+          sectionKey={sectionName.toLowerCase()}
+          video={currentVideo}
+          onClose={() => setShowReplaceModal(false)}
+          onReplaced={() => {
+            setShowReplaceModal(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 };

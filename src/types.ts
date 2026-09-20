@@ -3,7 +3,7 @@ export type Level = 1 | 2 | 3;
 export interface VideoLandmark {
   timeSeconds: number;
   label: string;
-  type?: 'marcaje' | 'llamada' | 'zapateado' | 'subida' | 'cierre' | 'silencio' | 'remate' | 'intro' | 'letra';
+  type?: 'marcaje' | 'llamada' | 'zapateado' | 'subida' | 'cierre' | 'silencio' | 'remate' | 'intro' | 'letra' | 'falseta';
 }
 
 export interface VideoItem {
@@ -18,9 +18,11 @@ export interface VideoItem {
     start: number;       // Start of the specific movement in seconds
     end?: number;        // End of the specific movement in seconds (or undefined if whole section)
     label: string;       // e.g. "Marquages de 0:38 à 2:10"
-    type: 'marcaje' | 'llamada' | 'zapateado' | 'subida' | 'cierre' | 'entier';
+    type: 'marcaje' | 'llamada' | 'zapateado' | 'subida' | 'cierre' | 'entier' | 'danse-complete';
   };
   landmarks?: VideoLandmark[]; // Key landmarks with one-click jump points
+  sourceDevice?: 'pc' | 'mobile'; // Origin device where local video was added
+  isLocalFile?: boolean; // Whether the video points to a local file/path instead of a web url
 }
 
 export interface BaileSection {
@@ -100,7 +102,7 @@ export type SectionTab = 'intro' | 'falsetas' | 'cante' | 'baile' | 'harmonie' |
 
 export type DisciplineMode = 'guitare' | 'danse';
 
-export type DanseSectionTab = 'structure' | 'danses' | 'letras' | 'compas';
+export type DanseSectionTab = 'hub' | 'structure' | 'maitres' | 'letras' | 'compas' | 'cours' | 'montages';
 
 export interface LetraItem {
   id: string;
@@ -167,4 +169,28 @@ export interface PracticeBookmark {
   notes?: string;
   discipline?: DisciplineMode;
   savedAt: number;
+}
+
+export interface MontageBlock {
+  id: string;
+  title: string;
+  description: string;
+  danceTips: string;
+  guitarCode: string;
+  durationApprox?: string;
+}
+
+export interface BlockVideoLink {
+  videoId: string;
+  videoTitle: string;
+  videoUrl: string;
+  landmarkTime: number; // in seconds
+  landmarkLabel: string; // e.g. "1:48 - Escobilla"
+  sectionName?: string;
+}
+
+export interface DanseMontageStore {
+  [paloId: string]: {
+    [montageKey: string]: MontageBlock[];
+  };
 }

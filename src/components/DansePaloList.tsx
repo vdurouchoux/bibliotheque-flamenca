@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Clock, Award, Footprints, Layers, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { BAILE_PALOS_CATALOG, DansePaloPreview } from '../data/baileData';
 
 interface DansePaloListProps {
@@ -29,24 +29,19 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
           Comprendre et Monter sa Danse Flamenca
         </h2>
 
-        <p className="text-xs sm:text-sm text-[#c8bcad] leading-relaxed max-w-2xl">
-          Découvrez la structure dramaturgique, les codes de communication avec le guitariste, les marquages de bras et le travail de pieds (zapateado) pour construire votre propre chorégraphie.
-        </p>
-
-        {/* Quick features chips */}
-        <div className="flex flex-wrap gap-2 pt-1 text-xs">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#241c16] text-[#e5a93b] border border-[#3c2f21]">
-            <Layers className="w-3.5 h-3.5" />
-            <span>Architecture en 6 blocs</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#241c16] text-[#71d28c] border border-[#3c2f21]">
-            <Footprints className="w-3.5 h-3.5" />
-            <span>Technique de pieds & Subida</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#241c16] text-[#70b1ff] border border-[#3c2f21]">
-            <Award className="w-3.5 h-3.5" />
-            <span>Carnet de montage interactif</span>
-          </span>
+        <div className="space-y-2 pt-1 max-w-2xl">
+          <div className="flex items-start gap-2 text-xs sm:text-sm text-[#ded3c5] leading-relaxed">
+            <span className="w-2 h-2 rounded-full bg-[#e5a93b] shrink-0 mt-1.5 shadow-sm shadow-[#e5a93b]/50"></span>
+            <span><strong className="text-[#f4efe6]">Comprenez l'architecture scénique :</strong> décryptez chaque bloc, du silence initial à l'explosion finale.</span>
+          </div>
+          <div className="flex items-start gap-2 text-xs sm:text-sm text-[#ded3c5] leading-relaxed">
+            <span className="w-2 h-2 rounded-full bg-[#c53d2d] shrink-0 mt-1.5 shadow-sm shadow-[#c53d2d]/50"></span>
+            <span><strong className="text-[#f4efe6]">Maîtrisez les codes scéniques :</strong> synchronisez vos signaux et vos appels (llamadas) avec le guitariste.</span>
+          </div>
+          <div className="flex items-start gap-2 text-xs sm:text-sm text-[#ded3c5] leading-relaxed">
+            <span className="w-2 h-2 rounded-full bg-[#70b1ff] shrink-0 mt-1.5 shadow-sm shadow-[#70b1ff]/50"></span>
+            <span><strong className="text-[#f4efe6]">Sculptez votre geste :</strong> alliez la précision des marquages de bras à la clarté du zapateado.</span>
+          </div>
         </div>
       </div>
 
@@ -67,7 +62,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-[#201a14] via-[#1a1612] to-[#241914] border-2 border-[#e5a93b]/50 hover:border-[#e5a93b] transition-all cursor-pointer group shadow-xl relative overflow-hidden"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e5a93b] text-[#121110]">
                           Disponible immédiatement
@@ -81,19 +76,23 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                         {item.name}
                       </h4>
 
-                      <p className="text-xs sm:text-sm text-[#b8ada0] max-w-xl leading-relaxed">
-                        {item.subtitle} : apprentissage des marquages lents, des appels (llamadas), des escobillas avec montée de tempo (subida) et les chefs-d'œuvre de référence (El Güito, Antonio Gades, Sara Baras).
+                      <p className="text-base sm:text-lg font-bold text-[#e5a93b] tracking-wide">
+                        Studio de montage
                       </p>
 
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {item.highlights.map((hl, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[11px] px-2.5 py-1 rounded-md bg-[#161310] text-[#d4c9ba] border border-[#2f271f]"
-                          >
-                            ✓ {hl}
-                          </span>
-                        ))}
+                      <div className="space-y-1.5 pt-1.5 max-w-xl">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#ded3c5]">
+                          <span className="w-2 h-2 rounded-full bg-[#e5a93b] shrink-0"></span>
+                          <span><strong className="text-[#f4efe6]">Chorégraphie sur mesure :</strong> assemblez vos blocs dans l'ordre de votre choix.</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#ded3c5]">
+                          <span className="w-2 h-2 rounded-full bg-[#70b1ff] shrink-0"></span>
+                          <span><strong className="text-[#f4efe6]">Repères vidéo pas à pas :</strong> reliez vos vidéos de référence à chaque passage clé.</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#ded3c5]">
+                          <span className="w-2 h-2 rounded-full bg-[#52c41a] shrink-0"></span>
+                          <span><strong className="text-[#f4efe6]">Mémoire complète :</strong> conservez conseils, comptes et signaux sans rien oublier.</span>
+                        </div>
                       </div>
                     </div>
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bookmark, Play, Trash2, FileText } from 'lucide-react';
+import { Bookmark, Play, Trash2, FileText, X, Download } from 'lucide-react';
 import { PracticeBookmark, VideoItem, DisciplineMode } from '../types';
-import { getBookmarks, toggleBookmark, updateBookmarkStatus } from '../utils/storage';
+import { getBookmarks, toggleBookmark, updateBookmarkStatus, extractYouTubeInfo } from '../utils/storage';
+import { ExportProgressModal } from './ExportProgressModal';
 
 interface FavoritesViewProps {
   discipline: DisciplineMode;
@@ -12,7 +13,9 @@ interface FavoritesViewProps {
 export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlayVideo }) => {
   const [bookmarks, setBookmarks] = useState<Record<string, PracticeBookmark>>(getBookmarks());
   const [filter, setFilter] = useState<'all' | 'to_learn' | 'learning' | 'mastered'>('all');
+  const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const [disciplineScope, setDisciplineScope] = useState<'current' | 'all' | 'guitare' | 'danse'>('current');
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
   const allItems = (Object.values(bookmarks) as PracticeBookmark[]).sort((a, b) => b.savedAt - a.savedAt);
 
@@ -117,26 +120,37 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
           </div>
         </div>
 
-        {/* Status Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {[
-            { key: 'all', label: `Toutes (${scopedItems.length})` },
-            { key: 'learning', label: `En cours (${scopedItems.filter(i => i.status === 'learning').length})` },
-            { key: 'to_learn', label: `À faire (${scopedItems.filter(i => i.status === 'to_learn').length})` },
-            { key: 'mastered', label: `Maîtrisées (${scopedItems.filter(i => i.status === 'mastered').length})` }
-          ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key as typeof filter)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border ${
-                filter === f.key
-                  ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b]'
-                  : 'bg-[#221e1a] text-[#8c8173] border-[#383129] hover:text-[#d4c9ba]'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Status Filter Pills & Export Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {[
+              { key: 'all', label: `Toutes (${scopedItems.length})` },
+              { key: 'learning', label: `En cours (${scopedItems.filter(i => i.status === 'learning').length})` },
+              { key: 'to_learn', label: `À faire (${scopedItems.filter(i => i.status === 'to_learn').length})` },
+              { key: 'mastered', label: `Maîtrisées (${scopedItems.filter(i => i.status === 'mastered').length})` }
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key as typeof filter)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border ${
+                  filter === f.key
+                    ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b]'
+                    : 'bg-[#221e1a] text-[#8c8173] border-[#383129] hover:text-[#d4c9ba]'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#251f18] hover:bg-[#312920] border border-[#e5a93b]/40 text-[#e5a93b] hover:text-[#f4efe6] text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="Exporter ou sauvegarder mon carnet d'étude et mes notes"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Exporter mes progrès</span>
+          </button>
         </div>
       </div>
 
@@ -161,49 +175,98 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
         <div className="space-y-3">
           {filtered.map(item => {
             const itemIsDanse = isItemDanse(item);
+            const ytInfo = extractYouTubeInfo(item.url);
+            const videoId = ytInfo.videoId;
+            const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+
+            const isPreviewing = previewVideoId === item.videoId;
+
             return (
               <div
                 key={item.videoId}
-                className="bg-[#181512] border border-[#312a23] hover:border-[#42372c] rounded-2xl p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="bg-[#181512] border border-[#312a23] hover:border-[#42372c] rounded-2xl p-3.5 sm:p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      itemIsDanse
-                        ? 'bg-[#2a1b18] text-[#ff9e80] border-[#592c23]'
-                        : 'bg-[#1a232a] text-[#80d4ff] border-[#234559]'
-                    }`}>
-                      {itemIsDanse ? '💃 Danse' : '🎸 Guitare'}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#29221b] text-[#e5a93b] border border-[#42372a]">
-                      Niveau {item.level}
-                    </span>
-                    <span className="text-xs font-medium text-[#d4c9ba]">
-                      {item.paloName}
-                    </span>
-                    <span className="text-[11px] text-[#706659]">
-                      • {item.section}
-                    </span>
-                  </div>
-
-                  <h3
-                    className="text-sm sm:text-base font-bold text-[#f4efe6] hover:text-[#e5a93b] transition-colors cursor-pointer truncate"
-                    onClick={() => onPlayVideo(
-                      { id: item.videoId, title: item.title, url: item.url, level: item.level },
-                      item.paloName,
-                      item.paloId,
-                      item.section
-                    )}
-                  >
-                    {item.title}
-                  </h3>
-
-                  {item.notes && (
-                    <div className="flex items-start gap-1.5 text-xs text-[#c0b4a4] bg-[#12100e] rounded-lg p-2 border border-[#26211b] mt-1">
-                      <FileText className="w-3.5 h-3.5 text-[#e5a93b] shrink-0 mt-0.5" />
-                      <span className="italic line-clamp-2">{item.notes}</span>
+                <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                  {isPreviewing && videoId ? (
+                    <div className="w-36 sm:w-48 aspect-video rounded-lg overflow-hidden bg-black border-2 border-[#e5a93b] shrink-0 relative shadow-md">
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                        title={item.title}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewVideoId(null);
+                        }}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/85 hover:bg-black text-white text-[10px] border border-white/20 transition-all cursor-pointer shadow z-10 hover:border-[#e5a93b]"
+                        title="Fermer l'aperçu"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                  )}
+                  ) : thumbUrl ? (
+                    <div
+                      className="w-24 sm:w-28 aspect-video rounded-lg overflow-hidden bg-[#12100d] border border-[#2e261e] shrink-0 relative group/thumb cursor-pointer shadow-sm"
+                      onClick={() => setPreviewVideoId(item.videoId)}
+                      title="Cliquer pour prévisualiser la vidéo ici (sans changer de page)"
+                    >
+                      <img
+                        src={thumbUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-[#e5a93b]/90 text-[#121110] flex items-center justify-center shadow">
+                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        itemIsDanse
+                          ? 'bg-[#2a1b18] text-[#ff9e80] border-[#592c23]'
+                          : 'bg-[#1a232a] text-[#80d4ff] border-[#234559]'
+                      }`}>
+                        {itemIsDanse ? '💃 Danse' : '🎸 Guitare'}
+                      </span>
+                      <span className="text-xs font-semibold text-[#d4c9ba]">
+                        {item.paloName}
+                      </span>
+                      <span className="text-[11px] text-[#706659]">
+                        • {item.section}
+                      </span>
+                    </div>
+
+                    <h3
+                      className="text-sm sm:text-base font-bold text-[#f4efe6] hover:text-[#e5a93b] transition-colors cursor-pointer truncate"
+                      onClick={() => {
+                        setPreviewVideoId(null);
+                        onPlayVideo(
+                          { id: item.videoId, title: item.title, url: item.url, level: item.level },
+                          item.paloName,
+                          item.paloId,
+                          item.section
+                        );
+                      }}
+                    >
+                      {item.title}
+                    </h3>
+
+                    {item.notes && (
+                      <div className="flex items-start gap-1.5 text-xs text-[#c0b4a4] bg-[#12100e] rounded-lg p-2 border border-[#26211b] mt-1">
+                        <FileText className="w-3.5 h-3.5 text-[#e5a93b] shrink-0 mt-0.5" />
+                        <span className="italic line-clamp-2">{item.notes}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Status pills + Play & Delete */}
@@ -221,17 +284,20 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
 
                   {/* Play Button */}
                   <button
-                    onClick={() => onPlayVideo(
-                      { id: item.videoId, title: item.title, url: item.url, level: item.level },
-                      item.paloName,
-                      item.paloId,
-                      item.section
-                    )}
+                    onClick={() => {
+                      setPreviewVideoId(null);
+                      onPlayVideo(
+                        { id: item.videoId, title: item.title, url: item.url, level: item.level },
+                        item.paloName,
+                        item.paloId,
+                        item.section
+                      );
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e5a93b] hover:bg-[#d4972c] text-[#121110] font-bold text-xs transition-colors cursor-pointer"
-                    title="Visionner"
+                    title="Visionner & travailler"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Visionner</span>
+                    <span>Visionner & travailler</span>
                   </button>
 
                   {/* Remove button */}
@@ -248,6 +314,13 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
           })}
         </div>
       )}
+
+      {/* Modal d'exportation & sauvegarde des progrès */}
+      <ExportProgressModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onDataRestored={() => setBookmarks(getBookmarks())}
+      />
     </div>
   );
 };

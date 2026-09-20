@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "UserWorkspace": {
+      "title": "UserWorkspace",
+      "description": "Données d'étude Flamenco synchronisées en direct entre PC et mobile",
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "type": "string",
+          "description": "Identifiant unique de l'espace de travail"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Horodatage de la dernière modification (ms)"
+        },
+        "bookmarks": {
+          "type": "string",
+          "description": "Repères d'étude et favoris encodés en JSON"
+        },
+        "danseMontages": {
+          "type": "string",
+          "description": "Carnets de montages chorégraphiques encodés en JSON"
+        },
+        "danseBlockLinks": {
+          "type": "string",
+          "description": "Liens personnalisés entre blocs de danse"
+        },
+        "customVideos": {
+          "type": "string",
+          "description": "Vidéos ajoutées, modifiées ou supprimées par l'utilisateur"
+        },
+        "videoLandmarks": {
+          "type": "string",
+          "description": "Repères et balises personnalisés sur les vidéos"
+        },
+        "preferences": {
+          "type": "string",
+          "description": "Préférences d'affichage et de discipline"
+        }
+      },
+      "required": ["workspaceId", "updatedAt"]
+    },
+    "SharedMontage": {
+      "title": "SharedMontage",
+      "description": "Montage chorégraphique partagé publiquement par lien court",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant court du montage"
+        },
+        "paloId": {
+          "type": "string",
+          "description": "Identifiant du palo"
+        },
+        "author": {
+          "type": "string",
+          "description": "Nom de l'auteur"
+        },
+        "title": {
+          "type": "string",
+          "description": "Titre du montage"
+        },
+        "payloadJson": {
+          "type": "string",
+          "description": "Données complètes du montage sérialisées en JSON"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Horodatage de création"
+        }
+      },
+      "required": ["id", "paloId", "payloadJson", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": "UserWorkspace",
+      "description": "Espace de travail synchronisé en temps réel pour l'utilisateur"
+    },
+    "/shared_montages/{montageId}": {
+      "schema": "SharedMontage",
+      "description": "Montages chorégraphiques partagés publiquement par lien court sans encodage lourd"
+    }
+  }
+}

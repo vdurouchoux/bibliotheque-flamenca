@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Play, Plus, Bookmark, Copy, Check, ExternalLink, Sparkles, ChevronRight, ChevronLeft, ArrowUp, Layers, Volume2, Info, Guitar, Quote } from 'lucide-react';
+import { Play, Plus, Bookmark, Copy, Check, ExternalLink, Sparkles, ChevronRight, ChevronLeft, ArrowUp, Layers, Volume2, Info, Guitar, Quote, X, Share2 } from 'lucide-react';
 import { PaloData, SectionTab, Level, VideoItem } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
-import { getBookmarks, toggleBookmark, getCustomVideos } from '../utils/storage';
+import { getBookmarks, toggleBookmark, getCustomVideos, extractYouTubeInfo } from '../utils/storage';
+import { getVideoShareData, getSectionShareData, ShareOptions } from '../utils/shareUtils';
+import { ShareModal } from './ShareModal';
 
 interface PaloDetailProps {
   palo: PaloData;
@@ -24,8 +26,10 @@ export const PaloDetail: React.FC<PaloDetailProps> = ({
   onBack
 }) => {
   const [activeTab, setActiveTab] = useState<SectionTab>(palo.intro ? 'intro' : 'falsetas');
+  const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<number | 'all'>('all');
   const [copiedLetra, setCopiedLetra] = useState<boolean>(false);
+  const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
 
   const bookmarks = getBookmarks();
   const customStore = getCustomVideos();
@@ -81,52 +85,108 @@ export const PaloDetail: React.FC<PaloDetailProps> = ({
   const renderVideoCard = (video: VideoItem, sectionName: string) => {
     const isSaved = !!bookmarks[video.id];
     const status = bookmarks[video.id]?.status;
+    const ytInfo = extractYouTubeInfo(video.url);
+    const videoId = ytInfo.videoId;
+    const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+    const isPreviewing = previewVideoId === video.id;
 
     return (
       <div
         key={video.id}
-        className="group bg-[#171412] hover:bg-[#1f1b17] border border-[#2f2821] hover:border-[#e5a93b]/70 rounded-2xl p-4 transition-all flex items-center justify-between gap-3 shadow-md"
+        className="group bg-[#171412] hover:bg-[#1f1b17] border border-[#2f2821] hover:border-[#e5a93b]/70 rounded-2xl p-3.5 sm:p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md"
       >
-        <div
-          className="flex-1 min-w-0 cursor-pointer"
-          onClick={() => onPlayVideo(video, sectionName)}
-        >
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-              video.level === 1
-                ? 'bg-[#213b29] text-[#71d28c] border-[#71d28c]/40'
-                : video.level === 2
-                ? 'bg-[#3b2b1b] text-[#f5b742] border-[#f5b742]/40'
-                : 'bg-[#381c1c] text-[#ff7575] border-[#ff7575]/40'
-            }`}>
-              Niveau {video.level}
-            </span>
+        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+          {isPreviewing && videoId ? (
+            <div className="w-36 sm:w-48 aspect-video rounded-lg overflow-hidden bg-black border-2 border-[#e5a93b] shrink-0 relative shadow-md">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title={video.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewVideoId(null);
+                }}
+                className="absolute top-1 right-1 p-1 rounded-full bg-black/85 hover:bg-black text-white text-[10px] border border-white/20 transition-all cursor-pointer shadow z-10 hover:border-[#e5a93b]"
+                title="Fermer l'aperçu"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : thumbUrl ? (
+            <div
+              className="w-24 sm:w-28 aspect-video rounded-lg overflow-hidden bg-[#12100d] border border-[#2e261e] shrink-0 relative group/thumb cursor-pointer shadow-sm"
+              onClick={() => setPreviewVideoId(video.id)}
+              title="Cliquer pour prévisualiser la vidéo ici (sans changer de page)"
+            >
+              <img
+                src={thumbUrl}
+                alt={video.title}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full bg-[#e5a93b]/90 text-[#121110] flex items-center justify-center shadow">
+                  <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                </div>
+              </div>
+            </div>
+          ) : null}
 
-            {video.isCustom && (
-              <span className="px-1.5 py-0.2 rounded text-[10px] bg-[#e5a93b]/20 text-[#e5a93b] font-medium">
-                Personnalisé
-              </span>
-            )}
+          <div
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={() => onPlayVideo(video, sectionName)}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              {video.isCustom && (
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-[#e5a93b]/20 text-[#e5a93b] font-medium">
+                  Personnalisé
+                </span>
+              )}
 
-            {status && (
-              <span className="text-[10px] text-[#a69c8f] italic">
-                • {status === 'mastered' ? 'Maîtrisé ✓' : status === 'learning' ? 'En cours' : 'À travailler'}
-              </span>
+              {status && (
+                <span className="text-[10px] text-[#a69c8f] italic">
+                  • {status === 'mastered' ? 'Maîtrisé ✓' : status === 'learning' ? 'En cours' : 'À travailler'}
+                </span>
+              )}
+            </div>
+
+            <h4 className="text-sm sm:text-base font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
+              {video.title}
+            </h4>
+
+            {video.description && (
+              <p className="text-xs text-[#8c8173] line-clamp-1 mt-0.5">
+                {video.description}
+              </p>
             )}
           </div>
-
-          <h4 className="text-sm sm:text-base font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
-            {video.title}
-          </h4>
-
-          {video.description && (
-            <p className="text-xs text-[#8c8173] line-clamp-1 mt-0.5">
-              {video.description}
-            </p>
-          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              const opts = getVideoShareData({
+                video,
+                paloName: `${palo.name} (Guitare)`,
+                paloId: paloKey,
+                sectionName,
+                discipline: 'guitare'
+              });
+              setShareModalOptions(opts);
+            }}
+            className="p-2 rounded-xl border bg-[#221e1a] text-[#7a6f62] border-[#312a23] hover:text-[#e5a93b] hover:border-[#e5a93b]/50 transition-colors cursor-pointer"
+            title="Partager cette vidéo"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+
           <button
             onClick={() => {
               toggleBookmark({
@@ -152,11 +212,14 @@ export const PaloDetail: React.FC<PaloDetailProps> = ({
           </button>
 
           <button
-            onClick={() => onPlayVideo(video, sectionName)}
+            onClick={() => {
+              setPreviewVideoId(null);
+              onPlayVideo(video, sectionName);
+            }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#e5a93b] hover:bg-[#d4972c] text-[#121110] font-bold text-xs transition-colors cursor-pointer shadow-md shadow-[#e5a93b]/15"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span className="hidden xs:inline">Visionner</span>
+            <span>Visionner & travailler</span>
           </button>
         </div>
       </div>
@@ -730,6 +793,13 @@ export const PaloDetail: React.FC<PaloDetailProps> = ({
           <ArrowUp className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {shareModalOptions && (
+        <ShareModal
+          options={shareModalOptions}
+          onClose={() => setShareModalOptions(null)}
+        />
+      )}
     </div>
   );
 };

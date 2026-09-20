@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { X, Plus, Video, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Plus, Video, Sparkles, Lightbulb, AlertTriangle, Laptop, Smartphone, Upload, FileVideo } from 'lucide-react';
 import { Level } from '../types';
 import { saveCustomVideo } from '../utils/storage';
+import { isLocalVideoUrl, isMobileDevice, getCurrentDeviceType, detectDeviceFromUrl } from '../utils/deviceUtils';
 
 interface AddVideoModalProps {
   paloId: string;
@@ -24,11 +25,18 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   const [level, setLevel] = useState<Level>(1);
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isDanceSection = ['danses', 'maitres', 'structure', 'marcajes', 'zapateado', 'llamadas'].includes(initialSection) || paloName.includes('Danse');
+  const currentDevice = getCurrentDeviceType();
+  const isLocal = isLocalVideoUrl(url) || !!selectedFileName;
+  const detectedDevice = detectDeviceFromUrl(url) || currentDevice;
+
+  const isDanceSection = ['danses', 'maitres', 'cours', 'structure', 'marcajes', 'zapateado', 'llamadas'].includes(initialSection) || paloName.includes('Danse');
 
   const categories = isDanceSection
     ? [
+        { key: 'cours', label: '🎓 Mes Cours & Stages' },
         { key: 'maitres', label: '💃 Danses Complètes & Maîtres' },
         { key: 'structure', label: '📑 Chorégraphie & Montage' }
       ]
@@ -38,14 +46,28 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
         { key: 'baile', label: '💃 Baile' }
       ];
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFileName(file.name);
+      if (!title) {
+        // Strip extension from title
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        setTitle(baseName);
+      }
+      const localBlobUrl = URL.createObjectURL(file);
+      setUrl(localBlobUrl);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Veuillez entrer un titre pour la vidéo.');
       return;
     }
-    if (!url.trim()) {
-      setError('Veuillez entrer une URL YouTube valide.');
+    if (!url.trim() && !selectedFileName) {
+      setError('Veuillez entrer un lien vidéo ou choisir un fichier.');
       return;
     }
 
@@ -54,7 +76,9 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
         title: title.trim(),
         url: url.trim(),
         level,
-        description: description.trim() || undefined
+        description: description.trim() || undefined,
+        isLocalFile: isLocal,
+        sourceDevice: isLocal ? detectedDevice : undefined
       });
       onAdded();
       onClose();
@@ -117,33 +141,6 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
             </div>
           </div>
 
-          {/* Level choice */}
-          <div>
-            <label className="block text-xs font-semibold text-[#d4c9ba] mb-1.5">
-              Niveau de difficulté
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { lvl: 1, label: 'Niveau 1 (Débutant)' },
-                { lvl: 2, label: 'Niveau 2 (Moyen)' },
-                { lvl: 3, label: 'Niveau 3 (Avancé)' }
-              ].map(item => (
-                <button
-                  key={item.lvl}
-                  type="button"
-                  onClick={() => setLevel(item.lvl as Level)}
-                  className={`py-2 px-2 text-xs rounded-xl border font-medium transition-colors cursor-pointer text-center ${
-                    level === item.lvl
-                      ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]'
-                      : 'bg-[#221e1a] text-[#8c8173] border-[#383129] hover:text-[#d4c9ba]'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-[#d4c9ba] mb-1">
@@ -159,19 +156,73 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
             />
           </div>
 
-          {/* YouTube URL */}
+          {/* Video URL or Local file */}
           <div>
-            <label className="block text-xs font-semibold text-[#d4c9ba] mb-1">
-              Lien YouTube *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-[#d4c9ba]">
+                Lien vidéo ou fichier local *
+              </label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] font-semibold text-[#e5a93b] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Upload className="w-3 h-3" />
+                <span>Parcourir fichier ({currentDevice === 'pc' ? 'PC' : 'Téléphone'})</span>
+              </button>
+            </div>
+
             <input
-              type="url"
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full bg-[#141210] border border-[#332c25] focus:border-[#e5a93b] rounded-xl px-3.5 py-2.5 text-sm text-[#f4efe6] placeholder-[#6b6256] outline-none"
-              required
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="video/*"
+              className="hidden"
             />
+
+            <input
+              type="text"
+              value={url}
+              onChange={e => {
+                setUrl(e.target.value);
+                setSelectedFileName('');
+              }}
+              placeholder="https://www.youtube.com/watch?v=... ou Vimeo / Drive / fichier local"
+              className="w-full bg-[#141210] border border-[#332c25] focus:border-[#e5a93b] rounded-xl px-3.5 py-2.5 text-sm text-[#f4efe6] placeholder-[#6b6256] outline-none"
+            />
+
+            {selectedFileName && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#e5a93b]">
+                <FileVideo className="w-3.5 h-3.5" />
+                <span>Fichier sélectionné : <strong>{selectedFileName}</strong></span>
+              </div>
+            )}
+
+            {/* Avertissement explicite si fichier local */}
+            {isLocal ? (
+              <div className="mt-2.5 p-3 rounded-xl bg-amber-950/40 border border-amber-800/60 text-xs text-amber-200 space-y-1.5 animate-in fade-in duration-150">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>Vidéo stockée localement sur votre {detectedDevice === 'pc' ? 'PC' : 'smartphone'}</span>
+                </div>
+                <p className="text-[11px] text-amber-200/85 leading-relaxed">
+                  Cette vidéo sera lisible sur cet appareil. Sur votre {detectedDevice === 'pc' ? 'smartphone' : 'PC'}, l’application indiquera clairement :
+                </p>
+                <div className="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-700/60 font-semibold text-amber-300 text-[11px]">
+                  « Vidéo non disponible car stockée sur votre {detectedDevice === 'pc' ? 'PC' : 'téléphone'} »
+                </div>
+                <p className="text-[10px] text-amber-300/80">
+                  💡 Pour la visionner sur tous vos appareils, préférez un lien YouTube en mode non répertorié.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2 p-2.5 rounded-xl bg-[#1c1813] border border-[#382d20] flex items-start gap-2 text-[11px] text-[#a69c8f] leading-relaxed">
+                <Lightbulb className="w-3.5 h-3.5 text-[#e5a93b] shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-[#e5a93b]">Conseil synchronisation :</strong> Privilégiez les liens web (ex. YouTube en « Non répertorié » <em>(invisible au public et au moteur de recherche)</em>, Vimeo ou Google Drive) pour visionner vos répétitions indifféremment sur votre PC et votre smartphone.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Description */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PALOS_DATA } from './data/flamencoData';
 import { BAILE_PALOS_DATA } from './data/baileData';
-import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark } from './types';
+import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark, DanseSectionTab } from './types';
 import { Header } from './components/Header';
 import { PaloList } from './components/PaloList';
 import { DansePaloList } from './components/DansePaloList';
@@ -14,12 +14,18 @@ import { FlamencoToolsModal } from './components/FlamencoToolsModal';
 import { FavoritesView } from './components/FavoritesView';
 import { CompasVisualizer } from './components/CompasVisualizer';
 import { InstallGuideModal } from './components/InstallGuideModal';
+import { CloudSyncModal } from './components/CloudSyncModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { flamencoMetronome } from './utils/audioMetronome';
-import { getBookmarks } from './utils/storage';
-import { Volume2, Square, Play } from 'lucide-react';
+import { getBookmarks, importAllSyncData, decodeSharedMontage, importSharedMontage } from './utils/storage';
+import { startCloudSync, subscribeToSyncStatus, SyncState, loadSharedMontageCloud } from './utils/firebaseSync';
+import { Volume2, Square, Play, CheckCircle2, Sparkles, X } from 'lucide-react';
 
 export default function App() {
+  const [syncToast, setSyncToast] = useState<string | null>(null);
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState<boolean>(false);
+  const [cloudSyncState, setCloudSyncState] = useState<SyncState>('connecting');
+
   // Discipline Mode (Guitare or Danse) - default to Danse as requested
   const [discipline, setDiscipline] = useState<DisciplineMode>(() => {
     try {
@@ -34,6 +40,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'tangos-variants' | 'palo-detail' | 'favorites'>('home');
   const [selectedPaloKey, setSelectedPaloKey] = useState<string | null>(null);
   const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
+  const [danseTab, setDanseTab] = useState<DanseSectionTab>('hub');
 
   // Modals state
   const [activeVideoData, setActiveVideoData] = useState<{
@@ -76,8 +83,160 @@ export default function App() {
     setBookmarksCount(all.filter(item => isBookmarkForDiscipline(item, discipline)).length);
   }, [discipline]);
 
+  // Initialisation de la synchronisation continue Cloud Firestore (PC <-> Mobile)
+  useEffect(() => {
+    const unsubSync = startCloudSync();
+    const unsubStatus = subscribeToSyncStatus((info) => {
+      setCloudSyncState(info.state);
+    });
+
+    const handleRemoteUpdate = () => {
+      setCustomVideosVersion(v => v + 1);
+      refreshBookmarksCount();
+    };
+
+    window.addEventListener('flamenco_data_imported', handleRemoteUpdate);
+    window.addEventListener('flamenco_landmarks_updated', handleRemoteUpdate);
+    window.addEventListener('flamenco_montages_updated', handleRemoteUpdate);
+
+    return () => {
+      unsubSync();
+      unsubStatus();
+      window.removeEventListener('flamenco_data_imported', handleRemoteUpdate);
+      window.removeEventListener('flamenco_landmarks_updated', handleRemoteUpdate);
+      window.removeEventListener('flamenco_montages_updated', handleRemoteUpdate);
+    };
+  }, []);
+
+  // Automatic synchronization from URL (when scanning QR code from PC to mobile)
+  useEffect(() => {
+    try {
+      let syncPayload = '';
+      if (window.location.hash && window.location.hash.startsWith('#sync=')) {
+        syncPayload = window.location.hash.replace('#sync=', '');
+      } else if (window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        syncPayload = urlParams.get('sync') || '';
+      }
+
+      if (syncPayload) {
+        const success = importAllSyncData(syncPayload);
+        if (success) {
+          setSyncToast('Vos repères et réglages personnalisés ont été synchronisés avec succès sur ce téléphone !');
+          // Clean the URL without reload
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {
+            // ignore
+          }
+          refreshBookmarksCount();
+          setTimeout(() => {
+            setSyncToast(null);
+          }, 8000);
+        }
+      }
+
+      // Deep link sharing resolution (?discipline=...&palo=...&section=...&video=...&t=...)
+      if (window.location.search || window.location.hash) {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. Montage partagé moderne via lien court Cloud (?montage_id=... ou ?sm=...)
+        const cloudMontageId = urlParams.get('montage_id') || urlParams.get('sm');
+        if (cloudMontageId) {
+          loadSharedMontageCloud(cloudMontageId).then((payload) => {
+            if (payload) {
+              const result = importSharedMontage(payload);
+              setDiscipline('danse');
+              setSelectedPaloKey(payload.paloId || 'Farruca');
+              setCurrentView('palo-detail');
+              setDanseTab('montages');
+              try {
+                sessionStorage.setItem('flamenco_active_imported_montage', result.key);
+              } catch {}
+              setSyncToast(
+                result.isUpdate
+                  ? `🔄 ${result.title} a été mis à jour avec les modifications reçues !`
+                  : `🎉 ${result.title} a été importé avec succès dans vos montages !`
+              );
+              setTimeout(() => setSyncToast(null), 8000);
+
+              // Nettoyage de l'URL pour éviter de réimporter à chaque rafraîchissement
+              try {
+                urlParams.delete('montage_id');
+                urlParams.delete('sm');
+                const newSearch = urlParams.toString();
+                const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+                window.history.replaceState(null, '', newUrl);
+              } catch {}
+            }
+          }).catch(err => {
+            console.warn('Erreur chargement cloud montage:', err);
+          });
+        }
+
+        // 2. Rétrocompatibilité : Montage partagé encodé legacy (?shared_montage=... ou #shared_montage=...)
+        let sharedMontageEncoded = urlParams.get('shared_montage');
+        if (!sharedMontageEncoded && window.location.hash && window.location.hash.includes('shared_montage=')) {
+          const match = window.location.hash.match(/shared_montage=([^&]+)/);
+          if (match) sharedMontageEncoded = decodeURIComponent(match[1]);
+        }
+
+        if (sharedMontageEncoded) {
+          const payload = decodeSharedMontage(sharedMontageEncoded);
+          if (payload) {
+            const result = importSharedMontage(payload);
+            setDiscipline('danse');
+            setSelectedPaloKey(payload.paloId || 'Farruca');
+            setCurrentView('palo-detail');
+            setDanseTab('montages');
+            try {
+              sessionStorage.setItem('flamenco_active_imported_montage', result.key);
+            } catch {}
+            setSyncToast(
+              result.isUpdate
+                ? `🔄 ${result.title} a été mis à jour avec les modifications reçues !`
+                : `🎉 ${result.title} a été importé avec succès dans vos montages !`
+            );
+            setTimeout(() => setSyncToast(null), 8000);
+
+            // Nettoyage de l'URL pour éviter de réimporter à chaque rafraîchissement
+            try {
+              urlParams.delete('shared_montage');
+              const newSearch = urlParams.toString();
+              const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+              window.history.replaceState(null, '', newUrl);
+            } catch {}
+          }
+        }
+
+        const shareDiscipline = urlParams.get('discipline') as DisciplineMode | null;
+        const sharePalo = urlParams.get('palo');
+        const shareSection = urlParams.get('section');
+
+        if (shareDiscipline && (shareDiscipline === 'danse' || shareDiscipline === 'guitare')) {
+          setDiscipline(shareDiscipline);
+        }
+
+        if (sharePalo) {
+          setSelectedPaloKey(sharePalo);
+          setCurrentView('palo-detail');
+          if (shareSection) {
+            setDanseTab(shareSection as DanseSectionTab);
+          }
+          if (!sharedMontageEncoded) {
+            setSyncToast(`Ouverture via lien partagé : ${sharePalo}${shareSection ? ` • ${shareSection}` : ''}`);
+            setTimeout(() => setSyncToast(null), 4000);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error during auto-sync from URL:', err);
+    }
+  }, []);
+
   const handleToggleDiscipline = (mode: DisciplineMode) => {
     setDiscipline(mode);
+    setDanseTab('hub');
     try {
       localStorage.setItem('flamenco_discipline', mode);
     } catch (e) {
@@ -129,6 +288,7 @@ export default function App() {
   const handleOpenPalo = (paloKey: string) => {
     setSelectedPaloKey(paloKey);
     setSelectedVariantKey(null);
+    setDanseTab('hub');
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -152,7 +312,33 @@ export default function App() {
       else if (selectedPaloKey) setCurrentView('palo-detail');
       else setCurrentView('home');
     } else if (currentView === 'palo-detail') {
-      if (selectedVariantKey) {
+      if (discipline === 'danse') {
+        if (danseTab !== 'hub') {
+          // Si on est dans un des 6 blocs (ex: Grands Maîtres, Mes montages), on retourne directement aux 6 carrés !
+          setDanseTab('hub');
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              const el = document.getElementById('danse-espaces-etude');
+              if (el) {
+                const headerOffset = 70;
+                const elementPosition = el.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                window.scrollTo({
+                  top: Math.max(0, offsetPosition),
+                  behavior: 'smooth'
+                });
+              } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }, 60);
+          });
+          return;
+        } else {
+          // Déjà sur les 6 blocs, on revient à la liste des palos
+          setSelectedPaloKey(null);
+          setCurrentView('home');
+        }
+      } else if (selectedVariantKey) {
         setSelectedVariantKey(null);
         setCurrentView('tangos-variants');
       } else {
@@ -177,8 +363,28 @@ export default function App() {
     headerSubtitle = "Sélection de la variante";
   } else if (currentView === 'palo-detail') {
     if (discipline === 'danse') {
-      headerTitle = `${activeDansePalo.name} (Danse)`;
-      headerSubtitle = "Guide de montage & Technique";
+      if (danseTab === 'hub') {
+        headerTitle = `${activeDansePalo.name} (Danse)`;
+        headerSubtitle = "Les 6 espaces d'étude";
+      } else if (danseTab === 'maitres') {
+        headerTitle = `${activeDansePalo.name} – Grands Maîtres`;
+        headerSubtitle = "Chorégraphies intégrales de référence";
+      } else if (danseTab === 'structure') {
+        headerTitle = `${activeDansePalo.name} – Structure traditionnelle`;
+        headerSubtitle = "Chorégraphie canonique en 6 blocs";
+      } else if (danseTab === 'letras') {
+        headerTitle = `${activeDansePalo.name} – Letras & Textes`;
+        headerSubtitle = "Poésie flamenca & couplets";
+      } else if (danseTab === 'compas') {
+        headerTitle = `${activeDansePalo.name} – Compás`;
+        headerSubtitle = "Rythme binaire 4 temps";
+      } else if (danseTab === 'cours') {
+        headerTitle = `${activeDansePalo.name} – Cours & Stages`;
+        headerSubtitle = "Tutoriels & vidéos personnelles";
+      } else if (danseTab === 'montages') {
+        headerTitle = `${activeDansePalo.name} – Mon studio de montage`;
+        headerSubtitle = "Montages chorégraphiques personnalisables";
+      }
     } else if (activePalo) {
       headerTitle = activePalo.name;
       headerSubtitle = activePalo.subtitle;
@@ -199,6 +405,7 @@ export default function App() {
         title={headerTitle}
         subtitle={headerSubtitle}
         canGoBack={currentView !== 'home'}
+        backButtonLabel="Retour"
         onBack={handleGoBack}
         discipline={discipline}
         onToggleDiscipline={handleToggleDiscipline}
@@ -207,11 +414,33 @@ export default function App() {
         onOpenTools={() => setIsToolsModalOpen(true)}
         onOpenFavorites={() => setCurrentView('favorites')}
         favoritesCount={bookmarksCount}
-        onOpenInstall={() => setIsInstallGuideOpen(true)}
+        onOpenCloudSync={() => setIsCloudSyncOpen(true)}
+        cloudSyncStatus={cloudSyncState}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 pb-24">
+        {/* Sync notification toast */}
+        {syncToast && (
+          <div className="mb-5 p-3.5 sm:p-4 rounded-2xl bg-[#261f17] border-2 border-[#e5a93b] text-[#f4efe6] shadow-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="p-2 rounded-xl bg-[#e5a93b]/20 text-[#e5a93b] shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </span>
+              <div className="text-xs sm:text-sm font-semibold">
+                {syncToast}
+              </div>
+            </div>
+            <button
+              onClick={() => setSyncToast(null)}
+              className="p-1.5 rounded-lg text-[#a69c8f] hover:text-[#f4efe6] cursor-pointer shrink-0"
+              title="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {currentView === 'home' && (
           discipline === 'danse' ? (
             <DansePaloList
@@ -254,6 +483,30 @@ export default function App() {
               }}
               onOpenAddVideo={section => setAddVideoSection(section)}
               onBack={handleGoBack}
+              activeTab={danseTab}
+              onTabChange={tab => {
+                setDanseTab(tab);
+                if (tab === 'hub') {
+                  requestAnimationFrame(() => {
+                    setTimeout(() => {
+                      const el = document.getElementById('danse-espaces-etude');
+                      if (el) {
+                        const headerOffset = 70;
+                        const elementPosition = el.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                        window.scrollTo({
+                          top: Math.max(0, offsetPosition),
+                          behavior: 'smooth'
+                        });
+                      } else {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }, 60);
+                  });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
             />
           ) : activePalo ? (
             <PaloDetail
@@ -385,6 +638,13 @@ export default function App() {
       {isInstallGuideOpen && (
         <InstallGuideModal
           onClose={() => setIsInstallGuideOpen(false)}
+        />
+      )}
+
+      {/* Real-time Cloud Synchronization & Pairing Modal */}
+      {isCloudSyncOpen && (
+        <CloudSyncModal
+          onClose={() => setIsCloudSyncOpen(false)}
         />
       )}
 

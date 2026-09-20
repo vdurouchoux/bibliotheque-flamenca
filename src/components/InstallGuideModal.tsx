@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Smartphone, QrCode, Copy, Check, Download, Share2, PlusSquare, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Smartphone, QrCode, Copy, Check, Download, Share2, PlusSquare, Sparkles, ExternalLink, RefreshCw, FileText } from 'lucide-react';
 import QRCode from 'qrcode';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { exportAllSyncData, hasCustomUserData, getModificationsReport } from '../utils/storage';
 
 interface InstallGuideModalProps {
   onClose: () => void;
@@ -12,18 +13,23 @@ export const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ onClose })
   const [platform, setPlatform] = useState<'ios' | 'android'>(isIOS ? 'ios' : 'android');
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [modReport] = useState(() => getModificationsReport());
+  const [copiedReport, setCopiedReport] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
 
-  // Get current app URL or fallback shared URL
-  const appUrl = typeof window !== 'undefined' && window.location.href.startsWith('http')
-    ? window.location.href.split('?')[0].split('#')[0]
-    : 'https://ais-pre-sprsm3bon22f72k6lwu3za-118125602394.europe-west2.run.app';
+  // Use the active running origin (never 404s)
+  const appUrl = typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http')
+    ? window.location.origin
+    : 'https://ais-dev-sprsm3bon22f72k6lwu3za-118125602394.europe-west2.run.app';
 
   useEffect(() => {
+    // Generate high-contrast, large-module QR code for instant phone camera scanning
     QRCode.toDataURL(appUrl, {
-      width: 280,
+      width: 320,
       margin: 2,
+      errorCorrectionLevel: 'M',
       color: {
-        dark: '#141210',
+        dark: '#000000',
         light: '#ffffff'
       }
     }).then(url => {
@@ -92,6 +98,46 @@ export const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ onClose })
                 <Download className="w-4 h-4" />
                 <span>Installer</span>
               </button>
+            </div>
+          )}
+
+          {/* Export Report Card (pour graver dans le code source de l'application) */}
+          {modReport.hasModifications && (
+            <div className="p-3.5 rounded-xl bg-[#1b1713] border border-[#3b3228] space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-[#f4efe6] flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#e5a93b]" />
+                  <span>Graver vos modifications dans le code source ({modReport.totalCount} modif{modReport.totalCount > 1 ? 's' : ''})</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-[#a69c8f] leading-relaxed">
+                Pour faire de vos modifications (vidéos supprimées, remplacées, ajoutées, repères) la version officielle permanente sur tous les appareils, copiez ce rapport et collez-le dans notre échange :
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(modReport.summaryText);
+                    setCopiedReport(true);
+                    setTimeout(() => setCopiedReport(false), 3000);
+                  }}
+                  className="flex-1 min-w-[150px] py-2 px-3 rounded-lg bg-[#272019] hover:bg-[#342a20] text-[#e5a93b] border border-[#e5a93b]/40 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  {copiedReport ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedReport ? 'Rapport texte copié !' : 'Copier le rapport des modifications'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(modReport.jsonString);
+                    setCopiedJson(true);
+                    setTimeout(() => setCopiedJson(false), 3000);
+                  }}
+                  className="py-2 px-3 rounded-lg bg-[#201a15] hover:bg-[#2b231c] text-[#a69c8f] hover:text-[#f4efe6] border border-[#332a21] text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  title="Copier les données techniques au format JSON"
+                >
+                  {copiedJson ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedJson ? 'JSON copié !' : 'Copier JSON'}</span>
+                </button>
+              </div>
             </div>
           )}
 

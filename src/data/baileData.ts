@@ -19,11 +19,18 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
   {
     id: "Farruca",
     name: "Farruca",
-    subtitle: "Guide de montage & Technique de pieds",
+    subtitle: "Studio de montage",
     tag: "4 temps binaire (La mineur)",
     compasSummary: "4 temps • 84 à 165 BPM",
     isAvailable: true,
-    highlights: ["Structure en 6 blocs", "Marquages lents & Giros", "Escobilla & Subida", "Grands Maîtres"]
+    highlights: [
+      "Structure traditionnelle",
+      "Grands Maîtres",
+      "Letras & Textes",
+      "Compás",
+      "Cours & Stages",
+      "Mon studio de montage"
+    ]
   },
   {
     id: "Alegrias-baile",
