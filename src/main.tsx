@@ -4,17 +4,20 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-// Nettoyage préventif d'anciens dev-sw.js pouvant bloquer l'affichage sur mobile
+// Enregistrement du Service Worker pour installation PWA autonome (plein écran sans barre d'adresse)
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   try {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       for (const reg of registrations) {
         if (reg.active?.scriptURL.includes('dev-sw.js')) {
-          console.log('Désenregistrement de l\'ancien dev-sw:', reg.active.scriptURL);
           reg.unregister();
         }
       }
     }).catch(() => {});
+
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
   } catch {
     // ignore
   }
