@@ -19,7 +19,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
   {
     id: "Farruca",
     name: "Farruca",
-    subtitle: "Studio de montage",
+    subtitle: "Atelier de création",
     tag: "4 temps binaire (La mineur)",
     compasSummary: "4 temps • 84 à 165 BPM",
     isAvailable: true,
@@ -29,7 +29,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
       "Letras & Textes",
       "Compás",
       "Cours & Stages",
-      "Mon studio de montage"
+      "Mon atelier de création"
     ]
   },
   {

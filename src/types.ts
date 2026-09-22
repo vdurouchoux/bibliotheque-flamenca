@@ -100,7 +100,7 @@ export interface PaloData {
 
 export type SectionTab = 'intro' | 'falsetas' | 'cante' | 'baile' | 'harmonie' | 'compas';
 
-export type DisciplineMode = 'guitare' | 'danse';
+export type DisciplineMode = 'guitare' | 'danse' | 'chant';
 
 export type DanseSectionTab = 'hub' | 'structure' | 'maitres' | 'letras' | 'compas' | 'cours' | 'montages';
 

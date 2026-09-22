@@ -1015,7 +1015,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <button
               onClick={onClose}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#221c17] hover:bg-[#2d241d] active:bg-[#1b1612] text-[#e5a93b] hover:text-[#f4efe6] border border-[#3e3224] text-xs sm:text-sm font-bold transition-all shadow-md active:scale-98 cursor-pointer"
-              title={isFromMontage ? "Fermer le lecteur et revenir au studio de montage" : "Fermer le lecteur et revenir à la liste des vidéos"}
+              title={isFromMontage ? "Fermer le lecteur et revenir à l'atelier de création" : "Fermer le lecteur et revenir à la liste des vidéos"}
             >
               <ChevronLeft className="w-4 h-4" />
               <span>← {isFromMontage ? 'Revenir au montage' : 'Revenir à la liste des vidéos'}</span>

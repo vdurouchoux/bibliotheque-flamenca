@@ -3,11 +3,12 @@ import {
   Play, Plus, Bookmark, ChevronLeft, ArrowLeft, ArrowUp, ArrowDown, Layers, Volume2, 
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
-  LayoutGrid, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
+  LayoutGrid, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
   AlertTriangle, Laptop, Smartphone
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
+import { DanseArborescenceTree } from './DanseArborescenceTree';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { ReplaceVideoModal } from './ReplaceVideoModal';
 import { MontageBlockModal } from './MontageBlockModal';
@@ -74,11 +75,11 @@ const ESPACE_INFO_MAP: Record<Exclude<DanseSectionTab, 'hub'>, { title: string; 
 
 const DEFAULT_STUDY_SPACES: Array<Exclude<DanseSectionTab, 'hub'>> = [
   'structure',
+  'montages',
   'maitres',
   'letras',
   'compas',
-  'cours',
-  'montages'
+  'cours'
 ];
 
 export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
@@ -134,14 +135,15 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
   const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
 
-  // Accordéon déroulant pour Caractère, Costume, Compás (au début fermés pour ne voir que les titres)
-  const [openInfoSections, setOpenInfoSections] = useState<Record<string, boolean>>({
-    character: false,
-    costume: false,
-    compas: false
+  // Menus déroulants pour les 3 rubriques fondamentales du palo (Caractère de la danse, Costume & Posture, Compás & Dynamique)
+  // Ouvertes par défaut dans la grande zone noire du bas de page pour exploiter pleinement l'espace
+  const [openInfoSections, setOpenInfoSections] = useState<{ character: boolean; costume: boolean; compas: boolean }>({
+    character: true,
+    costume: true,
+    compas: true
   });
 
-  const toggleInfoSection = (key: string) => {
+  const toggleInfoSection = (key: 'character' | 'costume' | 'compas') => {
     setOpenInfoSections(prev => ({
       ...prev,
       [key]: !prev[key]
@@ -166,19 +168,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       ...prev,
       [key]: !prev[key]
     }));
-  };
-
-  const handleExpandAllStructure = () => {
-    const all: Record<number, boolean> = {};
-    palo.choreographyGuide.structureSteps.forEach(s => {
-      all[s.stepNumber] = true;
-    });
-    setOpenStructureSteps(all);
-  };
-
-  const handleCollapseAllStructure = () => {
-    setOpenStructureSteps({});
-    setOpenStructureDetails({});
   };
 
   // État de l'ordre personnalisé des 6 espaces d'étude (avec glisser-déposer et persistance cloud)
@@ -663,7 +652,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const handlePlayLinkedVideo = (link: BlockVideoLink) => {
     const fullVideo = getFullVideoForLink(link);
-    onPlayVideo(fullVideo, `Mon studio de montage · ${activeMontageLabel}`);
+    onPlayVideo(fullVideo, `Mon atelier de création · ${activeMontageLabel}`);
   };
 
   // Selected block ID for the interactive 2-column view (Left: chosen blocks list, Right: explanatory text & tips)
@@ -1197,346 +1186,174 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
-      {/* Hero Card Palo Danse : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
+      {/* Hero Card Palo Danse compact : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
       {activeTab === 'hub' && (
-        <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/20 text-[#ff8f82] border border-[#c53d2d]/40">
-                  💃 Danse Flamenca (Baile)
-                </span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2a231b] text-[#e5a93b] border border-[#3d3326]">
-                  {palo.tag}
-                </span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#f4efe6] font-serif tracking-tight">
+        <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 shadow-lg">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] font-serif tracking-tight">
                 {palo.name}
               </h2>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Bouton Partager le hub */}
+              {/* Bouton Partager placé directement à droite de Farruca */}
               <button
                 type="button"
                 onClick={handleShareSpace}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#221c17] hover:bg-[#2e251e] text-[#e5a93b] border border-[#3e3223] text-xs sm:text-sm font-bold transition-all shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#221c17] hover:bg-[#2e251e] text-[#e5a93b] border border-[#3e3223] text-xs font-bold transition-all shadow-sm cursor-pointer"
                 title="Partager un lien vers la Farruca"
               >
-                <Share2 className="w-4 h-4" />
+                <Share2 className="w-3.5 h-3.5" />
                 <span>Partager</span>
               </button>
             </div>
-          </div>
 
-          {/* Menus déroulants accordéon pour Caractère, Costume, Compás (compacts au début, seuls les titres sont visibles) */}
-          <div className="pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Section 1 : Caractère de la danse */}
-              <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors">
-                <button
-                  type="button"
-                  onClick={() => toggleInfoSection('character')}
-                  className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                  title="Cliquer pour dérouler ou fermer le caractère de la danse"
-                >
-                  <span className="text-xs font-bold text-[#e5a93b] flex items-center gap-1.5">
-                    <Flame className="w-3.5 h-3.5 shrink-0" />
-                    <span>Caractère de la danse</span>
-                  </span>
-                  <ChevronDown 
-                    className={`w-3.5 h-3.5 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                      openInfoSections.character ? 'rotate-180 text-[#e5a93b]' : ''
-                    }`} 
-                  />
-                </button>
-                {openInfoSections.character && (
-                  <div className="px-3 pb-3 pt-1 border-t border-[#251e16] text-xs text-[#a69c8f] leading-relaxed animate-in fade-in duration-150">
-                    <p>{palo.character}</p>
-                    <div className="pt-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => toggleInfoSection('character')}
-                        className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                      >
-                        Fermer ▲
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 2 : Costume & Posture */}
-              <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors">
-                <button
-                  type="button"
-                  onClick={() => toggleInfoSection('costume')}
-                  className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                  title="Cliquer pour dérouler ou fermer costume et posture"
-                >
-                  <span className="text-xs font-bold text-[#e5a93b] flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                    <span>Costume & Posture</span>
-                  </span>
-                  <ChevronDown 
-                    className={`w-3.5 h-3.5 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                      openInfoSections.costume ? 'rotate-180 text-[#e5a93b]' : ''
-                    }`} 
-                  />
-                </button>
-                {openInfoSections.costume && (
-                  <div className="px-3 pb-3 pt-1 border-t border-[#251e16] text-xs text-[#a69c8f] leading-relaxed animate-in fade-in duration-150">
-                    <p>{palo.costumeAdvice}</p>
-                    <div className="pt-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => toggleInfoSection('costume')}
-                        className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                      >
-                        Fermer ▲
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 3 : Compás & Dynamique */}
-              <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors">
-                <button
-                  type="button"
-                  onClick={() => toggleInfoSection('compas')}
-                  className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                  title="Cliquer pour dérouler ou fermer compás et dynamique"
-                >
-                  <span className="text-xs font-bold text-[#e5a93b] flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 shrink-0" />
-                    <span>Compás & Dynamique</span>
-                  </span>
-                  <ChevronDown 
-                    className={`w-3.5 h-3.5 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                      openInfoSections.compas ? 'rotate-180 text-[#e5a93b]' : ''
-                    }`} 
-                  />
-                </button>
-                {openInfoSections.compas && (
-                  <div className="px-3 pb-3 pt-1 border-t border-[#251e16] text-xs text-[#a69c8f] leading-relaxed animate-in fade-in duration-150">
-                    <p>{palo.compas.description}</p>
-                    <div className="pt-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => toggleInfoSection('compas')}
-                        className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                      >
-                        Fermer ▲
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/20 text-[#ff8f82] border border-[#c53d2d]/40">
+                💃 Danse Flamenca
+              </span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2a231b] text-[#e5a93b] border border-[#3d3326]">
+                {palo.tag}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* VUE 1 : HUB DES 6 BLOCS CARRÉS DE LA FARRUCA RÉORDONNABLES PAR GLISSER-DÉPOSER */}
+      {/* VUE 1 : DIRECTEMENT LES 2 ARBORESCENCES CLIQUABLES (BIBLIOTHÈQUE FLAMENCA ET ATELIER DE CRÉATION) */}
       {activeTab === 'hub' && (
-        <div id="danse-espaces-etude" className="space-y-3 sm:space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-            <div>
-              <h3 className="text-sm sm:text-lg font-bold text-[#f4efe6] font-serif flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5 text-[#e5a93b]" />
-                <span>Espaces d'étude de la Farruca</span>
-              </h3>
-              <p className="text-[11px] sm:text-xs text-[#a69c8f] mt-0.5">
-                Glissez-déposez les carrés pour les organiser comme vous voulez • Cliquez pour ouvrir
-              </p>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              {isCustomSpacesOrder && (
-                <button
-                  type="button"
-                  onClick={handleResetSpacesOrder}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#221c16] hover:bg-[#2d241c] text-[#a69c8f] hover:text-[#e5a93b] border border-[#3d3326] text-[11px] font-semibold transition-colors cursor-pointer shadow-sm"
-                  title="Rétablir l'agencement d'origine des 6 espaces"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Ordre d'origine</span>
-                </button>
-              )}
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#221c16] text-[#e5a93b] border border-[#3d3326]">
-                6 espaces
-              </span>
-            </div>
-          </div>
+        <div id="danse-espaces-etude" className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20">
+          {/* Arborescence réelle cliquable pointant vers les mêmes pages */}
+          <DanseArborescenceTree
+            title="Commencer à travailler · Explorer & Créer"
+            onNavigate={(tab) => {
+              setActiveTab(tab);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            defaultExpanded={false}
+            counts={{
+              maitres: getMaitresVideos().length,
+              cours: getCoursVideos().length,
+              letras: 3,
+              compas: 'Binaire 4t',
+              structure: 6,
+              montages: montageKeys.length
+            }}
+            bottomContent={
+              <div className="space-y-3 pt-1">
+                {/* En-tête des 3 rubriques fondamentales */}
+                <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]/80 flex-wrap">
+                  <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] font-sans flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#e5a93b]" />
+                    <span>Fondamentaux du Baile · {palo.name}</span>
+                  </span>
+                </div>
 
-          {/* Grille responsive des 6 blocs carrés réordonnables */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
-            {spacesOrder.map(spaceKey => {
-              const isDraggingThis = draggedSpace === spaceKey;
-              const isDragOverThis = dragOverSpace === spaceKey && draggedSpace !== spaceKey;
-
-              let icon = <Layers className="w-4 h-4 sm:w-5 sm:h-5" />;
-              let badgeText = "6 blocs";
-              let title = "Structure traditionnelle";
-              let mobilePreview = "Salida, Letra, Falseta, Escobilla, Subida & Remate.";
-              let desktopPreviewTitle = "Architecture d'une Farruca complète :";
-              let desktopPreviewItems = [
-                "• 1. Salida & Entrada (Paseo)",
-                "• 2. Primera Letra & Marcajes",
-                "• 3. Falseta o Silencio lyrique",
-                "• 4. Escobilla (Zapateado)",
-                "• 5. Subida & 6. Remate final"
-              ];
-              let footerType = "Structure type";
-
-              if (spaceKey === 'maitres') {
-                icon = <Award className="w-4 h-4 sm:w-5 sm:h-5" />;
-                badgeText = `${getMaitresVideos().length} vidéos`;
-                title = "Grands Maîtres";
-                mobilePreview = "Iván Vargas, El Güito, Sara Baras, Antonio Gades...";
-                desktopPreviewTitle = "Chorégraphies intégrales de référence :";
-                desktopPreviewItems = [
-                  "• Iván Vargas (Concert Grenade)",
-                  "• El Güito (La référence absolue)",
-                  "• Sara Baras (Pantalón y Chaleco)",
-                  "• Antonio Gades & Farruquito",
-                  "• Repères chronométrés & pas à pas"
-                ];
-                footerType = "Vidéos repères";
-              } else if (spaceKey === 'letras') {
-                icon = <Quote className="w-4 h-4 sm:w-5 sm:h-5" />;
-                badgeText = "3 chants";
-                title = "Letras & Textes";
-                mobilePreview = "Poésie, couplets traditionnels & repères d'écoute.";
-                desktopPreviewTitle = "Poésie & couplets traditionnels :";
-                desktopPreviewItems = [
-                  "• « Una farruca en Galicia » (Utrera)",
-                  "• « Cayó al suelo una paloma » (Menese)",
-                  "• « En Galicia una farruca » (Mairena)",
-                  "• Textes, traductions & conseils"
-                ];
-                footerType = "Chants & audio";
-              } else if (spaceKey === 'compas') {
-                icon = <Activity className="w-4 h-4 sm:w-5 sm:h-5" />;
-                badgeText = "Binaire 4t";
-                title = "Compás & Palmas";
-                mobilePreview = "Métrique binaire 4 temps & métronome interactif.";
-                desktopPreviewTitle = "Métrique rythmique et tempo :";
-                desktopPreviewItems = [
-                  "• Battue binaire : 1 - 2 - 3 - 4",
-                  "• Métronome interactif cajón & palmas",
-                  "• Accents des pieds et dynamique",
-                  "• Liens Sólo Compás & bases 120 BPM"
-                ];
-                footerType = "Métronome";
-              } else if (spaceKey === 'cours') {
-                icon = <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />;
-                badgeText = `${getCoursVideos().length} ${getCoursVideos().length > 1 ? 'vidéos' : 'vidéo'}`;
-                title = "Mes Cours & Stages";
-                mobilePreview = "Cours, tutoriels, stages et répétitions personnelles.";
-                desktopPreviewTitle = "Espace d'étude & d'entraînement :";
-                desktopPreviewItems = [
-                  "• Vos cours réguliers de Farruca",
-                  "• Retours de stages & masterclasses",
-                  "• Tutoriels et exercices techniques",
-                  "• Vos vidéos personnelles de répétition"
-                ];
-                footerType = "Espace personnel";
-              } else if (spaceKey === 'montages') {
-                icon = <Film className="w-4 h-4 sm:w-5 sm:h-5" />;
-                badgeText = `${montageKeys.length} ${montageKeys.length > 1 ? 'montages' : 'montage'}`;
-                title = "Mon studio de montage";
-                mobilePreview = "Créez et personnalisez vos montages chorégraphiques bloc par bloc.";
-                desktopPreviewTitle = "Atelier de création chorégraphique :";
-                desktopPreviewItems = [
-                  "• Montages personnalisables",
-                  "• Bouton « Ajouter un montage »",
-                  "• Modifier les titres, descriptions et repères",
-                  "• Créer et supprimer des blocs"
-                ];
-                footerType = "Mon studio de montage";
-              }
-
-              return (
-                <div
-                  key={spaceKey}
-                  data-space-key={spaceKey}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStartSpace(e, spaceKey)}
-                  onDragOver={(e) => handleDragOverSpace(e, spaceKey)}
-                  onDragLeave={(e) => handleDragLeaveSpace(e, spaceKey)}
-                  onDrop={(e) => handleDropSpace(e, spaceKey)}
-                  onDragEnd={handleDragEndSpace}
-                  onClick={() => {
-                    if (isDragActiveRef.current) return;
-                    setActiveTab(spaceKey);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`group relative flex flex-col justify-between p-3 sm:p-5 rounded-xl sm:rounded-2xl transition-all duration-200 cursor-pointer shadow-lg text-left aspect-square select-none ${
-                    isDraggingThis
-                      ? 'opacity-30 scale-95 border-2 border-dashed border-[#e5a93b] bg-[#1a1612]'
-                      : isDragOverThis
-                      ? 'border-2 border-[#e5a93b] ring-2 ring-[#e5a93b]/60 bg-[#251e17] scale-[1.03] shadow-xl'
-                      : 'bg-[#171410] hover:bg-[#201a14] border-2 border-[#2f271f] hover:border-[#e5a93b] hover:shadow-[#e5a93b]/15'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 group-hover:scale-105 transition-transform">
-                        {icon}
+                {/* Les 3 rubriques du fichier DansePaloList.tsx : caractère de la danse, costume et posture, compas et dynamique */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Section 1 : Caractère de la danse */}
+                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => toggleInfoSection('character')}
+                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
+                      title="Cliquer pour dérouler ou fermer le caractère de la danse"
+                    >
+                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
+                        <Flame className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                        <span>Caractère de la danse</span>
                       </span>
-                      <div className="flex items-center gap-1 sm:gap-1.5">
-                        <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full bg-[#241d16] text-[#e5a93b] border border-[#3e3223] truncate max-w-[80px] sm:max-w-none">
-                          {badgeText}
-                        </span>
-                        <div
-                          title="Glisser-déposer pour réorganiser ce carré"
-                          className="p-1 sm:p-1.5 rounded-lg text-[#7c6f5d] group-hover:text-[#e5a93b] hover:bg-[#2b2218] cursor-grab active:cursor-grabbing transition-colors shrink-0"
-                          onTouchStart={() => handleTouchStartSpace(spaceKey)}
-                          onTouchMove={handleTouchMoveSpace}
-                          onTouchEnd={handleTouchEndSpace}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <GripVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <ChevronDown 
+                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
+                          openInfoSections.character ? 'rotate-180 text-[#e5a93b]' : ''
+                        }`} 
+                      />
+                    </button>
+                    {openInfoSections.character && (
+                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
+                        <p>{palo.character}</p>
+                        <div className="pt-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleInfoSection('character')}
+                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
+                          >
+                            Fermer ▲
+                          </button>
                         </div>
                       </div>
-                    </div>
-
-                    <h4 className="text-xs sm:text-lg md:text-xl font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors font-serif mt-1.5 sm:mt-3 leading-snug line-clamp-2">
-                      {title}
-                    </h4>
-
-                    {/* Prévisualisation mobile courte */}
-                    <div className="block sm:hidden mt-1 text-[10px] text-[#a69c8f] leading-snug">
-                      <p className="line-clamp-2 text-[#b8ada0]">
-                        {mobilePreview}
-                      </p>
-                    </div>
-
-                    {/* Prévisualisation desktop complète */}
-                    <div className="hidden sm:block mt-2 text-xs text-[#a69c8f] space-y-1.5 leading-relaxed">
-                      <p className="text-[#d8cdbf] font-medium text-[11px]">{desktopPreviewTitle}</p>
-                      <ul className="space-y-0.5 pl-0.5 text-[11px] text-[#9b9082]">
-                        {desktopPreviewItems.map((item, i) => (
-                          <li key={i}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="pt-2 sm:pt-3 border-t border-[#2a221a] flex items-center justify-between text-[10px] sm:text-xs">
-                    <span className="text-[10px] sm:text-[11px] text-[#786e62] truncate">
-                      {footerType}
-                    </span>
-                    <span className="font-bold text-[#e5a93b] group-hover:text-[#f4efe6] flex items-center gap-1 shrink-0">
-                      <span>Accéder</span>
-                      <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
+                  {/* Section 2 : Costume & Posture */}
+                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => toggleInfoSection('costume')}
+                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
+                      title="Cliquer pour dérouler ou fermer costume et posture"
+                    >
+                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                        <span>Costume & Posture</span>
+                      </span>
+                      <ChevronDown 
+                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
+                          openInfoSections.costume ? 'rotate-180 text-[#e5a93b]' : ''
+                        }`} 
+                      />
+                    </button>
+                    {openInfoSections.costume && (
+                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
+                        <p>{palo.costumeAdvice}</p>
+                        <div className="pt-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleInfoSection('costume')}
+                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
+                          >
+                            Fermer ▲
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 3 : Compás & Dynamique */}
+                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => toggleInfoSection('compas')}
+                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
+                      title="Cliquer pour dérouler ou fermer compás et dynamique"
+                    >
+                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                        <span>Compás & Dynamique</span>
+                      </span>
+                      <ChevronDown 
+                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
+                          openInfoSections.compas ? 'rotate-180 text-[#e5a93b]' : ''
+                        }`} 
+                      />
+                    </button>
+                    {openInfoSections.compas && (
+                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
+                        <p>{palo.compas.description}</p>
+                        <div className="pt-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleInfoSection('compas')}
+                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
+                          >
+                            Fermer ▲
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            }
+          />
         </div>
       )}
 
@@ -1556,30 +1373,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   <h3 className="text-base sm:text-lg font-bold text-[#f4efe6]">
                     L'Architecture d'une Farruca complète (Structure traditionnelle en 6 blocs)
                   </h3>
-                  <p className="text-xs text-[#a69c8f]">
-                    Chorégraphie canonique pour comprendre la logique dramaturgique et guider vos montages
-                  </p>
                 </div>
               </div>
 
-              {/* Boutons Tout déplier / Tout replier & Partager */}
+              {/* Bouton Partager */}
               <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={handleExpandAllStructure}
-                  className="px-2.5 py-1 rounded-lg bg-[#221c17] hover:bg-[#2c241e] border border-[#362c21] hover:border-[#e5a93b]/50 text-[11px] font-semibold text-[#d4c9ba] hover:text-[#e5a93b] transition-colors cursor-pointer"
-                  title="Déplier tous les blocs de la structure"
-                >
-                  Tout déplier
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCollapseAllStructure}
-                  className="px-2.5 py-1 rounded-lg bg-[#221c17] hover:bg-[#2c241e] border border-[#362c21] hover:border-[#e5a93b]/50 text-[11px] font-semibold text-[#a69c8f] hover:text-[#f4efe6] transition-colors cursor-pointer"
-                  title="Replier tous les blocs"
-                >
-                  Tout replier
-                </button>
                 <button
                   type="button"
                   onClick={handleShareSpace}
@@ -1592,9 +1390,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-[#d4c9ba] leading-relaxed bg-[#1f1a15] p-3.5 rounded-xl border border-[#332a21]">
-              {palo.choreographyGuide.overview}
-            </p>
+            <div className="p-3.5 rounded-xl bg-[#1c1813] border border-[#382c20] text-xs sm:text-sm text-[#ded3c5] leading-relaxed">
+              <p>
+                Vous trouverez ici la structure traditionnelle de la danse sur laquelle vous voulez travailler. Cette structure est modifiable. Elle constituera la base de vos montages. Vous pourrez la modifier à nouveau dans chacun de vos montages.
+              </p>
+            </div>
 
             {/* Visual Stepper : Blocs en menus déroulants (seul le titre est lisible au début) */}
             <div className="space-y-2.5 pt-1">
@@ -2275,7 +2075,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 <ul className="space-y-1 pl-1 text-[11px] text-[#9b9082]">
                   <li>• Importation immédiate de vos liens de cours et stages</li>
                   <li>• Repères chronométrés personnalisés (ralentis, boucles)</li>
-                  <li>• Liaison directe possible avec les blocs de votre studio de montage</li>
+                  <li>• Liaison directe possible avec les blocs de votre atelier de création</li>
                   <li>• Synchronisation instantanée entre votre PC et votre mobile</li>
                 </ul>
               </div>
@@ -2297,12 +2097,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* TAB 6: Mon carnet de montage */}
       {activeTab === 'montages' && (
         <div className="space-y-5 animate-in fade-in duration-200">
-          {/* Sub-sections tabs: Mon studio de montage dynamique */}
+          {/* Sub-sections tabs: Mon atelier de création dynamique */}
           <div className="bg-[#171411] border border-[#2e261e] p-3 sm:p-3.5 rounded-2xl space-y-2.5">
             <div className="flex items-center justify-between gap-2.5 flex-wrap">
               <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif flex items-center gap-2">
                 <Film className="w-4 h-4 text-[#e5a93b]" />
-                <span>Mon studio de montage</span>
+                <span>Mon atelier de création</span>
               </h3>
 
               <button

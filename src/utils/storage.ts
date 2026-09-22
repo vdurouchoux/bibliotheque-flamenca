@@ -487,11 +487,11 @@ export function deleteDanseBlockLink(paloId: string, montageKey: string, blockId
 
 export const DEFAULT_DANSE_SPACES_ORDER = [
   'structure',
+  'montages',
   'maitres',
   'letras',
   'compas',
   'cours',
-  'montages',
 ];
 
 export function getDanseSpacesOrder(paloId: string): string[] | null {

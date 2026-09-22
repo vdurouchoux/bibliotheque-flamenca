@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, Sparkles, Music, Filter, Flame, Smartphone, QrCode } from 'lucide-react';
+import { Search, ChevronRight, Sparkles, Music, Filter, Flame, Smartphone, QrCode, Layers, BookOpen } from 'lucide-react';
 import { PALOS_DATA } from '../data/flamencoData';
 import { PaloData } from '../types';
 
@@ -7,9 +7,17 @@ interface PaloListProps {
   onSelectPalo: (paloKey: string) => void;
   onOpenTangosVariants: () => void;
   onOpenInstall?: () => void;
+  onOpenArborescence?: () => void;
+  onOpenLexique?: () => void;
 }
 
-export const PaloList: React.FC<PaloListProps> = ({ onSelectPalo, onOpenTangosVariants, onOpenInstall }) => {
+export const PaloList: React.FC<PaloListProps> = ({
+  onSelectPalo,
+  onOpenTangosVariants,
+  onOpenInstall,
+  onOpenArborescence,
+  onOpenLexique
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');
 
@@ -56,17 +64,38 @@ export const PaloList: React.FC<PaloListProps> = ({ onSelectPalo, onOpenTangosVa
             Choisissez un palo pour explorer ses falsetas par niveau (1, 2, 3), l'accompagnement du cante et du baile, ses cadences harmoniques et son compás interactif.
           </p>
 
-          {onOpenInstall && (
-            <div className="pt-3">
+          <div className="pt-3 flex items-center gap-2.5 flex-wrap">
+            {onOpenArborescence && (
               <button
+                type="button"
+                onClick={onOpenArborescence}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] text-xs font-bold transition-all cursor-pointer shadow-md"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>🌳 Arborescence des Palos</span>
+              </button>
+            )}
+            {onOpenLexique && (
+              <button
+                type="button"
+                onClick={onOpenLexique}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#282119] hover:bg-[#382d22] text-[#e5a93b] border border-[#e5a93b]/40 text-xs font-bold transition-all cursor-pointer shadow-sm"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>📖 Lexique Flamenco</span>
+              </button>
+            )}
+            {onOpenInstall && (
+              <button
+                type="button"
                 onClick={onOpenInstall}
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#e5a93b]/20 hover:bg-[#e5a93b]/30 text-[#e5a93b] border border-[#e5a93b]/50 text-xs font-bold transition-all cursor-pointer shadow-sm"
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                <span>Installer sur mon téléphone (QR Code & Guide)</span>
+                <span>Installer sur mon téléphone</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         {/* Subtle background decoration */}
         <div className="absolute -right-6 -bottom-8 opacity-10 pointer-events-none text-9xl select-none">
@@ -203,7 +232,7 @@ export const PaloList: React.FC<PaloListProps> = ({ onSelectPalo, onOpenTangosVa
 
       {/* Footer info note */}
       <div className="text-center text-xs text-[#6e6355] pt-4 pb-2">
-        Bibliothèque Flamenca – Compagnon d'étude interactif pour guitare
+        Bibliothèque Flamenca
       </div>
     </div>
   );

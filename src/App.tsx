@@ -50,7 +50,13 @@ export default function App() {
     sectionName: string;
   } | null>(null);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState<boolean>(false);
+  const [toolsInitialTab, setToolsInitialTab] = useState<'arborescence' | 'cejilla' | 'techniques' | 'lexique'>('arborescence');
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState<boolean>(false);
+
+  const handleOpenTools = (tab: 'arborescence' | 'cejilla' | 'techniques' | 'lexique' = 'arborescence') => {
+    setToolsInitialTab(tab);
+    setIsToolsModalOpen(true);
+  };
   const [addVideoSection, setAddVideoSection] = useState<string | null>(null);
   const [customVideosVersion, setCustomVideosVersion] = useState<number>(0);
 
@@ -293,6 +299,14 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNavigateDanseTab = (paloKey: string, tab: DanseSectionTab) => {
+    setSelectedPaloKey(paloKey);
+    setSelectedVariantKey(null);
+    setDanseTab(tab);
+    setCurrentView('palo-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleOpenTangosVariants = () => {
     setSelectedPaloKey('Tangos');
     setSelectedVariantKey(null);
@@ -352,50 +366,44 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Compute header title & subtitle
-  let headerTitle = "Bibliothèque Flamenca";
-  let headerSubtitle = discipline === 'danse' 
-    ? "Compagnon d'étude – Danse (Baile)" 
-    : "Compagnon d'étude – Guitare";
+  // Compute header title & subtitle: "Bibliothèque Flamenca" remains permanently as application title
+  const headerTitle: React.ReactNode = "Bibliothèque Flamenca";
+  let headerSubtitle: React.ReactNode = undefined;
 
   if (currentView === 'tangos-variants') {
-    headerTitle = "Tangos";
-    headerSubtitle = "Sélection de la variante";
+    headerSubtitle = "Tangos · Sélection de la variante";
   } else if (currentView === 'palo-detail') {
     if (discipline === 'danse') {
       if (danseTab === 'hub') {
-        headerTitle = `${activeDansePalo.name} (Danse)`;
-        headerSubtitle = "Les 6 espaces d'étude";
+        headerSubtitle = `${activeDansePalo.name} · Danse · Les 6 espaces d'étude`;
       } else if (danseTab === 'maitres') {
-        headerTitle = `${activeDansePalo.name} – Grands Maîtres`;
-        headerSubtitle = "Chorégraphies intégrales de référence";
+        headerSubtitle = `${activeDansePalo.name} · Grands Maîtres (Chorégraphies intégrales)`;
       } else if (danseTab === 'structure') {
-        headerTitle = `${activeDansePalo.name} – Structure traditionnelle`;
-        headerSubtitle = "Chorégraphie canonique en 6 blocs";
+        headerSubtitle = `${activeDansePalo.name} · Structure traditionnelle (6 blocs)`;
       } else if (danseTab === 'letras') {
-        headerTitle = `${activeDansePalo.name} – Letras & Textes`;
-        headerSubtitle = "Poésie flamenca & couplets";
+        headerSubtitle = `${activeDansePalo.name} · Letras & Couplets`;
       } else if (danseTab === 'compas') {
-        headerTitle = `${activeDansePalo.name} – Compás`;
-        headerSubtitle = "Rythme binaire 4 temps";
+        headerSubtitle = `${activeDansePalo.name} · Compás & Rythmique`;
       } else if (danseTab === 'cours') {
-        headerTitle = `${activeDansePalo.name} – Cours & Stages`;
-        headerSubtitle = "Tutoriels & vidéos personnelles";
+        headerSubtitle = `${activeDansePalo.name} · Cours & Stages`;
       } else if (danseTab === 'montages') {
-        headerTitle = `${activeDansePalo.name} – Mon studio de montage`;
-        headerSubtitle = "Montages chorégraphiques personnalisables";
+        headerSubtitle = `${activeDansePalo.name} · Mon atelier de création`;
       }
     } else if (activePalo) {
-      headerTitle = activePalo.name;
-      headerSubtitle = activePalo.subtitle;
+      headerSubtitle = `${activePalo.name} · ${activePalo.subtitle || 'Guitare'}`;
     }
   } else if (currentView === 'favorites') {
-    headerTitle = discipline === 'danse' 
-      ? "Mes Études & Chorégraphies" 
-      : "Mes Études & Falsetas";
-    headerSubtitle = discipline === 'danse'
-      ? "Carnet personnel de danse (Baile)"
-      : "Carnet personnel de guitare";
+    headerSubtitle = discipline === 'danse' 
+      ? "Mes Études & Chorégraphies (Carnet personnel)" 
+      : "Mes Études & Falsetas (Carnet personnel)";
+  } else if (currentView === 'home') {
+    if (discipline === 'danse') {
+      headerSubtitle = "Baile flamenco · Comprendre, travailler & monter sa danse";
+    } else if (discipline === 'guitare') {
+      headerSubtitle = "Guitarra flamenca · Palos, falsetas & compás";
+    } else {
+      headerSubtitle = "Cante flamenco · Répertoire, paroles & styles";
+    }
   }
 
   return (
@@ -411,7 +419,8 @@ export default function App() {
         onToggleDiscipline={handleToggleDiscipline}
         isMetronomePlaying={isMetronomePlaying}
         onToggleMetronome={handleToggleMetronome}
-        onOpenTools={() => setIsToolsModalOpen(true)}
+        onOpenTools={() => handleOpenTools('arborescence')}
+        onOpenLexique={() => handleOpenTools('lexique')}
         onOpenFavorites={() => setCurrentView('favorites')}
         favoritesCount={bookmarksCount}
         onOpenCloudSync={() => setIsCloudSyncOpen(true)}
@@ -446,13 +455,50 @@ export default function App() {
             <DansePaloList
               onSelectPalo={handleOpenPalo}
               onOpenInstall={() => setIsInstallGuideOpen(true)}
+              onOpenLibrary={() => handleToggleDiscipline('guitare')}
+              onOpenArborescence={() => handleOpenTools('arborescence')}
+              onOpenLexique={() => handleOpenTools('lexique')}
             />
-          ) : (
+          ) : discipline === 'guitare' ? (
             <PaloList
               onSelectPalo={handleOpenPalo}
               onOpenTangosVariants={handleOpenTangosVariants}
               onOpenInstall={() => setIsInstallGuideOpen(true)}
+              onOpenArborescence={() => handleOpenTools('arborescence')}
+              onOpenLexique={() => handleOpenTools('lexique')}
             />
+          ) : (
+            <div className="bg-[#171410] border-2 border-[#382d22] rounded-2xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#e5a93b]/20 to-[#b93826]/20 border border-[#e5a93b]/40 flex items-center justify-center mx-auto text-3xl shadow-inner">
+                🎤
+              </div>
+              <div className="space-y-2 max-w-md mx-auto">
+                <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#f4efe6]">
+                  Chant Flamenco (Cante)
+                </h2>
+                <p className="text-sm text-[#a69c8f] leading-relaxed">
+                  L'espace dédié au chant flamenco (styles, letras, tercios, tonalités et accompagnement) est préparé dans le bandeau supérieur commun et sera enrichi très prochainement.
+                </p>
+              </div>
+              <div className="pt-2 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleToggleDiscipline('danse')}
+                  className="px-4 py-2 rounded-xl bg-[#e5a93b] hover:bg-[#d4972a] text-[#121110] font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer flex items-center gap-2"
+                >
+                  <span>💃</span>
+                  <span>Accéder à la Danse</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleDiscipline('guitare')}
+                  className="px-4 py-2 rounded-xl bg-[#25201b] hover:bg-[#322c25] text-[#d4c9ba] border border-[#3e3428] font-semibold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>🎸</span>
+                  <span>Accéder à la Guitare</span>
+                </button>
+              </div>
+            </div>
           )
         )}
 
@@ -630,6 +676,7 @@ export default function App() {
       {/* Cejilla & Techniques Modal */}
       {isToolsModalOpen && (
         <FlamencoToolsModal
+          initialTab={toolsInitialTab}
           onClose={() => setIsToolsModalOpen(false)}
         />
       )}
