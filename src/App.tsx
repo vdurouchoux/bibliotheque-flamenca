@@ -12,6 +12,10 @@ import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { AddVideoModal } from './components/AddVideoModal';
 import { FlamencoToolsModal } from './components/FlamencoToolsModal';
 import { FavoritesView } from './components/FavoritesView';
+import { FlamencoGuitarIcon } from './components/FlamencoGuitarIcon';
+import { FlamencoGuitaristeIcon } from './components/FlamencoGuitaristeIcon';
+import { FlamencoBailaoraIcon } from './components/FlamencoBailaoraIcon';
+import { FlamencoCantaorIcon } from './components/FlamencoCantaorIcon';
 import { CompasVisualizer } from './components/CompasVisualizer';
 import { InstallGuideModal } from './components/InstallGuideModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
@@ -368,6 +372,26 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Navigation depuis la recherche universelle du bandeau supérieur
+  const handleNavigateFromSearch = (
+    paloKey: string,
+    targetDiscipline: DisciplineMode,
+    danseTargetTab?: DanseSectionTab,
+    guitarTargetTab?: SectionTab
+  ) => {
+    setDiscipline(targetDiscipline);
+    setSelectedPaloKey(paloKey);
+    setSelectedVariantKey(null);
+    setCurrentView('palo-detail');
+    if (targetDiscipline === 'danse' && danseTargetTab) {
+      setDanseTab(danseTargetTab);
+    }
+    if (targetDiscipline === 'guitare' && guitarTargetTab) {
+      setPaloInitialTab(guitarTargetTab);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Compute header title & subtitle: "Bibliothèque Flamenca" remains permanently as application title
   const headerTitle: React.ReactNode = "Bibliothèque Flamenca";
   let headerSubtitle: React.ReactNode = undefined;
@@ -427,6 +451,15 @@ export default function App() {
         favoritesCount={bookmarksCount}
         onOpenCloudSync={() => setIsCloudSyncOpen(true)}
         cloudSyncStatus={cloudSyncState}
+        onPlayVideo={(video, paloName, paloKey, sectionName) => {
+          setActiveVideoData({
+            video,
+            paloName,
+            paloId: paloKey,
+            sectionName
+          });
+        }}
+        onNavigatePalo={handleNavigateFromSearch}
       />
 
       {/* Main Content Area */}
@@ -488,8 +521,8 @@ export default function App() {
             />
           ) : (
             <div className="bg-[#171410] border-2 border-[#382d22] rounded-2xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#e5a93b]/20 to-[#b93826]/20 border border-[#e5a93b]/40 flex items-center justify-center mx-auto text-3xl shadow-inner">
-                🎤
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#e5a93b]/20 to-[#b93826]/20 border border-[#e5a93b]/40 flex items-center justify-center mx-auto shadow-inner p-1">
+                <FlamencoCantaorIcon className="w-14 h-14" />
               </div>
               <div className="space-y-2 max-w-md mx-auto">
                 <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#f4efe6]">
@@ -505,7 +538,7 @@ export default function App() {
                   onClick={() => handleToggleDiscipline('danse')}
                   className="px-4 py-2 rounded-xl bg-[#e5a93b] hover:bg-[#d4972a] text-[#121110] font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer flex items-center gap-2"
                 >
-                  <span>💃</span>
+                  <FlamencoBailaoraIcon className="w-4 h-4 inline-block" />
                   <span>Accéder à la Danse</span>
                 </button>
                 <button
@@ -513,7 +546,7 @@ export default function App() {
                   onClick={() => handleToggleDiscipline('guitare')}
                   className="px-4 py-2 rounded-xl bg-[#25201b] hover:bg-[#322c25] text-[#d4c9ba] border border-[#3e3428] font-semibold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <span>🎸</span>
+                  <FlamencoGuitaristeIcon className="w-4 h-4 inline-block" />
                   <span>Accéder à la Guitare</span>
                 </button>
               </div>

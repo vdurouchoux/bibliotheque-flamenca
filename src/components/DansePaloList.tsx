@@ -2,23 +2,15 @@ import React, { useState, useRef, useMemo } from 'react';
 import {
   ArrowRight,
   Lock,
-  ChevronDown,
-  Flame,
-  ShieldAlert,
   Activity,
-  Layers,
   Search,
-  X,
-  Play,
-  Film,
-  Folder,
-  BookOpen,
-  ChevronRight
+  X
 } from 'lucide-react';
-import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA, DansePaloPreview } from '../data/baileData';
-import { PALOS_DATA } from '../data/flamencoData';
+import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA } from '../data/baileData';
 import { DanseArborescenceTree } from './DanseArborescenceTree';
 import { VideoItem, DanseSectionTab } from '../types';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
+import baileBgImg from '../assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg';
 
 interface DansePaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -30,20 +22,6 @@ interface DansePaloListProps {
   onNavigateDanseTab?: (paloKey: string, tab: DanseSectionTab) => void;
 }
 
-interface UniversalSearchItem {
-  id: string;
-  type: 'video' | 'palo' | 'letra';
-  title: string;
-  subtitle?: string;
-  description?: string;
-  paloKey: string;
-  paloName: string;
-  discipline: 'danse' | 'guitare';
-  sectionName: string;
-  danseTab?: DanseSectionTab;
-  video?: VideoItem;
-}
-
 export const DansePaloList: React.FC<DansePaloListProps> = ({
   onSelectPalo,
   onOpenInstall,
@@ -53,10 +31,10 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
   onPlayVideo,
   onNavigateDanseTab
 }) => {
-  // 1. Recherche Générale Globale (en haut)
-  const [generalSearchTerm, setGeneralSearchTerm] = useState('');
+  // Image d'arrière-plan du bloc BAILE avec fallback automatique
+  const [bgImageSrc, setBgImageSrc] = useState<string>(baileBgImg);
 
-  // 2. Recherche Dédiée au Catalogue des Palos de Danse (à côté de Palos de Danse)
+  // Recherche Dédiée au Catalogue des Palos de Danse (à côté du titre Liste des palos)
   const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
   const catalogSearchInputRef = useRef<HTMLInputElement>(null);
@@ -75,273 +53,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
     });
   };
 
-  // ---------------------------------------------------------------------------
-  // Indexation globale de TOUS les dossiers et fichiers/vidéos de l'application
-  // ---------------------------------------------------------------------------
-  const allSearchItems = useMemo<UniversalSearchItem[]>(() => {
-    const items: UniversalSearchItem[] = [];
-
-    // --- A. Modules & Palos de Danse ---
-    BAILE_PALOS_CATALOG.forEach(palo => {
-      items.push({
-        id: `danse-palo-${palo.id}`,
-        type: 'palo',
-        title: palo.name,
-        subtitle: `${palo.tag} • ${palo.compasSummary}`,
-        description: palo.highlights.join(' • '),
-        paloKey: palo.id,
-        paloName: palo.name,
-        discipline: 'danse',
-        sectionName: 'Dossier de Danse'
-      });
-    });
-
-    // Vidéos des Maîtres & démonstrations Danse
-    Object.entries(BAILE_PALOS_DATA).forEach(([paloKey, palo]) => {
-      // Maîtres de la danse (ex: Iván Vargas, El Güito, Sara Baras...)
-      palo.maitres?.forEach(v => {
-        items.push({
-          id: v.id,
-          type: 'video',
-          title: v.title,
-          description: v.description,
-          paloKey,
-          paloName: palo.name,
-          discipline: 'danse',
-          sectionName: 'Maîtres de la danse',
-          danseTab: 'maitres',
-          video: v
-        });
-      });
-
-      // Marcajes
-      if (palo.marcajes) {
-        Object.values(palo.marcajes).forEach(list => {
-          list?.forEach(v => {
-            items.push({
-              id: v.id,
-              type: 'video',
-              title: v.title,
-              description: v.description,
-              paloKey,
-              paloName: palo.name,
-              discipline: 'danse',
-              sectionName: 'Marcajes & Pieds',
-              danseTab: 'structure',
-              video: v
-            });
-          });
-        });
-      }
-
-      // Zapateado & Escobilla
-      if (palo.zapateado) {
-        Object.values(palo.zapateado).forEach(list => {
-          list?.forEach(v => {
-            items.push({
-              id: v.id,
-              type: 'video',
-              title: v.title,
-              description: v.description,
-              paloKey,
-              paloName: palo.name,
-              discipline: 'danse',
-              sectionName: 'Zapateado & Escobilla',
-              danseTab: 'structure',
-              video: v
-            });
-          });
-        });
-      }
-
-      // Llamadas & Remates
-      if (palo.llamadas) {
-        Object.values(palo.llamadas).forEach(list => {
-          list?.forEach(v => {
-            items.push({
-              id: v.id,
-              type: 'video',
-              title: v.title,
-              description: v.description,
-              paloKey,
-              paloName: palo.name,
-              discipline: 'danse',
-              sectionName: 'Llamadas & Remates',
-              danseTab: 'structure',
-              video: v
-            });
-          });
-        });
-      }
-
-      // Letras
-      palo.letras?.forEach(l => {
-        items.push({
-          id: l.id,
-          type: 'letra',
-          title: l.title,
-          subtitle: l.coplaText?.join(' '),
-          description: `${l.cantaorReference || ''} • ${l.contextAndMeaning || ''}`,
-          paloKey,
-          paloName: palo.name,
-          discipline: 'danse',
-          sectionName: 'Letras & Chant',
-          danseTab: 'letras',
-          video: l.video
-        });
-      });
-    });
-
-    // --- B. Palos & Vidéos de Guitare Flamenca ---
-    Object.entries(PALOS_DATA).forEach(([paloKey, palo]) => {
-      // Dossier Palo Guitare
-      items.push({
-        id: `guitare-palo-${paloKey}`,
-        type: 'palo',
-        title: palo.name,
-        subtitle: `${palo.tag} • ${palo.subtitle}`,
-        description: palo.character,
-        paloKey,
-        paloName: palo.name,
-        discipline: 'guitare',
-        sectionName: 'Dossier Guitare'
-      });
-
-      // Intro
-      palo.intro?.videos?.forEach(v => {
-        items.push({
-          id: v.id,
-          type: 'video',
-          title: v.title,
-          description: v.description,
-          paloKey,
-          paloName: palo.name,
-          discipline: 'guitare',
-          sectionName: 'Compás & Intro',
-          video: v
-        });
-      });
-
-      // Falsetas
-      if (palo.falsetas) {
-        Object.entries(palo.falsetas).forEach(([lvl, list]) => {
-          list?.forEach(f => {
-            items.push({
-              id: f.id,
-              type: 'video',
-              title: f.title,
-              subtitle: `Niveau ${lvl}`,
-              description: f.description,
-              paloKey,
-              paloName: palo.name,
-              discipline: 'guitare',
-              sectionName: 'Falseta',
-              video: f
-            });
-          });
-        });
-      }
-
-      // Accompagnement Cante
-      if (palo.cante) {
-        Object.entries(palo.cante).forEach(([lvl, list]) => {
-          list?.forEach(c => {
-            items.push({
-              id: c.id,
-              type: 'video',
-              title: c.title,
-              subtitle: `Niveau ${lvl}`,
-              description: c.description,
-              paloKey,
-              paloName: palo.name,
-              discipline: 'guitare',
-              sectionName: 'Accompagnement Chant',
-              video: c
-            });
-          });
-        });
-      }
-
-      // Accompagnement Baile (côté guitare)
-      if (palo.baile) {
-        palo.baile.structureVideos?.forEach(b => {
-          items.push({
-            id: b.id,
-            type: 'video',
-            title: b.title,
-            description: b.description,
-            paloKey,
-            paloName: palo.name,
-            discipline: 'guitare',
-            sectionName: 'Structure Baile (Guitare)',
-            video: b
-          });
-        });
-        if (palo.baile.videos) {
-          Object.entries(palo.baile.videos).forEach(([lvl, list]) => {
-            list?.forEach(b => {
-              items.push({
-                id: b.id,
-                type: 'video',
-                title: b.title,
-                subtitle: `Niveau ${lvl}`,
-                description: b.description,
-                paloKey,
-                paloName: palo.name,
-                discipline: 'guitare',
-                sectionName: 'Accompagnement Baile (Guitare)',
-                video: b
-              });
-            });
-          });
-        }
-      }
-    });
-
-    return items;
-  }, []);
-
-  // Résultats de la recherche générale
-  const generalSearchResults = useMemo(() => {
-    const q = generalSearchTerm
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
-
-    if (!q) return [];
-
-    return allSearchItems.filter(item => {
-      const matchTitle = item.title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q);
-      const matchDesc = item.description?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q);
-      const matchSub = item.subtitle?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q);
-      const matchPalo = item.paloName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q);
-      const matchSec = item.sectionName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q);
-
-      return matchTitle || matchDesc || matchSub || matchPalo || matchSec;
-    });
-  }, [generalSearchTerm, allSearchItems]);
-
-  // Regroupement par typologie pour un affichage minimaliste et ordonné
-  const groupedResults = useMemo(() => {
-    const palos: UniversalSearchItem[] = [];
-    const videos: UniversalSearchItem[] = [];
-    const texts: UniversalSearchItem[] = [];
-
-    generalSearchResults.forEach(item => {
-      if (item.type === 'palo') {
-        palos.push(item);
-      } else if (item.type === 'video') {
-        videos.push(item);
-      } else {
-        texts.push(item);
-      }
-    });
-
-    return { palos, videos, texts };
-  }, [generalSearchResults]);
-
-  // Filtrage du catalogue des palos de danse (recherche dédiée du catalogue)
+  // Filtrage du catalogue des palos de danse
   const filteredCatalogPalos = useMemo(() => {
     if (!catalogSearchTerm.trim()) {
       return BAILE_PALOS_CATALOG;
@@ -364,235 +76,60 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
     });
   }, [catalogSearchTerm]);
 
-  const handleOpenItem = (item: UniversalSearchItem) => {
-    if (item.type === 'video' && item.video && onPlayVideo) {
-      onPlayVideo(item.video, item.paloName, item.paloKey, item.sectionName);
-    } else if (item.discipline === 'danse' && item.danseTab && onNavigateDanseTab) {
-      onNavigateDanseTab(item.paloKey, item.danseTab);
-    } else {
-      onSelectPalo(item.paloKey);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* ========================================================================= */}
-      {/* 1. BARRE DE RECHERCHE GÉNÉRALE MINIMALISTE (TOUT EN HAUT)                 */}
-      {/* ========================================================================= */}
-      <div className="relative space-y-2">
-        <div className="relative flex items-center">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#e5a93b]" />
-          <input
-            id="danse-general-search-input"
-            type="text"
-            value={generalSearchTerm}
-            onChange={e => setGeneralSearchTerm(e.target.value)}
-            placeholder="Recherche générale..."
-            className="w-full bg-[#171411] border border-[#342a20] focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b]/30 rounded-xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-[#f4efe6] placeholder-[#7d7162] outline-none transition-all shadow-inner"
-          />
-          {generalSearchTerm && (
-            <button
-              type="button"
-              onClick={() => setGeneralSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#25201b] transition-colors cursor-pointer"
-              title="Effacer la recherche"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Panneau de résultats de la Recherche Générale */}
-        {generalSearchTerm.trim() && (
-          <div className="p-3.5 rounded-2xl bg-[#171411] border border-[#3d3224] shadow-2xl space-y-3 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between text-xs text-[#a69c8f] border-b border-[#2b2219] pb-2">
-              <span>
-                Recherche générale : <strong className="text-[#f4efe6]">{generalSearchResults.length}</strong> résultat{generalSearchResults.length > 1 ? 's' : ''} pour « <span className="text-[#e5a93b] font-medium">{generalSearchTerm}</span> »
-              </span>
-              <button
-                type="button"
-                onClick={() => setGeneralSearchTerm('')}
-                className="text-[#e5a93b] hover:underline cursor-pointer text-xs"
-              >
-                Fermer
-              </button>
-            </div>
-
-            {generalSearchResults.length === 0 ? (
-              <div className="text-center py-5 text-xs text-[#8c8173]">
-                Aucun fichier ni vidéo ne correspond à votre recherche.
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-                {/* 1. TYPOLOGIE : PALOS & DOSSIERS */}
-                {groupedResults.palos.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
-                      <Folder className="w-3.5 h-3.5 text-[#e5a93b]" />
-                      <span>Palos & Dossiers ({groupedResults.palos.length})</span>
-                    </div>
-                    <div className="space-y-1">
-                      {groupedResults.palos.map(item => (
-                        <div
-                          key={`${item.discipline}-${item.id}`}
-                          onClick={() => handleOpenItem(item)}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1a1612] hover:bg-[#241e18] border border-[#2d231a] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-sm select-none shrink-0" title={item.discipline === 'danse' ? 'Danse' : 'Guitare'}>
-                              {item.discipline === 'danse' ? '💃' : '🎸'}
-                            </span>
-                            <Folder className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
-                            <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
-                              {item.title}
-                            </span>
-                            <span className="text-[10px] text-[#7d7162] shrink-0 hidden xs:inline">
-                              ({item.discipline === 'danse' ? 'Danse' : 'Guitare'})
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-xs font-semibold text-[#8c8173] group-hover:text-[#e5a93b] shrink-0">
-                            <span>Ouvrir</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. TYPOLOGIE : VIDÉOS */}
-                {groupedResults.videos.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
-                      <Film className="w-3.5 h-3.5 text-[#e5a93b]" />
-                      <span>Vidéos ({groupedResults.videos.length})</span>
-                    </div>
-                    <div className="space-y-1">
-                      {groupedResults.videos.map(item => (
-                        <div
-                          key={`${item.discipline}-${item.id}`}
-                          onClick={() => {
-                            if (item.video && onPlayVideo) {
-                              onPlayVideo(item.video, item.paloName, item.paloKey, item.sectionName);
-                            } else {
-                              handleOpenItem(item);
-                            }
-                          }}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1a1612] hover:bg-[#241e18] border border-[#2d231a] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-sm select-none shrink-0" title={item.discipline === 'danse' ? 'Danse' : 'Guitare'}>
-                              {item.discipline === 'danse' ? '💃' : '🎸'}
-                            </span>
-                            <Film className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
-                            <div className="flex items-center gap-1.5 truncate">
-                              <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
-                                {item.title}
-                              </span>
-                              <span className="text-[11px] text-[#7d7162] shrink-0 hidden sm:inline">
-                                • {item.paloName}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item.video && onPlayVideo) {
-                                  onPlayVideo(item.video, item.paloName, item.paloKey, item.sectionName);
-                                } else {
-                                  handleOpenItem(item);
-                                }
-                              }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] font-bold text-xs transition-all shadow-sm cursor-pointer"
-                              title="Lire la vidéo"
-                            >
-                              <Play className="w-3 h-3 fill-current" />
-                              <span className="hidden xs:inline">Lire</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. TYPOLOGIE : TEXTES & LETRAS */}
-                {groupedResults.texts.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
-                      <BookOpen className="w-3.5 h-3.5 text-[#e5a93b]" />
-                      <span>Textes & Letras ({groupedResults.texts.length})</span>
-                    </div>
-                    <div className="space-y-1">
-                      {groupedResults.texts.map(item => (
-                        <div
-                          key={`${item.discipline}-${item.id}`}
-                          onClick={() => handleOpenItem(item)}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1a1612] hover:bg-[#241e18] border border-[#2d231a] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-sm select-none shrink-0" title={item.discipline === 'danse' ? 'Danse' : 'Guitare'}>
-                              {item.discipline === 'danse' ? '💃' : '🎸'}
-                            </span>
-                            <BookOpen className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
-                            <div className="flex items-center gap-1.5 truncate">
-                              <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
-                                {item.title}
-                              </span>
-                              <span className="text-[11px] text-[#7d7162] shrink-0 hidden sm:inline">
-                                • {item.paloName}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-xs font-semibold text-[#8c8173] group-hover:text-[#e5a93b] shrink-0">
-                            <span>Ouvrir</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Hero Danse */}
-      <div className="bg-gradient-to-br from-[#1e1713] via-[#161310] to-[#1e1310] border border-[#3e3022] rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/25 text-[#ff8f82] border border-[#c53d2d]/40 flex items-center gap-1.5">
-            <span>💃</span>
-            <span>Nouveau module Baile</span>
-          </span>
-          <span className="text-xs text-[#a69c8f]">
-            Danse Flamenca
-          </span>
+      <div className="relative overflow-hidden bg-[#161310] border border-[#3e3022] rounded-2xl p-4 sm:p-6 shadow-xl min-h-[175px]">
+        {/* Image de fond danseuse flamenco avec équilibre parfait entre présence visuelle et lisibilité */}
+        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <img
+            src={bgImageSrc}
+            alt="Danseuse Flamenco - Baile"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              // Si l'import échoue sur le PC (chemin, majuscule ou cache), bascule automatique sur /public
+              if (bgImageSrc !== '/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
+                setBgImageSrc('/maryam-tello-v07wdRY8qxo-unsplash.jpg');
+              } else if (bgImageSrc !== '/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
+                setBgImageSrc('/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg');
+              }
+            }}
+            style={{ objectPosition: 'center 50%' }}
+            className="w-full h-full object-cover opacity-72 sm:opacity-76 transition-opacity duration-300 filter brightness-112 contrast-108"
+          />
+          {/* Voile protecteur modéré pour un contraste idéal */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/28 to-black/15" />
         </div>
 
-        <h2 className="text-sm font-bold uppercase tracking-wider text-[#e5a93b]">
-          Comprendre, travailler, et monter sa danse flamenca
-        </h2>
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <FlamencoBailaoraIcon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-md" />
+            <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              BAILE
+            </span>
+          </div>
 
-        {/* Arborescence réelle reprenant fidèlement le design avec instructions déroulables sous chaque rubrique */}
-        <DanseArborescenceTree title="Présentation générale" onOpenLexique={onOpenLexique} defaultExpanded={false} />
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            Comprendre, travailler, et monter sa danse flamenca
+          </h2>
+
+          {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide laissant voir la danseuse au travers */}
+          <DanseArborescenceTree 
+            title="Présentation générale" 
+            onOpenLexique={onOpenLexique} 
+            defaultExpanded={false}
+            translucent={true}
+          />
+        </div>
       </div>
 
       {/* Palo Farruca Featured Card */}
       <div className="space-y-3">
-        {/* ========================================================================= */}
-        {/* 2. RECHERCHE DÉDIÉE AU CATALOGUE DES PALOS DE DANSE (À CÔTÉ DU TITRE)     */}
-        {/* ========================================================================= */}
+        {/* RECHERCHE DÉDIÉE AU CATALOGUE DES PALOS DE DANSE (À CÔTÉ DU TITRE) */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-              <span>Palos de Danse</span>
+              <span>Liste des palos (baile)</span>
               <span className="text-xs text-[#8c8173] font-normal lowercase hidden sm:inline">(commençons avec la Farruca)</span>
             </h3>
 
@@ -606,11 +143,11 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   ? 'bg-white text-[#121110] shadow-sm'
                   : 'text-white hover:text-white/80 hover:bg-white/10 bg-[#201a14] border border-[#3e3022]'
               }`}
-              title={isCatalogSearchOpen ? "Fermer la recherche" : "Rechercher un palo de danse"}
-              aria-label="Rechercher un palo de danse"
+              title={isCatalogSearchOpen ? "Fermer la recherche" : "Filtrer la liste des palos de danse"}
+              aria-label="Filtrer la liste des palos de danse"
             >
               <Search className="w-4 h-4 text-white" />
-              <span className="text-[11px] font-medium hidden xs:inline">Rechercher</span>
+              <span className="text-[11px] font-medium hidden xs:inline">Filtrer</span>
             </button>
           </div>
 
@@ -672,7 +209,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
             <button
               type="button"
               onClick={() => setCatalogSearchTerm('')}
-              className="text-xs text-[#e5a93b] underline font-medium"
+              className="text-xs text-[#e5a93b] underline font-medium cursor-pointer"
             >
               Réinitialiser la recherche
             </button>
@@ -680,9 +217,6 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCatalogPalos.map(item => {
-              const paloData = BAILE_PALOS_DATA[item.id];
-              const isFarruca = item.id === 'Farruca';
-
               return (
                 <div
                   key={item.id}
@@ -694,10 +228,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   }`}
                 >
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30">
-                        {item.tag}
-                      </span>
+                    <div className="flex items-center justify-end gap-2">
                       {item.isAvailable ? (
                         <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -716,9 +247,9 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                         <h4 className="text-xl font-bold font-serif text-[#f4efe6]">
                           {item.name}
                         </h4>
-                        <p className="text-xs text-[#a69c8f] flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-[#e5a93b] font-medium flex items-center gap-1.5 mt-1">
                           <Activity className="w-3.5 h-3.5 text-[#e5a93b]" />
-                          <span>{item.compasSummary}</span>
+                          <span>{item.tag}</span>
                         </p>
                       </div>
 

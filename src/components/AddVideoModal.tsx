@@ -3,6 +3,9 @@ import { X, Plus, Video, Sparkles, Lightbulb, AlertTriangle, Laptop, Smartphone,
 import { Level } from '../types';
 import { saveCustomVideo } from '../utils/storage';
 import { isLocalVideoUrl, isMobileDevice, getCurrentDeviceType, detectDeviceFromUrl } from '../utils/deviceUtils';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
 
 interface AddVideoModalProps {
   paloId: string;
@@ -36,14 +39,14 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
 
   const categories = isDanceSection
     ? [
-        { key: 'cours', label: '🎓 Mes Cours & Stages' },
-        { key: 'maitres', label: '💃 Danses Complètes & Maîtres' },
-        { key: 'structure', label: '📑 Chorégraphie & Montage' }
+        { key: 'cours', label: 'Mes Cours & Stages', icon: '🎓' },
+        { key: 'maitres', label: 'Danses & Maîtres', icon: 'bailaora' },
+        { key: 'structure', label: 'Chorégraphie & Montage', icon: '📑' }
       ]
     : [
-        { key: 'falsetas', label: '🎸 Falsetas' },
-        { key: 'cante', label: '🎤 Cante' },
-        { key: 'baile', label: '💃 Baile' }
+        { key: 'falsetas', label: 'Falsetas', icon: 'flamenco-guitar' },
+        { key: 'cante', label: 'Cante', icon: 'cantaor' },
+        { key: 'baile', label: 'Baile', icon: 'bailaora' }
       ];
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,13 +132,22 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                   key={cat.key}
                   type="button"
                   onClick={() => setSection(cat.key)}
-                  className={`py-2 px-2 text-xs rounded-xl border font-medium transition-colors cursor-pointer text-center ${
+                  className={`py-2 px-2 text-xs rounded-xl border font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                     section === cat.key
                       ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]'
                       : 'bg-[#221e1a] text-[#8c8173] border-[#383129] hover:text-[#d4c9ba]'
                   }`}
                 >
-                  {cat.label}
+                  {cat.icon === 'flamenco-guitar' ? (
+                    <FlamencoGuitarIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                  ) : cat.icon === 'cantaor' ? (
+                    <FlamencoCantaorIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                  ) : cat.icon === 'bailaora' ? (
+                    <FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                  ) : (
+                    <span>{cat.icon}</span>
+                  )}
+                  <span>{cat.label}</span>
                 </button>
               ))}
             </div>

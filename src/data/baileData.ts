@@ -20,8 +20,8 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
     id: "Farruca",
     name: "Farruca",
     subtitle: "Atelier de création",
-    tag: "4 temps binaire (La mineur)",
-    compasSummary: "4 temps • 84 à 165 BPM",
+    tag: "4 temps binaire",
+    compasSummary: "4 temps binaire",
     isAvailable: true,
     highlights: [
       "Structure traditionnelle",
@@ -37,7 +37,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
     name: "Alegrías (Baile)",
     subtitle: "Danse de fête & Silencio en Do mineur",
     tag: "12 temps festif",
-    compasSummary: "12 temps • 120-140 BPM",
+    compasSummary: "12 temps festif",
     isAvailable: false,
     highlights: ["Silencio & Castellana", "Bata de cola & Mantón", "Escobilla & Bulerías"]
   },
@@ -46,7 +46,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
     name: "Soleá (Baile)",
     subtitle: "La Mère de la danse flamenca solennelle",
     tag: "12 temps profond",
-    compasSummary: "12 temps • 80-105 BPM",
+    compasSummary: "12 temps profond",
     isAvailable: false,
     highlights: ["Paseos majestueux", "Llamada por Solea", "Escobilla & Bulería final"]
   },
@@ -55,7 +55,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
     name: "Seguiriya (Baile)",
     subtitle: "Tragédie & tension dramatique",
     tag: "12 temps asymétrique",
-    compasSummary: "12 temps • 70-85 BPM",
+    compasSummary: "12 temps asymétrique",
     isAvailable: false,
     highlights: ["Pieds sombres & martelés", "Cierre tragique", "Bastón"]
   },
@@ -64,7 +64,7 @@ export const BAILE_PALOS_CATALOG: DansePaloPreview[] = [
     name: "Bulerías (Baile)",
     subtitle: "Virtuosité, fête & soniquete festif",
     tag: "12 temps rapide",
-    compasSummary: "12 temps • 180-220 BPM",
+    compasSummary: "12 temps rapide",
     isAvailable: false,
     highlights: ["Patada por Bulerías", "Desplantes de fête", "Remates jerezanos"]
   }

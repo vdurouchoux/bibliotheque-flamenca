@@ -3,7 +3,7 @@ import {
   Play, Plus, Bookmark, ChevronLeft, ArrowLeft, ArrowUp, ArrowDown, Layers, Volume2, 
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
-  LayoutGrid, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
+  LayoutGrid, List, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
   AlertTriangle, Laptop, Smartphone
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
@@ -28,6 +28,8 @@ import {
 import { shareSection, shareVideoItem, getVideoShareData, getSectionShareData, ShareOptions } from '../utils/shareUtils';
 import { ShareModal } from './ShareModal';
 import { ShareMontageModal } from './ShareMontageModal';
+import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
 
 interface DansePaloDetailProps {
   palo: DansePaloData;
@@ -134,6 +136,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [landmarksVersion, setLandmarksVersion] = useState<number>(0);
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
   const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
+
+  // Mode d'affichage des médias : liste minimaliste (seulement les noms), icônes (vignettes & noms) ou cartes détaillées
+  const [mediaViewMode, setMediaViewMode] = useState<'list' | 'icons' | 'cards'>(() => {
+    try {
+      const saved = localStorage.getItem('flamenco_danse_media_view_mode');
+      if (saved === 'list' || saved === 'icons' || saved === 'cards') return saved;
+    } catch {}
+    return 'list'; // Par défaut liste minimaliste comme demandé
+  });
+
+  const handleSetMediaViewMode = (mode: 'list' | 'icons' | 'cards') => {
+    setMediaViewMode(mode);
+    try {
+      localStorage.setItem('flamenco_danse_media_view_mode', mode);
+    } catch {}
+  };
 
   // Menus déroulants pour les 3 rubriques fondamentales du palo (Caractère de la danse, Costume & Posture, Compás & Dynamique)
   // Repliés par défaut quand on arrive sur la page
@@ -1163,6 +1181,250 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     );
   };
 
+  // VUE 1 : LISTE MINIMALISTE (avec seulement leur nom, épurée et sobre)
+  const renderVideoListMinimal = (video: VideoItem, sectionTitle: string, sectionKey: string, index: number) => {
+    const isBookmarked = !!bookmarks[video.id];
+    const availability = checkVideoDeviceAvailability(video);
+
+    return (
+      <div
+        key={video.id}
+        onClick={() => {
+          setPreviewVideoId(null);
+          onPlayVideo(video, sectionTitle);
+        }}
+        className="group flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#161310] hover:bg-[#201a14] border border-[#272018] hover:border-[#e5a93b]/70 transition-all cursor-pointer select-none shadow-xs"
+        title="Cliquer sur le nom pour visionner et travailler ce média"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-7 h-7 rounded-lg bg-[#221b14] group-hover:bg-[#e5a93b] text-[#e5a93b] group-hover:text-[#121110] flex items-center justify-center shrink-0 transition-colors shadow-xs">
+            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
+                {video.title}
+              </span>
+              {video.isCustom && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#2a1c38] text-[#c99eff] border border-[#432b5e] shrink-0 font-medium">
+                  Ajouté
+                </span>
+              )}
+              {!availability.isAvailableOnCurrentDevice && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60 inline-flex items-center gap-1 shrink-0">
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+                  <span>{availability.badgeText}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions discrètes à droite */}
+        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              const opts = getVideoShareData({
+                video,
+                paloName: `${palo.name} (Danse)`,
+                paloId: palo.id,
+                sectionName: sectionTitle,
+                discipline: 'danse'
+              });
+              setShareModalOptions(opts);
+            }}
+            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-[#e5a93b] hover:bg-[#2a221b] transition-colors cursor-pointer"
+            title="Partager ce média"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              toggleBookmark({
+                videoId: video.id,
+                paloId: palo.id,
+                paloName: `${palo.name} (Danse)`,
+                section: sectionTitle,
+                title: video.title,
+                url: video.url,
+                level: video.level,
+                status: 'learning',
+                discipline: 'danse'
+              });
+            }}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isBookmarked
+                ? 'text-[#e5a93b] bg-[#e5a93b]/15'
+                : 'text-[#7a6f61] hover:text-[#f4efe6] hover:bg-[#2a221b]'
+            }`}
+            title={isBookmarked ? 'Dans mes études' : 'Ajouter à mes études'}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setVideoToReplace({ video, sectionKey });
+            }}
+            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-[#e5a93b] hover:bg-[#2a221b] transition-colors cursor-pointer"
+            title="Remplacer le lien ou titre"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setVideoToDelete({ id: video.id, title: video.title, sectionKey });
+            }}
+            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+            title="Supprimer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // VUE 2 : GRILLE D'ICÔNES (vignette/icône média avec le nom centré en dessous)
+  const renderVideoGridIcons = (video: VideoItem, sectionTitle: string, sectionKey: string) => {
+    const isBookmarked = !!bookmarks[video.id];
+    const ytInfo = extractYouTubeInfo(video.url);
+    const videoId = ytInfo.videoId;
+    const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+    const availability = checkVideoDeviceAvailability(video);
+
+    return (
+      <div
+        key={video.id}
+        onClick={() => {
+          setPreviewVideoId(null);
+          onPlayVideo(video, sectionTitle);
+        }}
+        className="group relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-[#161310] hover:bg-[#221c16] border border-[#2b2219] hover:border-[#e5a93b]/70 transition-all cursor-pointer shadow-sm text-center select-none"
+        title="Cliquer pour visionner et travailler ce média"
+      >
+        <div className="space-y-2">
+          {/* Vignette / Icône média */}
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#100d0b] border border-[#292017] group-hover:border-[#e5a93b]/40 transition-colors shadow-inner flex items-center justify-center">
+            {thumbUrl ? (
+              <img
+                src={thumbUrl}
+                alt={video.title}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+            ) : (
+              <Video className="w-8 h-8 text-[#e5a93b]/60" />
+            )}
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <div className="w-9 h-9 rounded-full bg-[#e5a93b]/90 text-[#121110] flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-[#e5a93b] transition-all">
+                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+              </div>
+            </div>
+
+            {/* Badge icône média */}
+            <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 border border-white/10 text-[9px] font-mono text-[#f4efe6] flex items-center gap-1">
+              <Film className="w-2.5 h-2.5 text-[#e5a93b]" />
+              <span>Média</span>
+            </div>
+
+            {!availability.isAvailableOnCurrentDevice && (
+              <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-600 text-[9px] font-bold text-amber-300 flex items-center gap-1">
+                <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+                <span>{availability.badgeText}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Titre centré sous l'icône */}
+          <h5 className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors line-clamp-2 leading-snug px-1 text-center font-serif">
+            {video.title}
+          </h5>
+        </div>
+
+        {/* Barre d'actions discrète */}
+        <div className="mt-2.5 pt-2 border-t border-[#261f18] flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              toggleBookmark({
+                videoId: video.id,
+                paloId: palo.id,
+                paloName: `${palo.name} (Danse)`,
+                section: sectionTitle,
+                title: video.title,
+                url: video.url,
+                level: video.level,
+                status: 'learning',
+                discipline: 'danse'
+              });
+            }}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isBookmarked ? 'text-[#e5a93b] bg-[#e5a93b]/15' : 'text-[#73685a] hover:text-[#f4efe6] hover:bg-[#251f18]'
+            }`}
+            title={isBookmarked ? 'Dans mes favoris' : 'Favori'}
+          >
+            <Bookmark className={`w-3 h-3 ${isBookmarked ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              const opts = getVideoShareData({
+                video,
+                paloName: `${palo.name} (Danse)`,
+                paloId: palo.id,
+                sectionName: sectionTitle,
+                discipline: 'danse'
+              });
+              setShareModalOptions(opts);
+            }}
+            className="p-1.5 rounded-lg text-[#73685a] hover:text-[#e5a93b] hover:bg-[#251f18] transition-colors cursor-pointer"
+            title="Partager"
+          >
+            <Share2 className="w-3 h-3" />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setVideoToReplace({ video, sectionKey });
+            }}
+            className="p-1.5 rounded-lg text-[#73685a] hover:text-[#e5a93b] hover:bg-[#251f18] transition-colors cursor-pointer"
+            title="Remplacer"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
+
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setVideoToDelete({ id: video.id, title: video.title, sectionKey });
+            }}
+            className="p-1.5 rounded-lg text-[#73685a] hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+            title="Supprimer"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-5">
       {/* Toast notification de partage */}
@@ -1207,8 +1469,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/20 text-[#ff8f82] border border-[#c53d2d]/40">
-                💃 Danse Flamenca
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/20 text-[#ff8f82] border border-[#c53d2d]/40 flex items-center gap-1.5">
+                <FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                <span>Danse Flamenca</span>
               </span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2a231b] text-[#e5a93b] border border-[#3d3326]">
                 {palo.tag}
@@ -1237,6 +1500,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               structure: 6,
               montages: montageKeys.length
             }}
+            maitresVideos={getMaitresVideos()}
+            coursVideos={getCoursVideos()}
+            onPlayVideo={onPlayVideo}
             bottomContent={
               <div className="space-y-3 pt-1">
                 {/* En-tête des 3 rubriques fondamentales */}
@@ -1603,6 +1869,49 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+              {/* Commutateur de vue : Liste (minimaliste nom seul) / Icônes / Cartes */}
+              <div className="flex items-center rounded-lg bg-[#14120f] p-0.5 border border-[#302820]">
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('list')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'list'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue liste minimaliste (seulement les noms)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Liste</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('icons')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'icons'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue icônes (vignettes & noms)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Icônes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('cards')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'cards'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue cartes détaillées"
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Détaillée</span>
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={handleShareSpace}
@@ -1622,9 +1931,20 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {getMaitresVideos().map(v => renderVideoCard(v, 'Grands Maîtres', 'maitres'))}
-          </div>
+          {/* Rendu dynamique des médias selon le mode choisi */}
+          {mediaViewMode === 'list' ? (
+            <div className="space-y-1.5">
+              {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, 'Grands Maîtres', 'maitres', i))}
+            </div>
+          ) : mediaViewMode === 'icons' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {getMaitresVideos().map(v => renderVideoGridIcons(v, 'Grands Maîtres', 'maitres'))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {getMaitresVideos().map(v => renderVideoCard(v, 'Grands Maîtres', 'maitres'))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2020,6 +2340,49 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+              {/* Commutateur de vue : Liste (minimaliste nom seul) / Icônes / Cartes */}
+              <div className="flex items-center rounded-lg bg-[#14120f] p-0.5 border border-[#302820]">
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('list')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'list'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue liste minimaliste (seulement les noms)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Liste</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('icons')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'icons'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue icônes (vignettes & noms)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Icônes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('cards')}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    mediaViewMode === 'cards'
+                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#f4efe6]'
+                  }`}
+                  title="Vue cartes détaillées"
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Détaillée</span>
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={handleShareSpace}
@@ -2047,11 +2410,21 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </p>
           </div>
 
-          {/* Grille des vidéos de cours si présentes */}
+          {/* Affichage des vidéos de cours selon le mode choisi */}
           {getCoursVideos().length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {getCoursVideos().map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
-            </div>
+            mediaViewMode === 'list' ? (
+              <div className="space-y-1.5">
+                {getCoursVideos().map((v, i) => renderVideoListMinimal(v, 'Mes Cours & Stages', 'cours', i))}
+              </div>
+            ) : mediaViewMode === 'icons' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {getCoursVideos().map(v => renderVideoGridIcons(v, 'Mes Cours & Stages', 'cours'))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {getCoursVideos().map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
+              </div>
+            )
           ) : (
             <div className="bg-[#171411] border border-[#302820] rounded-2xl p-6 sm:p-8 shadow-lg text-center max-w-2xl mx-auto space-y-4">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#e5a93b]/15 border border-[#e5a93b]/30 flex items-center justify-center text-[#e5a93b]">
@@ -3335,12 +3708,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 <span>6 Espaces</span>
               </button>
               {[
-                { key: 'structure', label: '📑 Structure traditionnelle' },
-                { key: 'maitres', label: '🌟 Grands Maîtres' },
-                { key: 'letras', label: '🎤 Letras & Textes' },
-                { key: 'compas', label: '⏱️ Compás (4t)' },
-                { key: 'cours', label: '🎓 Cours & Stages' },
-                { key: 'montages', label: '🎬 Mon carnet de montage' }
+                { key: 'structure', label: 'Structure traditionnelle', icon: '📑' },
+                { key: 'maitres', label: 'Grands Maîtres', icon: '🌟' },
+                { key: 'letras', label: 'Letras & Textes', icon: 'cantaor' },
+                { key: 'compas', label: 'Compás (4t)', icon: '⏱️' },
+                { key: 'cours', label: 'Cours & Stages', icon: '🎓' },
+                { key: 'montages', label: 'Mon carnet de montage', icon: '🎬' }
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -3348,13 +3721,18 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     setActiveTab(tab.key as DanseSectionTab);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`px-3 sm:px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`px-3 sm:px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
                     activeTab === tab.key
                       ? 'bg-[#e5a93b] text-[#121110] shadow-sm'
                       : 'text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#1f1a16]'
                   }`}
                 >
-                  {tab.label}
+                  {tab.icon === 'cantaor' ? (
+                    <FlamencoCantaorIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                  ) : (
+                    <span>{tab.icon}</span>
+                  )}
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </div>

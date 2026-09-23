@@ -5,7 +5,7 @@ export const FARRUCA_BAILE: DansePaloData = {
   id: "farruca-baile",
   name: "Farruca",
   subtitle: "Danse solennelle & virtuose – Guide complet de montage & technique",
-  tag: "4 temps binaire (La mineur)",
+  tag: "4 temps binaire",
   origin: "Origine galicienne adaptée par les Gitans d'Andalousie (Triana / Séville). Immortalisée au baile par Faíco et Ramón Montoya, puis sublimée par Vicente Escudero et El Güito.",
   character: "Sobre, sculptural, altier, géométrique et puissant. Traditionnellement dansée en pantalon et gilet (hommes et femmes). Lignes franches et frappes de pieds tranchantes.",
   costumeAdvice: "Chaussures de flamenco fermes et bien cloutées, pantalon taille haute (pantalón campero), chemise cintrée et gilet court (chaleco). Parfois exécutée avec une canne (bastón) ou un chapeau cordouan.",

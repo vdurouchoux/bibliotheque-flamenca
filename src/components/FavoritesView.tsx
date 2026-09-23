@@ -3,6 +3,9 @@ import { Bookmark, Play, Trash2, FileText, X, Download } from 'lucide-react';
 import { PracticeBookmark, VideoItem, DisciplineMode } from '../types';
 import { getBookmarks, toggleBookmark, updateBookmarkStatus, extractYouTubeInfo } from '../utils/storage';
 import { ExportProgressModal } from './ExportProgressModal';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { FlamencoGuitaristeIcon } from './FlamencoGuitaristeIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
 
 interface FavoritesViewProps {
   discipline: DisciplineMode;
@@ -89,23 +92,31 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181512] border border-[#2d2721] self-start sm:self-center">
             <button
               onClick={() => setDisciplineScope('current')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                 disciplineScope === 'current'
                   ? 'bg-[#e5a93b] text-[#121110]'
                   : 'text-[#8c8173] hover:text-[#d4c9ba]'
               }`}
             >
-              {discipline === 'danse' ? `💃 Danse (${totalDanse})` : `🎸 Guitare (${totalGuitare})`}
+              {discipline === 'danse' ? (
+                <><FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block" /><span>Danse ({totalDanse})</span></>
+              ) : (
+                <><FlamencoGuitaristeIcon className="w-3.5 h-3.5 inline-block" /><span>Guitare ({totalGuitare})</span></>
+              )}
             </button>
             <button
               onClick={() => setDisciplineScope(discipline === 'danse' ? 'guitare' : 'danse')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                 (discipline === 'danse' && disciplineScope === 'guitare') || (discipline === 'guitare' && disciplineScope === 'danse')
                   ? 'bg-[#e5a93b] text-[#121110]'
                   : 'text-[#8c8173] hover:text-[#d4c9ba]'
               }`}
             >
-              {discipline === 'danse' ? `🎸 Guitare (${totalGuitare})` : `💃 Danse (${totalDanse})`}
+              {discipline === 'danse' ? (
+                <><FlamencoGuitaristeIcon className="w-3.5 h-3.5 inline-block" /><span>Guitare ({totalGuitare})</span></>
+              ) : (
+                <><FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block" /><span>Danse ({totalDanse})</span></>
+              )}
             </button>
             <button
               onClick={() => setDisciplineScope('all')}
@@ -230,12 +241,16 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({ discipline, onPlay
 
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1.5 ${
                         itemIsDanse
                           ? 'bg-[#2a1b18] text-[#ff9e80] border-[#592c23]'
                           : 'bg-[#1a232a] text-[#80d4ff] border-[#234559]'
                       }`}>
-                        {itemIsDanse ? '💃 Danse' : '🎸 Guitare'}
+                        {itemIsDanse ? (
+                          <><FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block shrink-0" /><span>Danse</span></>
+                        ) : (
+                          <><FlamencoGuitaristeIcon className="w-3.5 h-3.5 inline-block shrink-0" /><span>Guitare</span></>
+                        )}
                       </span>
                       <span className="text-xs font-semibold text-[#d4c9ba]">
                         {item.paloName}

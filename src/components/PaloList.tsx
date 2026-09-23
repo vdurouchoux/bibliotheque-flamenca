@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, ChevronRight, Flame, Layers, BookOpen, Smartphone } from 'lucide-react';
 import { PALOS_DATA } from '../data/flamencoData';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
 
 interface PaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -98,8 +99,8 @@ export const PaloList: React.FC<PaloListProps> = ({
           </div>
         </div>
         {/* Subtle background decoration */}
-        <div className="absolute -right-6 -bottom-8 opacity-10 pointer-events-none text-9xl select-none">
-          🎸
+        <div className="absolute -right-2 -bottom-4 opacity-15 pointer-events-none select-none">
+          <FlamencoGuitarIcon className="w-36 h-36" />
         </div>
       </div>
 

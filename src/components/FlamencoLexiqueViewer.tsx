@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Search, X, BookOpen, Sparkles, Filter, ChevronRight, Info, ExternalLink } from 'lucide-react';
 import { FLAMENCO_LEXIQUE, LEXIQUE_CATEGORIES, LexiqueCategory, LexiqueTerm } from '../data/flamencoLexiqueData';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { FlamencoGuitaristeIcon } from './FlamencoGuitaristeIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
+import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
 
 interface FlamencoLexiqueViewerProps {
   onSelectTerm?: (term: LexiqueTerm) => void;
@@ -109,7 +113,15 @@ export const FlamencoLexiqueViewer: React.FC<FlamencoLexiqueViewerProps> = () =>
                 }`}
                 title={cat.description}
               >
-                <span>{cat.icon}</span>
+                {cat.id === 'guitare' ? (
+                  <FlamencoGuitaristeIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                ) : cat.id === 'danse' ? (
+                  <FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                ) : cat.id === 'cante' ? (
+                  <FlamencoCantaorIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
+                ) : (
+                  <span>{cat.icon}</span>
+                )}
                 <span>{cat.label}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
@@ -177,7 +189,15 @@ export const FlamencoLexiqueViewer: React.FC<FlamencoLexiqueViewerProps> = () =>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="w-8 h-8 rounded-xl bg-[#282119] border border-[#3b3024] flex items-center justify-center text-base shrink-0">
-                        {term.icon}
+                        {term.icon === '🎸' ? (
+                          <FlamencoGuitaristeIcon className="w-5 h-5 drop-shadow-sm" />
+                        ) : term.icon === '💃' ? (
+                          <FlamencoBailaoraIcon className="w-5 h-5 drop-shadow-sm" />
+                        ) : term.icon === '🎤' ? (
+                          <FlamencoCantaorIcon className="w-5 h-5 drop-shadow-sm" />
+                        ) : (
+                          term.icon
+                        )}
                       </span>
                       <div>
                         <h4 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif leading-snug">

@@ -5,6 +5,9 @@ import { CompasVisualizer } from './CompasVisualizer';
 import { getBookmarks, toggleBookmark, getCustomVideos, extractYouTubeInfo } from '../utils/storage';
 import { getVideoShareData, getSectionShareData, ShareOptions } from '../utils/shareUtils';
 import { ShareModal } from './ShareModal';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
 
 interface PaloDetailProps {
   palo: PaloData;
@@ -332,24 +335,33 @@ export const PaloDetail: React.FC<PaloDetailProps> = ({
       {/* Main Tabs Navigation */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 bg-[#141210] p-1.5 rounded-2xl border border-[#2e2720]">
         {[
-          { key: 'intro', label: '🎬 Intro & Compás' },
-          { key: 'falsetas', label: '🎸 Falsetas' },
-          { key: 'cante', label: '🎤 Acomp. Cante' },
-          { key: 'baile', label: '💃 Acomp. Baile' },
-          { key: 'harmonie', label: '🎼 Harmonie' },
-          { key: 'compas', label: '⏱️ Métronome' }
+          { key: 'intro', label: 'Intro & Compás', icon: '🎬' },
+          { key: 'falsetas', label: 'Falsetas', icon: 'flamenco-guitar' },
+          { key: 'cante', label: 'Acomp. Cante', icon: 'cantaor' },
+          { key: 'baile', label: 'Acomp. Baile', icon: 'bailaora' },
+          { key: 'harmonie', label: 'Harmonie', icon: '🎼' },
+          { key: 'compas', label: 'Métronome', icon: '⏱️' }
         ].map(tab => (
           <button
             key={tab.key}
             id={`tab-btn-${tab.key}`}
             onClick={() => setActiveTab(tab.key as SectionTab)}
-            className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer text-center truncate ${
+            className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer text-center truncate flex items-center justify-center gap-1.5 ${
               activeTab === tab.key
                 ? 'bg-[#e5a93b] text-[#121110] shadow-md shadow-[#e5a93b]/20'
                 : 'text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#1f1b17]'
             }`}
           >
-            {tab.label}
+            {tab.icon === 'flamenco-guitar' ? (
+              <FlamencoGuitarIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
+            ) : tab.icon === 'cantaor' ? (
+              <FlamencoCantaorIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
+            ) : tab.icon === 'bailaora' ? (
+              <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
+            ) : (
+              <span>{tab.icon}</span>
+            )}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>

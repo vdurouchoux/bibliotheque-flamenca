@@ -1,6 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Square, Bookmark, BookOpen, Music2, Cloud, RefreshCw, Layers, Maximize, Minimize } from 'lucide-react';
-import { DisciplineMode } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  ArrowLeft,
+  Play,
+  Square,
+  Bookmark,
+  BookOpen,
+  Cloud,
+  Layers,
+  Maximize,
+  Minimize,
+  Search,
+  X,
+  Film,
+  Folder,
+  ChevronRight
+} from 'lucide-react';
+import { DisciplineMode, VideoItem, DanseSectionTab, SectionTab } from '../types';
+import { buildUniversalIndex, searchUniversalItems, UniversalSearchItem } from '../utils/universalSearch';
+import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { FlamencoGuitaristeIcon } from './FlamencoGuitaristeIcon';
+import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
+import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
 
 interface HeaderProps {
   title: React.ReactNode;
@@ -19,6 +39,9 @@ interface HeaderProps {
   onOpenInstall?: () => void;
   onOpenCloudSync?: () => void;
   cloudSyncStatus?: 'synced' | 'saving' | 'offline' | 'connecting' | 'error';
+  // Fonctions de navigation et de lecture globale depuis la recherche
+  onPlayVideo?: (video: VideoItem, paloName: string, paloKey: string, sectionName: string) => void;
+  onNavigatePalo?: (paloKey: string, discipline: DisciplineMode, danseTab?: DanseSectionTab, guitarTab?: SectionTab) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,11 +60,71 @@ export const Header: React.FC<HeaderProps> = ({
   favoritesCount,
   onOpenInstall,
   onOpenCloudSync,
-  cloudSyncStatus = 'synced'
+  cloudSyncStatus = 'synced',
+  onPlayVideo,
+  onNavigatePalo
 }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
     return typeof document !== 'undefined' ? !!document.fullscreenElement : false;
   });
+
+  // Gestion de la recherche intégrée dans le bandeau supérieur
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'palos' | 'videos' | 'textes' | 'lexique'>('all');
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Construction mémorisée de l'index universel
+  const allSearchItems = useMemo(() => buildUniversalIndex(), []);
+
+  // Résultats de la recherche
+  const searchResults = useMemo(() => {
+    return searchUniversalItems(allSearchItems, searchTerm);
+  }, [allSearchItems, searchTerm]);
+
+  // Groupement des résultats
+  const groupedResults = useMemo(() => {
+    const palos: UniversalSearchItem[] = [];
+    const videos: UniversalSearchItem[] = [];
+    const textes: UniversalSearchItem[] = [];
+    const lexique: UniversalSearchItem[] = [];
+
+    searchResults.forEach(item => {
+      if (item.type === 'palo') {
+        palos.push(item);
+      } else if (item.type === 'video') {
+        videos.push(item);
+      } else if (item.type === 'letra') {
+        textes.push(item);
+      } else if (item.type === 'lexique') {
+        lexique.push(item);
+      }
+    });
+
+    return { palos, videos, textes, lexique };
+  }, [searchResults]);
+
+  // Fermer le menu déroulant si on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -76,13 +159,39 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleItemClick = (item: UniversalSearchItem) => {
+    setIsDropdownOpen(false);
+
+    if (item.type === 'video' && item.video && onPlayVideo) {
+      onPlayVideo(
+        item.video,
+        item.paloName || (item.discipline === 'danse' ? 'Farruca (Danse)' : 'Flamenco'),
+        item.paloKey || '',
+        item.sectionName || ''
+      );
+    } else if (item.type === 'lexique') {
+      if (onOpenLexique) {
+        onOpenLexique();
+      }
+    } else if (item.paloKey && onNavigatePalo) {
+      onNavigatePalo(
+        item.paloKey,
+        item.discipline === 'danse' ? 'danse' : 'guitare',
+        item.danseTab,
+        item.guitarTab
+      );
+    }
+  };
+
   return (
     <header 
-      className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-3 sm:px-6 py-2.5 transition-colors"
+      className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-3 sm:px-6 py-2.5 transition-colors shadow-lg"
       style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top, 0.625rem))' }}
     >
       <div className="max-w-4xl mx-auto space-y-2">
-        {/* BANDEAU SUPÉRIEUR COMMUN : Logo + "Bibliothèque Flamenca" à gauche, et les 3 disciplines (Chant, Guitare, Danse) à droite */}
+        {/* ========================================================================= */}
+        {/* 1. LIGNE SUPÉRIEURE : Logo / Retour + Titre & 3 Disciplines               */}
+        {/* ========================================================================= */}
         <div className="flex items-center justify-between gap-3">
           {/* Gauche : Retour ou Logo Flamenco + Nom Permanent Bibliothèque Flamenca */}
           <div className="flex items-center gap-2.5 min-w-0">
@@ -97,10 +206,14 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="inline">{backButtonLabel || 'Retour'}</span>
               </button>
             ) : (
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#e5a93b]/25 to-[#b93826]/25 border border-[#e5a93b]/40 flex items-center justify-center shrink-0 shadow-inner">
-                <span className="text-base sm:text-lg">
-                  {discipline === 'danse' ? '💃' : discipline === 'guitare' ? '🎸' : '🎤'}
-                </span>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#e5a93b]/25 to-[#b93826]/25 border border-[#e5a93b]/40 flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-0.5">
+                {discipline === 'danse' ? (
+                  <FlamencoBailaoraIcon className="w-full h-full" />
+                ) : discipline === 'guitare' ? (
+                  <FlamencoGuitaristeIcon className="w-full h-full" />
+                ) : (
+                  <FlamencoCantaorIcon className="w-full h-full" />
+                )}
               </div>
             )}
 
@@ -118,33 +231,33 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Droite : Les 3 disciplines permanentes (Chant, Guitare, Danse) avec l'onglet actif bien en jaune */}
           <div className="flex items-center bg-[#1c1712] p-1 rounded-xl border border-[#3e3224] shadow-inner text-xs shrink-0">
-            {/* 1. Chant (futur / préparation) */}
+            {/* 1. Chant (Cante flamenco) */}
             <button
               type="button"
               onClick={() => onToggleDiscipline('chant')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 discipline === 'chant'
                   ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
                   : 'text-[#8c8173] hover:text-[#d4c9ba]'
               }`}
               title="Chant flamenco (Cante)"
             >
-              <span>🎤</span>
+              <FlamencoCantaorIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
               <span className="hidden xs:inline">Chant</span>
             </button>
 
-            {/* 2. Guitare */}
+            {/* 2. Guitare (Guitarra flamenca) */}
             <button
               type="button"
               onClick={() => onToggleDiscipline('guitare')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 discipline === 'guitare'
                   ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
                   : 'text-[#8c8173] hover:text-[#d4c9ba]'
               }`}
               title="Guitare flamenca (Toque)"
             >
-              <span>🎸</span>
+              <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
               <span className="hidden xs:inline">Guitare</span>
             </button>
 
@@ -152,21 +265,306 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onToggleDiscipline('danse')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 discipline === 'danse'
                   ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
                   : 'text-[#8c8173] hover:text-[#d4c9ba]'
               }`}
               title="Danse flamenca (Baile)"
             >
-              <span>💃</span>
+              <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
               <span className="hidden xs:inline">Danse</span>
             </button>
           </div>
         </div>
 
-        {/* BANDEAU COMMUN INFÉRIEUR : Les petites icônes d'outils et actions communes aux trois disciplines */}
-        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 pt-1.5 border-t border-[#251f18]/70 overflow-x-auto no-scrollbar">
+        {/* ========================================================================= */}
+        {/* 2. LIGNE CENTRALE : LOUPE & CHAMP DE RECHERCHE PERMANENTS (FIXES AU SCROLL) */}
+        {/* ========================================================================= */}
+        <div ref={searchContainerRef} className="relative">
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#e5a93b] pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              id="header-universal-search-input"
+              type="text"
+              value={searchTerm}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setIsDropdownOpen(true);
+              }}
+              onFocus={() => {
+                if (searchTerm.trim()) {
+                  setIsDropdownOpen(true);
+                }
+              }}
+              placeholder="Rechercher un palo, une vidéo, une letra, un compás, un terme..."
+              className="w-full bg-[#1b1713] border border-[#382d21] focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b]/50 rounded-xl pl-9 sm:pl-10 pr-9 py-1.5 sm:py-2 text-xs sm:text-sm text-[#f4efe6] placeholder-[#807466] outline-none transition-all shadow-inner"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setIsDropdownOpen(false);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#25201b] transition-colors cursor-pointer"
+                title="Effacer la recherche"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Panneau déroulant flottant des résultats de recherche sous la barre */}
+          {isDropdownOpen && searchTerm.trim() && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-[75vh] overflow-y-auto bg-[#171410] border border-[#3e3224] rounded-2xl shadow-2xl p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              {/* Entête du panneau : compteur & filtres rapides */}
+              <div className="flex items-center justify-between gap-2 border-b border-[#2b2219] pb-2 text-xs text-[#a69c8f] flex-wrap">
+                <div>
+                  <strong className="text-[#f4efe6]">{searchResults.length}</strong> résultat{searchResults.length > 1 ? 's' : ''} pour « <span className="text-[#e5a93b] font-medium">{searchTerm}</span> »
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('all')}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors ${
+                      activeCategoryFilter === 'all'
+                        ? 'bg-[#e5a93b] text-[#121110]'
+                        : 'text-[#8c8173] hover:text-[#f4efe6] bg-[#221c17]'
+                    }`}
+                  >
+                    Tous ({searchResults.length})
+                  </button>
+                  {groupedResults.palos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategoryFilter('palos')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors ${
+                        activeCategoryFilter === 'palos'
+                          ? 'bg-[#e5a93b] text-[#121110]'
+                          : 'text-[#8c8173] hover:text-[#f4efe6] bg-[#221c17]'
+                      }`}
+                    >
+                      Palos ({groupedResults.palos.length})
+                    </button>
+                  )}
+                  {groupedResults.videos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategoryFilter('videos')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors ${
+                        activeCategoryFilter === 'videos'
+                          ? 'bg-[#e5a93b] text-[#121110]'
+                          : 'text-[#8c8173] hover:text-[#f4efe6] bg-[#221c17]'
+                      }`}
+                    >
+                      Vidéos ({groupedResults.videos.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="text-[#e5a93b] hover:underline cursor-pointer text-xs ml-1"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+
+              {searchResults.length === 0 ? (
+                <div className="text-center py-6 text-xs sm:text-sm text-[#8c8173]">
+                  Aucun résultat ne correspond à votre recherche. Essayez avec un nom de palo (ex: <span className="text-[#e5a93b]">Farruca</span>, <span className="text-[#e5a93b]">Soleá</span>, <span className="text-[#e5a93b]">Bulerías</span>), un mot de danse (<span className="text-[#e5a93b]">Zapateado</span>, <span className="text-[#e5a93b]">Marcaje</span>), ou un terme du lexique.
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                  {/* 1. PALOS & DOSSIERS */}
+                  {(activeCategoryFilter === 'all' || activeCategoryFilter === 'palos') && groupedResults.palos.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
+                        <Folder className="w-3.5 h-3.5 text-[#e5a93b]" />
+                        <span>Palos & Dossiers ({groupedResults.palos.length})</span>
+                      </div>
+                      <div className="space-y-1">
+                        {groupedResults.palos.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1b1713] hover:bg-[#251f18] border border-[#2d241c] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="select-none shrink-0" title={item.discipline === 'danse' ? 'Danse' : 'Guitare'}>
+                                {item.discipline === 'danse' ? (
+                                  <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0" />
+                                ) : (
+                                  <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0" />
+                                )}
+                              </span>
+                              <Folder className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
+                                  {item.title}
+                                </span>
+                                {item.subtitle && (
+                                  <span className="text-[10px] sm:text-[11px] text-[#8c8173] truncate block">
+                                    {item.subtitle}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-semibold text-[#8c8173] group-hover:text-[#e5a93b] shrink-0">
+                              <span>Ouvrir</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. VIDÉOS & DÉMONSTRATIONS */}
+                  {(activeCategoryFilter === 'all' || activeCategoryFilter === 'videos') && groupedResults.videos.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
+                        <Film className="w-3.5 h-3.5 text-[#e5a93b]" />
+                        <span>Vidéos & Pratiques ({groupedResults.videos.length})</span>
+                      </div>
+                      <div className="space-y-1">
+                        {groupedResults.videos.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1b1713] hover:bg-[#251f18] border border-[#2d241c] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="select-none shrink-0" title={item.discipline === 'danse' ? 'Danse' : 'Guitare'}>
+                                {item.discipline === 'danse' ? (
+                                  <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0" />
+                                ) : (
+                                  <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0" />
+                                )}
+                              </span>
+                              <Film className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
+                                  {item.title}
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] text-[#8c8173] truncate block">
+                                  {item.paloName} • {item.sectionName} {item.subtitle ? `• ${item.subtitle}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleItemClick(item);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] font-bold text-xs transition-all shadow-sm cursor-pointer"
+                                title="Lire la vidéo"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>Lire</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. TEXTES & LETRAS */}
+                  {(activeCategoryFilter === 'all' || activeCategoryFilter === 'textes') && groupedResults.textes.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
+                        <BookOpen className="w-3.5 h-3.5 text-[#e5a93b]" />
+                        <span>Letras & Chant ({groupedResults.textes.length})</span>
+                      </div>
+                      <div className="space-y-1">
+                        {groupedResults.textes.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1b1713] hover:bg-[#251f18] border border-[#2d241c] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <FlamencoCantaorIcon className="w-4 h-4 inline-block shrink-0" />
+                              <BookOpen className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
+                                  {item.title}
+                                </span>
+                                {item.subtitle && (
+                                  <span className="text-[10px] sm:text-[11px] text-[#8c8173] italic truncate block">
+                                    « {item.subtitle} »
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-semibold text-[#8c8173] group-hover:text-[#e5a93b] shrink-0">
+                              <span>Consulter</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. TERMES DU LEXIQUE */}
+                  {(activeCategoryFilter === 'all' || activeCategoryFilter === 'lexique') && groupedResults.lexique.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c8173] flex items-center gap-1.5 px-1">
+                        <span className="text-sm select-none">💡</span>
+                        <span>Lexique Flamenco ({groupedResults.lexique.length})</span>
+                      </div>
+                      <div className="space-y-1">
+                        {groupedResults.lexique.map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#1b1713] hover:bg-[#251f18] border border-[#2d241c] hover:border-[#e5a93b]/60 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-base select-none shrink-0">{item.lexiqueTerm?.icon || '📖'}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
+                                    {item.title}
+                                  </span>
+                                  {item.subtitle && (
+                                    <span className="text-[10px] text-[#8c8173] px-1.5 py-0.5 rounded bg-[#241c15] border border-[#382d22]">
+                                      {item.subtitle}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.description && (
+                                  <span className="text-[10px] sm:text-[11px] text-[#a69c8f] truncate block">
+                                    {item.description}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-semibold text-[#8c8173] group-hover:text-[#e5a93b] shrink-0">
+                              <span>Voir définition</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 3. LIGNE INFÉRIEURE : OUTILS & ACTIONS COMMUNES                           */}
+        {/* ========================================================================= */}
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 pt-1 border-t border-[#251f18]/70 overflow-x-auto no-scrollbar">
           {/* Metronome toggle */}
           <button
             id="header-metronome-btn"
