@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, Play, Square, Bookmark, BookOpen, Music2, Cloud, RefreshCw, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Play, Square, Bookmark, BookOpen, Music2, Cloud, RefreshCw, Layers, Maximize, Minimize } from 'lucide-react';
 import { DisciplineMode } from '../types';
 
 interface HeaderProps {
@@ -39,8 +39,48 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCloudSync,
   cloudSyncStatus = 'synced'
 }) => {
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof document !== 'undefined' ? !!document.fullscreenElement : false;
+  });
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = () => {
+    try {
+      if (!document.fullscreenElement) {
+        const root = document.documentElement;
+        if (root.requestFullscreen) {
+          root.requestFullscreen().catch(() => {});
+        } else if ((root as any).webkitRequestFullscreen) {
+          (root as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-3 sm:px-6 py-2.5 transition-colors">
+    <header 
+      className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-3 sm:px-6 py-2.5 transition-colors"
+      style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top, 0.625rem))' }}
+    >
       <div className="max-w-4xl mx-auto space-y-2">
         {/* BANDEAU SUPÉRIEUR COMMUN : Logo + "Bibliothèque Flamenca" à gauche, et les 3 disciplines (Chant, Guitare, Danse) à droite */}
         <div className="flex items-center justify-between gap-3">
@@ -222,6 +262,30 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
           )}
+
+          {/* Fullscreen Toggle - Supprime immédiatement toute barre de navigation de navigateur */}
+          <button
+            id="header-fullscreen-btn"
+            onClick={handleToggleFullscreen}
+            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 ${
+              isFullscreen
+                ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/50 shadow-sm font-bold'
+                : 'bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] border-[#382e24]'
+            }`}
+            title={isFullscreen ? "Quitter le plein écran" : "Afficher en plein écran (masquer les barres du navigateur)"}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span className="text-[11px] sm:text-xs">Fenêtre</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span className="text-[11px] sm:text-xs">Plein écran</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </header>

@@ -136,11 +136,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
 
   // Menus déroulants pour les 3 rubriques fondamentales du palo (Caractère de la danse, Costume & Posture, Compás & Dynamique)
-  // Ouvertes par défaut dans la grande zone noire du bas de page pour exploiter pleinement l'espace
+  // Repliés par défaut quand on arrive sur la page
   const [openInfoSections, setOpenInfoSections] = useState<{ character: boolean; costume: boolean; compas: boolean }>({
-    character: true,
-    costume: true,
-    compas: true
+    character: false,
+    costume: false,
+    compas: false
   });
 
   const toggleInfoSection = (key: 'character' | 'costume' | 'compas') => {

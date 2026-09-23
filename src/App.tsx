@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PALOS_DATA } from './data/flamencoData';
 import { BAILE_PALOS_DATA } from './data/baileData';
-import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark, DanseSectionTab } from './types';
+import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark, DanseSectionTab, SectionTab } from './types';
 import { Header } from './components/Header';
 import { PaloList } from './components/PaloList';
 import { DansePaloList } from './components/DansePaloList';
@@ -51,6 +51,7 @@ export default function App() {
   } | null>(null);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState<boolean>(false);
   const [toolsInitialTab, setToolsInitialTab] = useState<'arborescence' | 'cejilla' | 'techniques' | 'lexique'>('arborescence');
+  const [paloInitialTab, setPaloInitialTab] = useState<SectionTab | undefined>(undefined);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState<boolean>(false);
 
   const handleOpenTools = (tab: 'arborescence' | 'cejilla' | 'techniques' | 'lexique' = 'arborescence') => {
@@ -291,9 +292,10 @@ export default function App() {
   };
 
   // Navigation handlers
-  const handleOpenPalo = (paloKey: string) => {
+  const handleOpenPalo = (paloKey: string, initialTab?: SectionTab) => {
     setSelectedPaloKey(paloKey);
     setSelectedVariantKey(null);
+    setPaloInitialTab(initialTab);
     setDanseTab('hub');
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -458,6 +460,15 @@ export default function App() {
               onOpenLibrary={() => handleToggleDiscipline('guitare')}
               onOpenArborescence={() => handleOpenTools('arborescence')}
               onOpenLexique={() => handleOpenTools('lexique')}
+              onPlayVideo={(video, paloName, paloKey, sectionName) => {
+                setActiveVideoData({
+                  video,
+                  paloName,
+                  paloId: paloKey,
+                  sectionName
+                });
+              }}
+              onNavigateDanseTab={handleNavigateDanseTab}
             />
           ) : discipline === 'guitare' ? (
             <PaloList
@@ -466,6 +477,14 @@ export default function App() {
               onOpenInstall={() => setIsInstallGuideOpen(true)}
               onOpenArborescence={() => handleOpenTools('arborescence')}
               onOpenLexique={() => handleOpenTools('lexique')}
+              onPlayVideo={(video, paloName, paloKey, sectionName) => {
+                setActiveVideoData({
+                  video,
+                  paloName,
+                  paloId: paloKey,
+                  sectionName
+                });
+              }}
             />
           ) : (
             <div className="bg-[#171410] border-2 border-[#382d22] rounded-2xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
@@ -558,6 +577,7 @@ export default function App() {
             <PaloDetail
               palo={activePalo}
               paloKey={selectedVariantKey || selectedPaloKey || ''}
+              initialTab={paloInitialTab}
               isMetronomePlaying={isMetronomePlaying}
               onToggleMetronome={handleToggleMetronome}
               onPlayVideo={(video, sectionName) => {

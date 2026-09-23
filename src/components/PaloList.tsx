@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, Sparkles, Music, Filter, Flame, Smartphone, QrCode, Layers, BookOpen } from 'lucide-react';
+import { Search, ChevronRight, Flame, Layers, BookOpen, Smartphone } from 'lucide-react';
 import { PALOS_DATA } from '../data/flamencoData';
-import { PaloData } from '../types';
 
 interface PaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -9,6 +8,7 @@ interface PaloListProps {
   onOpenInstall?: () => void;
   onOpenArborescence?: () => void;
   onOpenLexique?: () => void;
+  onPlayVideo?: (video: any, paloName: string, paloKey: string, sectionName: string) => void;
 }
 
 export const PaloList: React.FC<PaloListProps> = ({

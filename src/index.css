@@ -21,3 +21,24 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #544a3f;
 }
+
+/* PWA Standalone Mobile Ergonomics & Safe Areas */
+html {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Safe area insets utilities for standalone mobile notch / bottom bar */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+

@@ -275,7 +275,7 @@ export const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ onClose })
                     3
                   </span>
                   <p>
-                    Sélectionnez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong>.
+                    Sélectionnez <strong>« Ajouter à l'écran d'accueil »</strong> (recommandé) ou <strong>« Installer l'application »</strong>.
                   </p>
                 </div>
 
@@ -284,8 +284,12 @@ export const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ onClose })
                     4
                   </span>
                   <p>
-                    Confirmez : l'application s'installe instantanément et se lance en plein écran sans barre d'adresse.
+                    Confirmez : l'icône s'ajoute sur votre écran d'accueil et s'ouvre en <strong>mode autonome plein écran (standalone)</strong> sans aucune barre d'adresse !
                   </p>
+                </div>
+
+                <div className="mt-2 p-2.5 rounded-lg bg-[#271f16] border border-[#e5a93b]/30 text-[11px] text-[#e5a93b] leading-relaxed">
+                  💡 <strong>Astuce si Chrome affiche « Impossible d'installer cette appli » :</strong> C'est une vérification de sécurité Google Play en mode développement. Choisissez simplement <strong>« Ajouter à l'écran d'accueil »</strong> dans le même menu ⋮ : cela installe le raccourci autonome sans passer par la vérification Play Store, avec exactement le même affichage plein écran.
                 </div>
               </div>
             )}

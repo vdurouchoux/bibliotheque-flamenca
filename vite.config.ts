@@ -14,9 +14,9 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
-          name: 'Bibliothèque Flamenca – Guitare',
-          short_name: 'Flamenco',
-          description: 'Compagnon d\'étude et de pratique pour guitaristes flamencos : palos, falsetas, compás interactif et accords.',
+          name: 'Bibliothèque Flamenca – Guitare & Danse',
+          short_name: 'Flamenca',
+          description: 'Compagnon d\'étude et de pratique pour la guitare et la danse flamenca : palos, falsetas, montage chorégraphique de la Farruca, grands maîtres, letras bilingues, compás interactif et vidéos.',
           theme_color: '#0f0e0d',
           background_color: '#0f0e0d',
           display: 'standalone',

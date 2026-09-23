@@ -9,6 +9,7 @@ import { ShareModal } from './ShareModal';
 interface PaloDetailProps {
   palo: PaloData;
   paloKey: string;
+  initialTab?: SectionTab;
   isMetronomePlaying: boolean;
   onToggleMetronome: () => void;
   onPlayVideo: (video: VideoItem, sectionName: string) => void;
@@ -19,13 +20,14 @@ interface PaloDetailProps {
 export const PaloDetail: React.FC<PaloDetailProps> = ({
   palo,
   paloKey,
+  initialTab,
   isMetronomePlaying,
   onToggleMetronome,
   onPlayVideo,
   onOpenAddVideo,
   onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<SectionTab>(palo.intro ? 'intro' : 'falsetas');
+  const [activeTab, setActiveTab] = useState<SectionTab>(initialTab || (palo.intro ? 'intro' : 'falsetas'));
   const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<number | 'all'>('all');
   const [copiedLetra, setCopiedLetra] = useState<boolean>(false);
