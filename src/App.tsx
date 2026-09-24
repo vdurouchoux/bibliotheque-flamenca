@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PALOS_DATA } from './data/flamencoData';
 import { BAILE_PALOS_DATA } from './data/baileData';
 import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark, DanseSectionTab, SectionTab } from './types';
@@ -327,6 +327,11 @@ export default function App() {
   };
 
   const handleGoBack = () => {
+    if (activeVideoData) {
+      setActiveVideoData(null);
+      refreshBookmarksCount();
+      return;
+    }
     if (currentView === 'favorites') {
       if (selectedVariantKey) setCurrentView('palo-detail');
       else if (selectedPaloKey) setCurrentView('palo-detail');
@@ -392,11 +397,20 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Compute header title & subtitle: "Bibliothèque Flamenca" remains permanently as application title
-  const headerTitle: React.ReactNode = "Bibliothèque Flamenca";
+  const handleNavigateHome = () => {
+    setSelectedPaloKey(null);
+    setSelectedVariantKey(null);
+    setCurrentView('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Compute header title & subtitle: "COFLAM APP" remains permanently as application title
+  const headerTitle: React.ReactNode = "COFLAM APP";
   let headerSubtitle: React.ReactNode = undefined;
 
-  if (currentView === 'tangos-variants') {
+  if (activeVideoData) {
+    headerSubtitle = `${activeVideoData.paloName} · ${activeVideoData.sectionName}`;
+  } else if (currentView === 'tangos-variants') {
     headerSubtitle = "Tangos · Sélection de la variante";
   } else if (currentView === 'palo-detail') {
     if (discipline === 'danse') {
@@ -423,14 +437,44 @@ export default function App() {
       ? "Mes Études & Chorégraphies (Carnet personnel)" 
       : "Mes Études & Falsetas (Carnet personnel)";
   } else if (currentView === 'home') {
-    if (discipline === 'danse') {
-      headerSubtitle = "Baile flamenco · Comprendre, travailler & monter sa danse";
-    } else if (discipline === 'guitare') {
-      headerSubtitle = "Guitarra flamenca · Palos, falsetas & compás";
-    } else {
-      headerSubtitle = "Cante flamenco · Répertoire, paroles & styles";
-    }
+    // Pas de sous-titre sur l'accueil pour laisser le bandeau supérieur épuré et lisible
+    headerSubtitle = undefined;
   }
+
+  // Fichier actif affiché temporairement en haut à droite de COFLAM (Kofun)
+  const activeFileName = useMemo(() => {
+    if (activeVideoData) return 'VideoPlayerModal.tsx';
+    if (addVideoSection) return 'AddVideoModal.tsx';
+    if (isToolsModalOpen) {
+      if (toolsInitialTab === 'arborescence') return 'ArborescenceViewer.tsx';
+      if (toolsInitialTab === 'lexique') return 'FlamencoLexiqueViewer.tsx';
+      return 'FlamencoToolsModal.tsx';
+    }
+    if (isInstallGuideOpen) return 'InstallGuideModal.tsx';
+    if (isCloudSyncOpen) return 'CloudSyncModal.tsx';
+    if (showFloatingMetronome) return 'CompasVisualizer.tsx';
+    if (currentView === 'favorites') return 'FavoritesView.tsx';
+    if (currentView === 'tangos-variants') return 'TangosVariants.tsx';
+    if (currentView === 'palo-detail') {
+      return discipline === 'danse' ? 'DansePaloDetail.tsx' : 'PaloDetail.tsx';
+    }
+    if (currentView === 'home') {
+      if (discipline === 'danse') return 'DansePaloList.tsx';
+      if (discipline === 'guitare') return 'PaloList.tsx';
+      return 'App.tsx (Cante)';
+    }
+    return 'App.tsx';
+  }, [
+    activeVideoData,
+    addVideoSection,
+    isToolsModalOpen,
+    toolsInitialTab,
+    isInstallGuideOpen,
+    isCloudSyncOpen,
+    showFloatingMetronome,
+    currentView,
+    discipline
+  ]);
 
   return (
     <div className="min-h-screen bg-[#0f0e0d] text-[#f4efe6] flex flex-col font-sans selection:bg-[#e5a93b]/30">
@@ -441,6 +485,7 @@ export default function App() {
         canGoBack={currentView !== 'home'}
         backButtonLabel="Retour"
         onBack={handleGoBack}
+        onNavigateHome={handleNavigateHome}
         discipline={discipline}
         onToggleDiscipline={handleToggleDiscipline}
         isMetronomePlaying={isMetronomePlaying}
@@ -451,6 +496,7 @@ export default function App() {
         favoritesCount={bookmarksCount}
         onOpenCloudSync={() => setIsCloudSyncOpen(true)}
         cloudSyncStatus={cloudSyncState}
+        activeFileName={activeFileName}
         onPlayVideo={(video, paloName, paloKey, sectionName) => {
           setActiveVideoData({
             video,
@@ -489,6 +535,7 @@ export default function App() {
           discipline === 'danse' ? (
             <DansePaloList
               onSelectPalo={handleOpenPalo}
+              onBack={() => handleToggleDiscipline('guitare')}
               onOpenInstall={() => setIsInstallGuideOpen(true)}
               onOpenLibrary={() => handleToggleDiscipline('guitare')}
               onOpenArborescence={() => handleOpenTools('arborescence')}
@@ -698,7 +745,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Video Player Modal with the new return button at the bottom */}
+      {/* Video Player Modal */}
       {activeVideoData && (
         <VideoPlayerModal
           video={activeVideoData.video}

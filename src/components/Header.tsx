@@ -28,6 +28,7 @@ interface HeaderProps {
   canGoBack: boolean;
   backButtonLabel?: string;
   onBack: () => void;
+  onNavigateHome?: () => void;
   discipline: DisciplineMode;
   onToggleDiscipline: (mode: DisciplineMode) => void;
   isMetronomePlaying: boolean;
@@ -39,6 +40,7 @@ interface HeaderProps {
   onOpenInstall?: () => void;
   onOpenCloudSync?: () => void;
   cloudSyncStatus?: 'synced' | 'saving' | 'offline' | 'connecting' | 'error';
+  activeFileName?: string;
   // Fonctions de navigation et de lecture globale depuis la recherche
   onPlayVideo?: (video: VideoItem, paloName: string, paloKey: string, sectionName: string) => void;
   onNavigatePalo?: (paloKey: string, discipline: DisciplineMode, danseTab?: DanseSectionTab, guitarTab?: SectionTab) => void;
@@ -50,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   canGoBack,
   backButtonLabel,
   onBack,
+  onNavigateHome,
   discipline,
   onToggleDiscipline,
   isMetronomePlaying,
@@ -61,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenInstall,
   onOpenCloudSync,
   cloudSyncStatus = 'synced',
+  activeFileName,
   onPlayVideo,
   onNavigatePalo
 }) => {
@@ -185,135 +189,280 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header 
-      className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-3 sm:px-6 py-2.5 transition-colors shadow-lg"
-      style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top, 0.625rem))' }}
+      className="sticky top-0 z-40 bg-[#141210]/95 backdrop-blur-md border-b border-[#2d251d] px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3.5 transition-colors shadow-lg"
+      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0.5rem))' }}
     >
-      <div className="max-w-4xl mx-auto space-y-2">
+      <div className="max-w-5xl mx-auto space-y-2 sm:space-y-3">
         {/* ========================================================================= */}
-        {/* 1. LIGNE SUPÉRIEURE : Logo / Retour + Titre & 3 Disciplines               */}
+        {/* 1. LIGNE SUPÉRIEURE : Titre COFLAM APP & 3 Disciplines (Cante, Guitarra, Baile) */}
         {/* ========================================================================= */}
-        <div className="flex items-center justify-between gap-3">
-          {/* Gauche : Retour ou Logo Flamenco + Nom Permanent Bibliothèque Flamenca */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            {canGoBack ? (
-              <button
-                id="header-back-btn"
-                onClick={onBack}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#282119] hover:bg-[#362b20] active:scale-95 text-[#e5a93b] text-xs sm:text-sm font-bold transition-all cursor-pointer border-2 border-[#e5a93b]/70 hover:border-[#e5a93b] shadow-md shrink-0"
-                title={backButtonLabel ? `Retourner vers : ${backButtonLabel}` : "Retourner à la vue précédente"}
+        <div className="flex items-center justify-between gap-1.5 xs:gap-2 sm:gap-4">
+          {/* Gauche : Logo COFLAM APP et nom du fichier actif en dessous */}
+          <div className="flex flex-col justify-center min-w-0">
+            <div 
+              onClick={onNavigateHome}
+              role={onNavigateHome ? "button" : undefined}
+              tabIndex={onNavigateHome ? 0 : undefined}
+              className={`min-w-0 flex flex-col justify-center shrink-0 ${onNavigateHome ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+              title={onNavigateHome ? "Retourner à l'accueil" : undefined}
+            >
+              <h1 
+                className="text-xs sm:text-sm font-bold uppercase tracking-wider leading-tight select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
               >
-                <ArrowLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-                <span className="inline">{backButtonLabel || 'Retour'}</span>
-              </button>
-            ) : (
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#e5a93b]/25 to-[#b93826]/25 border border-[#e5a93b]/40 flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-0.5">
-                {discipline === 'danse' ? (
-                  <FlamencoBailaoraIcon className="w-full h-full" />
-                ) : discipline === 'guitare' ? (
-                  <FlamencoGuitaristeIcon className="w-full h-full" />
-                ) : (
-                  <FlamencoCantaorIcon className="w-full h-full" />
-                )}
-              </div>
-            )}
-
-            <div className="min-w-0">
-              <h1 className="text-sm xs:text-base sm:text-lg font-bold tracking-tight text-[#f4efe6] whitespace-nowrap font-serif leading-tight">
-                Bibliothèque Flamenca
+                <span className="block text-white font-bold uppercase tracking-wider leading-none">
+                  COFLAM
+                </span>
+                <span className="block text-[#e5a93b] font-bold uppercase tracking-wider text-[9px] xs:text-[10px] sm:text-xs leading-none mt-0.5">
+                  APP
+                </span>
               </h1>
               {subtitle && (
-                <p className="text-[11px] sm:text-xs text-[#a69c8f] truncate font-sans">
+                <p className="text-[9px] sm:text-xs text-[#a69c8f] truncate font-sans mt-0.5 max-w-[90px] xs:max-w-[140px] sm:max-w-none">
                   {subtitle}
                 </p>
               )}
             </div>
+
+            {/* Fichier actif temporaire (affiché en dessous de COFLAM APP) */}
+            {activeFileName && (
+              <div 
+                className="mt-1 px-1.5 sm:px-2 py-0.5 rounded bg-[#221a13] border border-[#e5a93b]/70 text-[#e5a93b] font-mono text-[9px] sm:text-xs font-bold tracking-tight shadow-md flex items-center gap-1 w-fit whitespace-nowrap"
+                title={`Fichier correspondant à la page actuelle : ${activeFileName}`}
+              >
+                <span className="text-[10px] sm:text-xs opacity-80 select-none">📄</span>
+                <span>{activeFileName}</span>
+              </div>
+            )}
           </div>
 
-          {/* Droite : Les 3 disciplines permanentes (Chant, Guitare, Danse) avec l'onglet actif bien en jaune */}
-          <div className="flex items-center bg-[#1c1712] p-1 rounded-xl border border-[#3e3224] shadow-inner text-xs shrink-0">
-            {/* 1. Chant (Cante flamenco) */}
+          {/* Droite : Les 3 disciplines permanentes (Cante, Guitarra, Baile) parfaitement visibles sur mobile */}
+          <div className="flex items-center bg-[#17130f] p-0.5 xs:p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-[#3e3124] shadow-md gap-0.5 xs:gap-1 sm:gap-1.5 shrink-0">
+            {/* 1. Cante (Chant flamenco) */}
             <button
               type="button"
               onClick={() => onToggleDiscipline('chant')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-1.5 xs:px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 xs:gap-1.5 sm:gap-2 ${
                 discipline === 'chant'
-                  ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
-                  : 'text-[#8c8173] hover:text-[#d4c9ba]'
+                  ? 'bg-[#e5a93b] text-[#121110] shadow-md font-extrabold ring-1 ring-[#f5b84c]'
+                  : 'text-[#a89c8d] hover:text-white hover:bg-[#251e17]'
               }`}
-              title="Chant flamenco (Cante)"
+              title="Cante flamenco"
             >
-              <FlamencoCantaorIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
-              <span className="hidden xs:inline">Chant</span>
+              <FlamencoCantaorIcon className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 shrink-0 rounded-full shadow-sm" />
+              <span className="font-bold tracking-tight xs:tracking-wide">Cante</span>
             </button>
 
-            {/* 2. Guitare (Guitarra flamenca) */}
+            {/* 2. Guitarra (Guitare flamenca) */}
             <button
               type="button"
               onClick={() => onToggleDiscipline('guitare')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-1.5 xs:px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 xs:gap-1.5 sm:gap-2 ${
                 discipline === 'guitare'
-                  ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
-                  : 'text-[#8c8173] hover:text-[#d4c9ba]'
+                  ? 'bg-[#e5a93b] text-[#121110] shadow-md font-extrabold ring-1 ring-[#f5b84c]'
+                  : 'text-[#a89c8d] hover:text-white hover:bg-[#251e17]'
               }`}
-              title="Guitare flamenca (Toque)"
+              title="Guitarra flamenca"
             >
-              <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
-              <span className="hidden xs:inline">Guitare</span>
+              <FlamencoGuitaristeIcon className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 shrink-0 rounded-full shadow-sm" />
+              <span className="font-bold tracking-tight xs:tracking-wide">Guitarra</span>
             </button>
 
-            {/* 3. Danse (en jaune en haut à droite quand sélectionné) */}
+            {/* 3. Baile (Danse flamenca) */}
             <button
               type="button"
               onClick={() => onToggleDiscipline('danse')}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-1.5 xs:px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 xs:gap-1.5 sm:gap-2 ${
                 discipline === 'danse'
-                  ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-extrabold'
-                  : 'text-[#8c8173] hover:text-[#d4c9ba]'
+                  ? 'bg-[#e5a93b] text-[#121110] shadow-md font-extrabold ring-1 ring-[#f5b84c]'
+                  : 'text-[#a89c8d] hover:text-white hover:bg-[#251e17]'
               }`}
-              title="Danse flamenca (Baile)"
+              title="Baile flamenco"
             >
-              <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5" />
-              <span className="hidden xs:inline">Danse</span>
+              <FlamencoBailaoraIcon className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 shrink-0 rounded-full shadow-sm" />
+              <span className="font-bold tracking-tight xs:tracking-wide">Baile</span>
             </button>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. LIGNE CENTRALE : LOUPE & CHAMP DE RECHERCHE PERMANENTS (FIXES AU SCROLL) */}
+        {/* 2. LIGNE INTERMÉDIAIRE : OUTILS & ACTIONS COMMUNES (COMPÁS, ARBORESCENCE, ETC.) */}
         {/* ========================================================================= */}
-        <div ref={searchContainerRef} className="relative">
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#e5a93b] pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              id="header-universal-search-input"
-              type="text"
-              value={searchTerm}
-              onChange={e => {
-                setSearchTerm(e.target.value);
-                setIsDropdownOpen(true);
-              }}
-              onFocus={() => {
-                if (searchTerm.trim()) {
-                  setIsDropdownOpen(true);
-                }
-              }}
-              placeholder="Rechercher un palo, une vidéo, une letra, un compás, un terme..."
-              className="w-full bg-[#1b1713] border border-[#382d21] focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b]/50 rounded-xl pl-9 sm:pl-10 pr-9 py-1.5 sm:py-2 text-xs sm:text-sm text-[#f4efe6] placeholder-[#807466] outline-none transition-all shadow-inner"
-            />
-            {searchTerm && (
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 pt-0.5 overflow-x-auto no-scrollbar">
+          {/* Metronome toggle */}
+          <button
+            id="header-metronome-btn"
+            onClick={onToggleMetronome}
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border shrink-0 ${
+              isMetronomePlaying
+                ? 'bg-[#e5a93b] text-[#121110] border-[#f5c363] shadow-md shadow-[#e5a93b]/20 font-bold animate-pulse'
+                : 'bg-[#211b16] text-[#d4c9ba] border-[#382e24] hover:bg-[#2d251d] hover:text-[#f4efe6]'
+            }`}
+            title={isMetronomePlaying ? 'Arrêter le compás' : 'Ouvrir / Démarrer le compás'}
+          >
+            {isMetronomePlaying ? (
+              <>
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span className="text-[11px] sm:text-xs">Compás On</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current text-[#e5a93b]" />
+                <span className="text-[11px] sm:text-xs">Compás</span>
+              </>
+            )}
+          </button>
+
+          {/* Tools / Arborescence / Cejilla / Techniques */}
+          <button
+            id="header-tools-btn"
+            onClick={onOpenTools}
+            className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
+            title="Arborescence des Palos, capodastre et techniques"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <span className="text-[11px] sm:text-xs">Arborescence</span>
+          </button>
+
+          {/* Lexique du Flamenco direct button */}
+          {onOpenLexique && (
+            <button
+              id="header-lexique-btn"
+              onClick={onOpenLexique}
+              className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
+              title="Lexique des termes techniques et vocabulaire flamenco"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#e5a93b]" />
+              <span className="text-[11px] sm:text-xs">Lexique</span>
+            </button>
+          )}
+
+          {/* Practice & Favorites */}
+          <button
+            id="header-favorites-btn"
+            onClick={onOpenFavorites}
+            className="relative px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
+            title={discipline === 'danse' ? "Mes chorégraphies et études de danse" : "Mes falsetas en cours et favoris"}
+          >
+            <Bookmark className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <span className="text-[11px] sm:text-xs">Mes Études</span>
+            {favoritesCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[9px] font-bold text-[#121110] bg-[#e5a93b] rounded-full">
+                {favoritesCount}
+              </span>
+            )}
+          </button>
+
+          {/* Cloud Sync Status Indicator & Mobile Pairing */}
+          {onOpenCloudSync && (
+            <button
+              id="header-cloud-sync-btn"
+              onClick={onOpenCloudSync}
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border shadow-sm shrink-0 ${
+                cloudSyncStatus === 'saving'
+                  ? 'bg-[#2b2214] text-[#e5a93b] border-[#e5a93b]/50'
+                  : cloudSyncStatus === 'offline'
+                  ? 'bg-[#241f1c] text-[#8c8072] border-[#383028]'
+                  : 'bg-[#15231a] hover:bg-[#1c3024] text-emerald-400 border-emerald-600/40 hover:border-emerald-500'
+              }`}
+              title="Synchronisation automatique Cloud (PC & Téléphone reliés)"
+            >
+              <div className="relative flex items-center">
+                <Cloud className="w-3.5 h-3.5" />
+                <span 
+                  className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
+                    cloudSyncStatus === 'saving'
+                      ? 'bg-[#e5a93b]'
+                      : cloudSyncStatus === 'offline'
+                      ? 'bg-zinc-500'
+                      : 'bg-emerald-400'
+                  }`}
+                />
+              </div>
+              <span className="hidden sm:inline text-[11px]">
+                {cloudSyncStatus === 'saving' ? 'Sauvegarde...' : 'Cloud'}
+              </span>
+            </button>
+          )}
+
+          {/* Fullscreen Toggle - Supprime immédiatement toute barre de navigation de navigateur */}
+          <button
+            id="header-fullscreen-btn"
+            onClick={handleToggleFullscreen}
+            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 ${
+              isFullscreen
+                ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/50 shadow-sm font-bold'
+                : 'bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] border-[#382e24]'
+            }`}
+            title={isFullscreen ? "Quitter le plein écran" : "Afficher en plein écran (masquer les barres du navigateur)"}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span className="text-[11px] sm:text-xs">Fenêtre</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span className="text-[11px] sm:text-xs">Plein écran</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 3. LIGNE INFÉRIEURE : RETOUR + CHAMP DE RECHERCHE AVEC LOUPE À DROITE     */}
+        {/* ========================================================================= */}
+        <div ref={searchContainerRef} className="relative pt-0.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {canGoBack && (
               <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setIsDropdownOpen(false);
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#25201b] transition-colors cursor-pointer"
-                title="Effacer la recherche"
+                id="header-back-btn"
+                onClick={onBack}
+                className="flex items-center gap-1 xs:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-[#282119] hover:bg-[#362b20] active:scale-95 text-[#e5a93b] text-xs sm:text-sm font-bold transition-all cursor-pointer border border-[#e5a93b]/70 hover:border-[#e5a93b] shadow-md shrink-0 h-[40px] sm:h-[44px]"
+                title={backButtonLabel ? `Retourner vers : ${backButtonLabel}` : "Retourner à la vue précédente"}
               >
-                <X className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                <span className="inline font-bold">{backButtonLabel || 'Retour'}</span>
               </button>
             )}
+
+            <div className="relative flex-1 flex items-center">
+              <input
+                ref={searchInputRef}
+                id="header-universal-search-input"
+                type="text"
+                value={searchTerm}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setIsDropdownOpen(true);
+                }}
+                onFocus={() => {
+                  if (searchTerm.trim()) {
+                    setIsDropdownOpen(true);
+                  }
+                }}
+                placeholder="Rechercher un palo, une vidéo, une letra, un compás, un terme..."
+                className="w-full bg-[#181410] border-2 border-[#3e3123] focus:border-[#e5a93b] focus:ring-2 focus:ring-[#e5a93b]/30 rounded-xl sm:rounded-2xl pl-3.5 sm:pl-4 pr-16 sm:pr-20 py-2 sm:py-2.5 text-xs sm:text-sm text-[#f4efe6] placeholder-[#948676] outline-none transition-all shadow-md hover:border-[#52412e] h-[40px] sm:h-[44px]"
+              />
+
+              {/* Loupe déplacée à droite & bouton d'effacement */}
+              <div className="absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-auto">
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="p-1 rounded-lg text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#25201b] transition-colors cursor-pointer"
+                    title="Effacer la recherche"
+                  >
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                )}
+                <Search className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#e5a93b] pointer-events-none drop-shadow-sm shrink-0" />
+              </div>
+            </div>
           </div>
 
           {/* Panneau déroulant flottant des résultats de recherche sous la barre */}
@@ -561,130 +710,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* ========================================================================= */}
-        {/* 3. LIGNE INFÉRIEURE : OUTILS & ACTIONS COMMUNES                           */}
-        {/* ========================================================================= */}
-        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 pt-1 border-t border-[#251f18]/70 overflow-x-auto no-scrollbar">
-          {/* Metronome toggle */}
-          <button
-            id="header-metronome-btn"
-            onClick={onToggleMetronome}
-            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border shrink-0 ${
-              isMetronomePlaying
-                ? 'bg-[#e5a93b] text-[#121110] border-[#f5c363] shadow-md shadow-[#e5a93b]/20 font-bold animate-pulse'
-                : 'bg-[#211b16] text-[#d4c9ba] border-[#382e24] hover:bg-[#2d251d] hover:text-[#f4efe6]'
-            }`}
-            title={isMetronomePlaying ? 'Arrêter le compás' : 'Ouvrir / Démarrer le compás'}
-          >
-            {isMetronomePlaying ? (
-              <>
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span className="text-[11px] sm:text-xs">Compás On</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current text-[#e5a93b]" />
-                <span className="text-[11px] sm:text-xs">Compás</span>
-              </>
-            )}
-          </button>
 
-          {/* Tools / Arborescence / Cejilla / Techniques */}
-          <button
-            id="header-tools-btn"
-            onClick={onOpenTools}
-            className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
-            title="Arborescence des Palos, capodastre et techniques"
-          >
-            <Layers className="w-3.5 h-3.5 text-[#e5a93b]" />
-            <span className="text-[11px] sm:text-xs">Arborescence</span>
-          </button>
-
-          {/* Lexique du Flamenco direct button */}
-          {onOpenLexique && (
-            <button
-              id="header-lexique-btn"
-              onClick={onOpenLexique}
-              className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
-              title="Lexique des termes techniques et vocabulaire flamenco"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-[#e5a93b]" />
-              <span className="text-[11px] sm:text-xs">Lexique</span>
-            </button>
-          )}
-
-          {/* Practice & Favorites */}
-          <button
-            id="header-favorites-btn"
-            onClick={onOpenFavorites}
-            className="relative px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] text-xs font-medium transition-colors cursor-pointer border border-[#382e24] flex items-center gap-1.5 shrink-0"
-            title={discipline === 'danse' ? "Mes chorégraphies et études de danse" : "Mes falsetas en cours et favoris"}
-          >
-            <Bookmark className="w-3.5 h-3.5 text-[#e5a93b]" />
-            <span className="text-[11px] sm:text-xs">Mes Études</span>
-            {favoritesCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[9px] font-bold text-[#121110] bg-[#e5a93b] rounded-full">
-                {favoritesCount}
-              </span>
-            )}
-          </button>
-
-          {/* Cloud Sync Status Indicator & Mobile Pairing */}
-          {onOpenCloudSync && (
-            <button
-              id="header-cloud-sync-btn"
-              onClick={onOpenCloudSync}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border shadow-sm shrink-0 ${
-                cloudSyncStatus === 'saving'
-                  ? 'bg-[#2b2214] text-[#e5a93b] border-[#e5a93b]/50'
-                  : cloudSyncStatus === 'offline'
-                  ? 'bg-[#241f1c] text-[#8c8072] border-[#383028]'
-                  : 'bg-[#15231a] hover:bg-[#1c3024] text-emerald-400 border-emerald-600/40 hover:border-emerald-500'
-              }`}
-              title="Synchronisation automatique Cloud (PC & Téléphone reliés)"
-            >
-              <div className="relative flex items-center">
-                <Cloud className="w-3.5 h-3.5" />
-                <span 
-                  className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
-                    cloudSyncStatus === 'saving'
-                      ? 'bg-[#e5a93b]'
-                      : cloudSyncStatus === 'offline'
-                      ? 'bg-zinc-500'
-                      : 'bg-emerald-400'
-                  }`}
-                />
-              </div>
-              <span className="hidden sm:inline text-[11px]">
-                {cloudSyncStatus === 'saving' ? 'Sauvegarde...' : 'Cloud'}
-              </span>
-            </button>
-          )}
-
-          {/* Fullscreen Toggle - Supprime immédiatement toute barre de navigation de navigateur */}
-          <button
-            id="header-fullscreen-btn"
-            onClick={handleToggleFullscreen}
-            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 ${
-              isFullscreen
-                ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/50 shadow-sm font-bold'
-                : 'bg-[#211b16] hover:bg-[#2d251d] text-[#d4c9ba] hover:text-[#e5a93b] border-[#382e24]'
-            }`}
-            title={isFullscreen ? "Quitter le plein écran" : "Afficher en plein écran (masquer les barres du navigateur)"}
-          >
-            {isFullscreen ? (
-              <>
-                <Minimize className="w-3.5 h-3.5 text-[#e5a93b]" />
-                <span className="text-[11px] sm:text-xs">Fenêtre</span>
-              </>
-            ) : (
-              <>
-                <Maximize className="w-3.5 h-3.5 text-[#e5a93b]" />
-                <span className="text-[11px] sm:text-xs">Plein écran</span>
-              </>
-            )}
-          </button>
-        </div>
       </div>
     </header>
   );

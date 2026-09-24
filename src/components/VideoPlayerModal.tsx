@@ -416,14 +416,36 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#1e1a16] border-b border-[#2e2720]">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="text-xs text-[#a69c8f] truncate font-medium">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2">
+          {/* Gauche : Bouton Retour, Nom du fichier actif et détails */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+            {/* Bouton retour (remplace la croix pour fermer le lecteur) */}
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#f4efe6] hover:text-[#e5a93b] border border-[#443522] hover:border-[#e5a93b]/50 text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
+              title="Retour (fermer le lecteur)"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#e5a93b]" />
+              <span className="text-xs">Retour</span>
+            </button>
+
+            {/* Nom du fichier de la page */}
+            <div
+              className="px-2 py-1 rounded bg-[#14110e] border border-[#e5a93b]/70 text-[#e5a93b] font-mono text-[10px] sm:text-xs font-bold tracking-tight shadow-sm flex items-center gap-1 shrink-0 whitespace-nowrap"
+              title="Fichier de ce composant : VideoPlayerModal.tsx"
+            >
+              <span className="text-[10px] sm:text-xs opacity-90 select-none">📄</span>
+              <span>VideoPlayerModal.tsx</span>
+            </div>
+
+            {/* Titre du palo et de la section */}
+            <span className="text-[11px] sm:text-xs text-[#a69c8f] truncate font-medium hidden md:inline ml-1">
               {paloName} • {sectionName}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Droite : Bouton Partager et Lien externe vers YouTube (la croix de droite a été supprimée) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={handleShareVideo}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer"
@@ -443,13 +465,6 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 <ExternalLink className="w-4 h-4" />
               </a>
             )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-[#a69c8f] hover:text-[#f4efe6] hover:bg-[#2a241e] transition-colors cursor-pointer"
-              title="Fermer le lecteur"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
@@ -516,6 +531,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <video
               controls
               autoPlay
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
               src={currentVideo.url}
               className="absolute inset-0 w-full h-full object-contain bg-black"
             />

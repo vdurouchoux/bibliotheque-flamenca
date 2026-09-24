@@ -14,6 +14,7 @@ import baileBgImg from '../assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg';
 
 interface DansePaloListProps {
   onSelectPalo: (paloKey: string) => void;
+  onBack?: () => void;
   onOpenInstall?: () => void;
   onOpenLibrary?: () => void;
   onOpenArborescence?: () => void;
@@ -102,20 +103,26 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
         </div>
 
         <div className="relative z-10 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <FlamencoBailaoraIcon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-md" />
-            <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              BAILE
-            </span>
-          </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <FlamencoBailaoraIcon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-md" />
+              <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                BAILE
+              </span>
+            </div>
 
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-            Comprendre, travailler, et monter sa danse flamenca
-          </h2>
+            <h2 className="text-right text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-tight shrink-0">
+              Monter sa<br />danse flamenca
+            </h2>
+          </div>
 
           {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide laissant voir la danseuse au travers */}
           <DanseArborescenceTree 
-            title="Présentation générale" 
+            title={
+              <>
+                Présentation<br />générale
+              </>
+            } 
             onOpenLexique={onOpenLexique} 
             defaultExpanded={false}
             translucent={true}
@@ -158,10 +165,9 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
           )}
         </div>
 
-        {/* Champ de recherche déroulant affiché au clic sur la loupe de Palos de Danse */}
+        {/* Champ de recherche déroulant affiché au clic sur la loupe de Palos de Danse avec loupe à droite */}
         {isCatalogSearchOpen && (
           <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c8173]" />
             <input
               ref={catalogSearchInputRef}
               type="text"
@@ -169,9 +175,9 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
               value={catalogSearchTerm}
               onChange={e => setCatalogSearchTerm(e.target.value)}
               placeholder="Rechercher un palo de la liste (ex: Farruca, Alegrías, Soleá, Bulerías, compás...)"
-              className="w-full pl-10 pr-20 py-2.5 rounded-xl bg-[#171410] border border-[#e5a93b]/60 text-[#f4efe6] placeholder-[#73685a] text-sm focus:outline-none focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b] transition-all shadow-inner"
+              className="w-full pl-3.5 pr-24 py-2.5 rounded-xl bg-[#171410] border border-[#e5a93b]/60 text-[#f4efe6] placeholder-[#73685a] text-sm focus:outline-none focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b] transition-all shadow-inner"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
               {catalogSearchTerm && (
                 <button
                   type="button"
@@ -185,6 +191,8 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   Effacer
                 </button>
               )}
+              {/* Loupe à droite */}
+              <Search className="w-4 h-4 text-[#e5a93b] pointer-events-none drop-shadow-sm shrink-0" />
               <button
                 type="button"
                 onClick={() => {

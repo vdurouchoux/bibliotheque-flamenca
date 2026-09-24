@@ -1451,32 +1451,14 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* Hero Card Palo Danse compact : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
       {activeTab === 'hub' && (
         <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 shadow-lg">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] font-serif tracking-tight">
-                {palo.name}
-              </h2>
-              {/* Bouton Partager placé directement à droite de Farruca */}
-              <button
-                type="button"
-                onClick={handleShareSpace}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#221c17] hover:bg-[#2e251e] text-[#e5a93b] border border-[#3e3223] text-xs font-bold transition-all shadow-sm cursor-pointer"
-                title="Partager un lien vers la Farruca"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>Partager</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#c53d2d]/20 text-[#ff8f82] border border-[#c53d2d]/40 flex items-center gap-1.5">
-                <FlamencoBailaoraIcon className="w-3.5 h-3.5 inline-block shrink-0 -mt-0.5" />
-                <span>Danse Flamenca</span>
-              </span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2a231b] text-[#e5a93b] border border-[#3d3326]">
-                {palo.tag}
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 font-bold text-xs uppercase tracking-wider shrink-0 shadow-xs">
+              <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5 text-[#e5a93b]" />
+              <span>BAILE</span>
+            </span>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] font-serif tracking-tight">
+              {palo.name}
+            </h2>
           </div>
         </div>
       )}
@@ -1486,7 +1468,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div id="danse-espaces-etude" className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20">
           {/* Arborescence réelle cliquable pointant vers les mêmes pages */}
           <DanseArborescenceTree
-            title="Commencer à travailler · Explorer & Créer"
+            title="Commencer à travailler, explorer et créer"
+            borderedFolders={true}
             onNavigate={(tab) => {
               setActiveTab(tab);
               window.scrollTo({ top: 0, behavior: 'smooth' });

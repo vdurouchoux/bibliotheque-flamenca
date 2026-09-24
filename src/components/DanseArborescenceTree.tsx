@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Folder, FolderOpen, ChevronDown, ChevronUp, ChevronsUpDown, ArrowRight, Lightbulb, UploadCloud, CheckCircle2, Sparkles, Compass, List, LayoutGrid, Play, Video as VideoIcon, Film } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronsUpDown, ArrowRight, Lightbulb, UploadCloud, CheckCircle2, Sparkles, Compass, List, LayoutGrid, Play, Video as VideoIcon, Film, Folder, FolderOpen } from 'lucide-react';
 import { VideoItem } from '../types';
 import { extractYouTubeInfo } from '../utils/storage';
 
@@ -9,6 +9,7 @@ export interface DanseArborescenceTreeProps {
   defaultExpanded?: boolean;
   title?: React.ReactNode;
   translucent?: boolean;
+  borderedFolders?: boolean;
   counts?: {
     maitres?: number;
     cours?: number;
@@ -29,6 +30,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
   defaultExpanded = false,
   title,
   translucent = false,
+  borderedFolders = false,
   counts,
   maitresVideos,
   coursVideos,
@@ -151,17 +153,17 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
   };
 
   return (
-    <div className={`rounded-2xl border-2 p-4 sm:p-6 shadow-2xl relative space-y-4 transition-all duration-200 ${
+    <div className={`rounded-2xl border p-4 sm:p-6 shadow-2xl relative space-y-4 transition-all duration-200 ${
       translucent
-        ? 'bg-black/24 border-[#e5a93b]/40 shadow-black/90'
+        ? 'bg-black/15 border-[#382d22] shadow-black/80'
         : 'bg-[#0f0d0b] border-[#382d22]'
     }`}>
       {/* Contrôle supérieur : Titre d'invitation au travail */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]/80 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <Sparkles className="w-4 h-4 text-[#e5a93b] shrink-0" />
-          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] font-sans truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-            {title ?? "Commencer à travailler · Explorer & Créer"}
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] font-sans break-words whitespace-normal leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            {title ?? "Commencer à travailler, explorer et créer"}
           </span>
         </div>
       </div>
@@ -173,21 +175,27 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
         {/* DOSSIER 1 (AU-DESSUS) : BIBLIOTHÈQUE FLAMENCA (AVEC SES SOUS-DOSSIERS ENFANTS) */}
         {/* ========================================================================= */}
         <div className="relative">
-          <div className={`rounded-xl border-2 border-[#86efac]/80 overflow-hidden shadow-lg transition-all ${
-            translucent ? 'bg-[#131c15]/24 hover:bg-[#131c15]/40' : 'bg-[#131c15]'
+          <div className={`rounded-xl overflow-hidden shadow-lg transition-all ${
+            borderedFolders
+              ? 'border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.18)]'
+              : 'border border-[#382d22]'
+          } ${
+            translucent ? 'bg-black/10 hover:bg-black/20' : 'bg-[#141210]'
           }`}>
             <div
               onClick={() => toggleFolder('biblio')}
-              className="w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer hover:bg-[#1a261c] transition-colors select-none"
+              className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer transition-colors select-none ${
+                translucent ? 'hover:bg-white/[0.04]' : 'hover:bg-[#1a1714]'
+              }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-[#86efac] transition-transform duration-200">
-                  {openFolders['biblio'] ? (
-                    <FolderOpen className="w-5 h-5 text-[#bbf7d0] fill-[#86efac]/30" />
+                {borderedFolders && (
+                  openFolders['biblio'] ? (
+                    <FolderOpen className="w-5 h-5 text-emerald-400 fill-emerald-400/25 shrink-0" />
                   ) : (
-                    <Folder className="w-5 h-5 text-[#86efac] fill-[#86efac]/20" />
-                  )}
-                </span>
+                    <Folder className="w-5 h-5 text-emerald-400 fill-emerald-400/25 shrink-0" />
+                  )
+                )}
                 <span className="font-serif text-sm sm:text-base font-bold text-[#86efac] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
                   Bibliothèque Flamenca
                 </span>
@@ -210,7 +218,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
             {/* Instructions du dossier Bibliothèque Flamenca */}
             {openFolders['biblio'] && (
-              <div className="px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#233526] bg-[#0f1711] animate-in fade-in duration-150">
+              <div className={`px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#382d22] animate-in fade-in duration-150 ${
+                translucent ? 'bg-black/25' : 'bg-[#0f1711]'
+              }`}>
                 <p>
                   C'est la base de votre travail. Commencez sans attendre à alimenter votre bibliothèque, palo par palo, en y classant vos sources de référence : Grands Maîtres, cours et stages, letras poétiques et compás.
                 </p>
@@ -218,15 +228,15 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
             )}
           </div>
 
-          {/* SOUS-DOSSIERS DE LA BIBLIOTHÈQUE FLAMENCA (Ligne de branche vert émeraude) */}
+          {/* SOUS-DOSSIERS DE LA BIBLIOTHÈQUE FLAMENCA */}
           {openFolders['biblio'] && (
-            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#86efac]/40 space-y-3 pt-3">
+            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-3">
               
               {/* --- SOUS-DOSSIER : LES GRANDS MAÎTRES --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#86efac]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141914] border border-[#2b392d] hover:border-[#86efac]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -235,16 +245,16 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('maitres');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a231b] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#86efac] shrink-0">
-                        {openFolders['maitres'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#bbf7d0] fill-[#86efac]/30" />
+                      {borderedFolders && (
+                        openFolders['maitres'] ? (
+                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#86efac] fill-[#86efac]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
@@ -441,9 +451,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
               {/* --- SOUS-DOSSIER : MES COURS & STAGES --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#86efac]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141914] border border-[#2b392d] hover:border-[#86efac]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -452,16 +462,16 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('cours');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a231b] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#86efac] shrink-0">
-                        {openFolders['cours'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#bbf7d0] fill-[#86efac]/30" />
+                      {borderedFolders && (
+                        openFolders['cours'] ? (
+                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#86efac] fill-[#86efac]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
@@ -662,9 +672,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
               {/* --- SOUS-DOSSIER : LETRAS & TEXTES --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#86efac]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141914] border border-[#2b392d] hover:border-[#86efac]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -673,16 +683,16 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('letras');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a231b] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#86efac] shrink-0">
-                        {openFolders['letras'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#bbf7d0] fill-[#86efac]/30" />
+                      {borderedFolders && (
+                        openFolders['letras'] ? (
+                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#86efac] fill-[#86efac]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
@@ -759,9 +769,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
               {/* --- SOUS-DOSSIER : COMPÁS & PALMAS --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#86efac]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141914] border border-[#2b392d] hover:border-[#86efac]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -770,16 +780,16 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('compas');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a231b] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#86efac] shrink-0">
-                        {openFolders['compas'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#bbf7d0] fill-[#86efac]/30" />
+                      {borderedFolders && (
+                        openFolders['compas'] ? (
+                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#86efac] fill-[#86efac]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
@@ -861,23 +871,28 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
         <div className="relative pt-2">
           <div 
             ref={studioHeaderRef}
-            className={`rounded-xl border-2 border-[#60a5fa]/80 overflow-hidden shadow-lg transition-all ${
-              translucent ? 'bg-[#0f172a]/24 hover:bg-[#0f172a]/40' : 'bg-[#0f172a]/60'
+            className={`rounded-xl overflow-hidden shadow-lg transition-all ${
+              borderedFolders
+                ? 'border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.18)]'
+                : 'border border-[#382d22]'
+            } ${
+              translucent ? 'bg-black/10 hover:bg-black/20' : 'bg-[#141210]'
             }`}
           >
             <div
               onClick={() => toggleFolder('studio')}
-              className="w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer hover:bg-[#1e293b]/60 transition-colors select-none"
+              className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer transition-colors select-none ${
+                translucent ? 'hover:bg-white/[0.04]' : 'hover:bg-[#1a1714]'
+              }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                {/* Icône dossier stylisée en bleu */}
-                <span className="text-[#60a5fa] transition-transform duration-200">
-                  {openFolders['studio'] ? (
-                    <FolderOpen className="w-5 h-5 text-[#93c5fd] fill-[#60a5fa]/30" />
+                {borderedFolders && (
+                  openFolders['studio'] ? (
+                    <FolderOpen className="w-5 h-5 text-blue-400 fill-blue-400/25 shrink-0" />
                   ) : (
-                    <Folder className="w-5 h-5 text-[#60a5fa] fill-[#60a5fa]/20" />
-                  )}
-                </span>
+                    <Folder className="w-5 h-5 text-blue-400 fill-blue-400/25 shrink-0" />
+                  )
+                )}
                 <span className="font-serif text-sm sm:text-base font-bold text-[#60a5fa] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
                   Atelier de création
                 </span>
@@ -900,7 +915,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
             {/* Instructions du dossier Atelier de création */}
             {openFolders['studio'] && (
-              <div className="px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#1e293b] bg-[#0c1322] animate-in fade-in duration-150">
+              <div className={`px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#382d22] animate-in fade-in duration-150 ${
+                translucent ? 'bg-black/25' : 'bg-[#0c1322]'
+              }`}>
                 <p>
                   L'Atelier de création est votre outil de travail principal. C'est ici que vous structurez votre danse, et que vous reliez les différentes parties à vos médias, grâce à des repères temporels.
                 </p>
@@ -908,15 +925,15 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
             )}
           </div>
 
-          {/* SOUS-DOSSIERS DE L'ATELIER DE CRÉATION (Ligne de branche bleue) */}
+          {/* SOUS-DOSSIERS DE L'ATELIER DE CRÉATION */}
           {openFolders['studio'] && (
-            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#60a5fa]/40 space-y-3 pt-3">
+            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-3">
               
               {/* --- SOUS-DOSSIER : STRUCTURE TRADITIONNELLE --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#60a5fa]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#171310] border border-[#382b20] hover:border-[#60a5fa]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -928,13 +945,13 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#60a5fa] shrink-0">
-                        {openFolders['structure'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#93c5fd] fill-[#60a5fa]/30" />
+                      {borderedFolders && (
+                        openFolders['structure'] ? (
+                          <FolderOpen className="w-4 h-4 text-blue-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#60a5fa] fill-[#60a5fa]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <span className="font-serif text-xs sm:text-sm font-bold text-[#60a5fa] group-hover:text-[#93c5fd] transition-colors">
                           Structure traditionnelle
@@ -1000,9 +1017,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
               {/* --- SOUS-DOSSIER : CARNET DE MONTAGE --- */}
               <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#60a5fa]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#171310] border border-[#382b20] hover:border-[#60a5fa]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -1014,13 +1031,13 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <span className="text-[#60a5fa] shrink-0">
-                        {openFolders['carnet'] ? (
-                          <FolderOpen className="w-4 h-4 text-[#93c5fd] fill-[#60a5fa]/30" />
+                      {borderedFolders && (
+                        openFolders['carnet'] ? (
+                          <FolderOpen className="w-4 h-4 text-blue-400 shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-[#60a5fa] fill-[#60a5fa]/20" />
-                        )}
-                      </span>
+                          <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                        )
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#60a5fa] group-hover:text-[#93c5fd] transition-colors">
@@ -1099,9 +1116,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
               {/* --- SECTION SOUS LE CARNET DE MONTAGE : CONSEILS & ASTUCES --- */}
               <div className="relative group" ref={tipsContainerRef}>
-                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#60a5fa]/40" />
+                <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#10192b]/95 border border-[#233857] hover:border-[#60a5fa]/70 overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={toggleTips}
                     className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#16233b] transition-colors select-none"
