@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw } from 'lucide-react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical } from 'lucide-react';
 import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
 import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
@@ -38,16 +38,18 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const [currentVideo, setCurrentVideo] = useState<VideoItem>(video);
   const [showReplaceModal, setShowReplaceModal] = useState<boolean>(false);
 
-  useEffect(() => {
-    setCurrentVideo(video);
-  }, [video]);
-
   const availability = checkVideoDeviceAvailability(currentVideo);
   const currentDevice = getCurrentDeviceType();
 
-  const [notes, setNotes] = useState<string>('');
-  const [isSaved, setIsSaved] = useState<boolean>(false);
-  const [status, setStatus] = useState<'to_learn' | 'learning' | 'mastered'>('learning');
+  const [notes, setNotes] = useState<string>(() => getVideoNotes(video.id));
+  const [isSaved, setIsSaved] = useState<boolean>(() => {
+    const bookmarks = getBookmarks();
+    return Boolean(bookmarks[video.id]);
+  });
+  const [status, setStatus] = useState<'to_learn' | 'learning' | 'mastered'>(() => {
+    const bookmarks = getBookmarks();
+    return bookmarks[video.id]?.status || 'learning';
+  });
   const [notesSavedFeedback, setNotesSavedFeedback] = useState<boolean>(false);
 
   const resolveInitialLandmarks = (v: VideoItem): VideoLandmark[] => {
@@ -78,29 +80,55 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const parsedInfo = extractYouTubeInfo(currentVideo.url, 0);
   const videoId = parsedInfo.videoId;
   const initialStart = currentVideo.startSeconds !== undefined ? Math.max(0, currentVideo.startSeconds) : 0;
-  const [currentStart, setCurrentStart] = useState<number>(initialStart);
+  
+  // Stable starting timestamp (in seconds) for the video embed, preserved during playback
+  const initialStartSecondsRef = useRef<number>(initialStart);
+  // Current playback position for UI display (in seconds)
+  const [currentPosition, setCurrentPosition] = useState<number>(initialStart);
+  const currentTimeRef = useRef<number>(initialStart);
   const [playerKey, setPlayerKey] = useState<number>(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
   const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const isFromMontage = sectionName.toLowerCase().includes('montage');
 
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
   const handleShareVideo = () => {
+    setIsMenuOpen(false);
     const opts = getVideoShareData({
       video,
       paloName,
       paloId,
       sectionName,
-      currentTime: currentStart,
+      currentTime: currentPosition,
       discipline: discipline || (isDance ? 'danse' : 'guitare')
     });
     setShareModalOptions(opts);
   };
 
   const tryPlayVideo = () => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.play().catch(() => {});
+    } else if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
         '*'
@@ -109,14 +137,20 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   };
 
   const handleIframeLoad = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'listening' }),
+        '*'
+      );
+    }
     tryPlayVideo();
-    setTimeout(tryPlayVideo, 350);
-    setTimeout(tryPlayVideo, 800);
-    setTimeout(tryPlayVideo, 1400);
   };
 
   const changePlaybackSpeed = (rate: number) => {
     setPlaybackSpeed(rate);
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.playbackRate = rate;
+    }
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({
@@ -130,7 +164,15 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   };
 
   const togglePlayPause = () => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
+    if (htmlVideoRef.current) {
+      if (htmlVideoRef.current.paused) {
+        htmlVideoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        htmlVideoRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else if (iframeRef.current && iframeRef.current.contentWindow) {
       if (isPlaying) {
         iframeRef.current.contentWindow.postMessage(
           JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
@@ -147,7 +189,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
-  // Listen to YouTube player state events
+  // Listen to YouTube player state events and progress without triggering iframe reloads
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       try {
@@ -161,6 +203,13 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           } else if (data.event === 'infoDelivery' && data.info) {
             if (data.info.playerState === 1) setIsPlaying(true);
             else if (data.info.playerState === 2 || data.info.playerState === 0) setIsPlaying(false);
+            if (typeof data.info.currentTime === 'number') {
+              const sec = Math.floor(data.info.currentTime);
+              currentTimeRef.current = sec;
+              if (Math.abs(sec - currentPosition) >= 1) {
+                setCurrentPosition(sec);
+              }
+            }
           }
         }
       } catch {
@@ -170,31 +219,22 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [currentPosition]);
 
-  const isFirstMount = useRef(true);
+  // Stable tracking of active video ID & URL to prevent unnecessary resets
   const prevVideoIdRef = useRef(video.id);
-  const prevStartRef = useRef(video.startSeconds);
+  const prevUrlRef = useRef(video.url);
 
   useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      const t1 = setTimeout(tryPlayVideo, 350);
-      const t2 = setTimeout(tryPlayVideo, 800);
-      const t3 = setTimeout(tryPlayVideo, 1400);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
-    }
-
-    if (prevVideoIdRef.current !== video.id || prevStartRef.current !== video.startSeconds) {
+    if (prevVideoIdRef.current !== video.id || prevUrlRef.current !== video.url) {
       prevVideoIdRef.current = video.id;
-      prevStartRef.current = video.startSeconds;
+      prevUrlRef.current = video.url;
+      setCurrentVideo(video);
 
       const start = video.startSeconds !== undefined ? Math.max(0, video.startSeconds) : 0;
-      setCurrentStart(start);
+      initialStartSecondsRef.current = start;
+      currentTimeRef.current = start;
+      setCurrentPosition(start);
       setPlaybackSpeed(1);
       setIsPlaying(true);
       setPlayerKey(k => k + 1);
@@ -216,7 +256,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         setStatus('learning');
       }
     }
-  }, [video.id, video.url, video.startSeconds]);
+  }, [video]);
 
   const isCanteOrLetra = 
     sectionName.toLowerCase().includes('letra') || 
@@ -251,9 +291,13 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   const handleJumpToTime = (seconds: number) => {
     const sec = Math.max(0, seconds);
-    setCurrentStart(sec);
+    currentTimeRef.current = sec;
+    setCurrentPosition(sec);
     setIsPlaying(true);
-    if (iframeRef.current && iframeRef.current.contentWindow) {
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.currentTime = sec;
+      htmlVideoRef.current.play().catch(() => {});
+    } else if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'seekTo', args: [sec, true] }),
         '*'
@@ -262,8 +306,6 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
         '*'
       );
-    } else {
-      setPlayerKey(k => k + 1);
     }
   };
 
@@ -296,7 +338,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const handleAddLandmark = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newLmTitle.trim()) return;
-    const secs = newLmTime ? parseTimeToSeconds(newLmTime) : currentStart;
+    const secs = newLmTime ? parseTimeToSeconds(newLmTime) : currentPosition;
     const formattedTime = formatSecondsToMinutes(secs);
     const label = `${formattedTime} - ${newLmTitle.trim()}`;
     const newLm: VideoLandmark = {
@@ -356,15 +398,19 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   };
 
   const handleSkipForward = (deltaSeconds: number) => {
-    setCurrentStart(prev => prev + deltaSeconds);
-    setIsPlaying(true);
-    setPlayerKey(k => k + 1);
+    const currentActualTime = htmlVideoRef.current 
+      ? htmlVideoRef.current.currentTime 
+      : currentTimeRef.current;
+    const newTime = Math.max(0, currentActualTime + deltaSeconds);
+    handleJumpToTime(Math.floor(newTime));
   };
 
   const handleRewind = (deltaSeconds: number) => {
-    setCurrentStart(prev => Math.max(0, prev - deltaSeconds));
-    setIsPlaying(true);
-    setPlayerKey(k => k + 1);
+    const currentActualTime = htmlVideoRef.current 
+      ? htmlVideoRef.current.currentTime 
+      : currentTimeRef.current;
+    const newTime = Math.max(0, currentActualTime - deltaSeconds);
+    handleJumpToTime(Math.floor(newTime));
   };
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -412,6 +458,42 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
+  const isHtml5Video = !videoId && Boolean(
+    currentVideo.url && (
+      currentVideo.url.startsWith('blob:') ||
+      currentVideo.url.startsWith('data:video') ||
+      currentVideo.url.startsWith('/') ||
+      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(currentVideo.url) ||
+      (!currentVideo.url.includes('youtube.com') && !currentVideo.url.includes('youtu.be'))
+    )
+  );
+
+  const handleLoadedMetadata = () => {
+    if (htmlVideoRef.current) {
+      if (initialStartSecondsRef.current > 0) {
+        htmlVideoRef.current.currentTime = initialStartSecondsRef.current;
+      }
+      if (playbackSpeed !== 1) {
+        htmlVideoRef.current.playbackRate = playbackSpeed;
+      }
+    }
+  };
+
+  const handleNativeTimeUpdate = () => {
+    if (htmlVideoRef.current) {
+      const sec = Math.floor(htmlVideoRef.current.currentTime);
+      currentTimeRef.current = sec;
+      if (Math.abs(sec - currentPosition) >= 1) {
+        setCurrentPosition(sec);
+      }
+    }
+  };
+
+  // The iframe src remains completely stable during playback so it never reloads the video automatically
+  const iframeSrc = videoId
+    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${initialStartSecondsRef.current}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`
+    : '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-200">
@@ -444,26 +526,53 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </span>
           </div>
 
-          {/* Droite : Bouton Partager et Lien externe vers YouTube (la croix de droite a été supprimée) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Droite : Menu 3 petits points avec Partager et Lire sur YouTube à la position du repère */}
+          <div className="relative shrink-0" ref={menuRef}>
             <button
-              onClick={handleShareVideo}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer"
-              title="Partager cette vidéo avec vos camarades (Web Share ou presse-papier)"
+              onClick={() => setIsMenuOpen(prev => !prev)}
+              className="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center"
+              title="Options (Partager, YouTube...)"
+              aria-label="Options"
+              aria-expanded={isMenuOpen}
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Partager</span>
+              <MoreVertical className="w-4 h-4" />
             </button>
-            {video.url && (
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noreferrer"
-                className="p-1.5 rounded-lg text-[#a69c8f] hover:text-[#e5a93b] hover:bg-[#2a241e] transition-colors"
-                title="Ouvrir sur YouTube"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+
+            {isMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-[#1e1a16] border border-[#4a3c2b] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                {/* Option 1 : Partager */}
+                <button
+                  onClick={handleShareVideo}
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                  <div className="flex flex-col">
+                    <span>Partager la vidéo</span>
+                    <span className="text-[10px] text-[#8c8173] font-normal">Lien web, QR code, WhatsApp...</span>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-[#332a20]" />
+
+                {/* Option 2 : Lire sur YouTube à la position du repère */}
+                {video.url ? (
+                  <a
+                    href={currentPosition > 0 ? `${video.url}${video.url.includes('?') ? '&' : '?'}t=${currentPosition}s` : video.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                    <div className="flex flex-col">
+                      <span>Lire sur YouTube à la position du repère</span>
+                      <span className="text-[10px] text-[#8c8173] font-mono">
+                        {currentPosition > 0 ? `Minutage : ${Math.floor(currentPosition / 60)}:${(currentPosition % 60).toString().padStart(2, '0')}` : 'Depuis le début'}
+                      </span>
+                    </div>
+                  </a>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
@@ -521,18 +630,23 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               ref={iframeRef}
               key={playerKey}
               onLoad={handleIframeLoad}
-              src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${currentStart}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`}
+              src={iframeSrc}
               title={currentVideo.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="absolute inset-0 w-full h-full border-0"
             />
-          ) : currentVideo.url && (currentVideo.url.startsWith('blob:') || currentVideo.url.match(/\.(mp4|webm|mov|m4v)$/i)) ? (
+          ) : isHtml5Video ? (
             <video
+              ref={htmlVideoRef}
               controls
+              playsInline
               autoPlay
+              preload="auto"
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onTimeUpdate={handleNativeTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
               src={currentVideo.url}
               className="absolute inset-0 w-full h-full object-contain bg-black"
             />
@@ -583,30 +697,41 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
               <span>+30s</span>
             </button>
+
+            {/* Bouton Pause / Play déplacé directement à droite de >> +30s */}
+            <button
+              onClick={togglePlayPause}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
+                isPlaying
+                  ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
+                  : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
+              }`}
+              title={isPlaying ? "Mettre en pause la vidéo" : "Lancer la vidéo"}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-3.5 h-3.5 fill-current" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Lecture</span>
+                </>
+              )}
+            </button>
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-[#8c8173]">
-            {currentStart > 0 && (
+            {currentPosition > 0 && (
               <span className="text-[#e5a93b] font-mono bg-[#241e17] px-2 py-0.5 rounded border border-[#3d3326]">
-                Position : {Math.floor(currentStart / 60)}:{(currentStart % 60).toString().padStart(2, '0')}
+                Position : {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
               </span>
-            )}
-            {video.url && (
-              <a
-                href={currentStart > 0 ? `${video.url}${video.url.includes('?') ? '&' : '?'}t=${currentStart}s` : video.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#25201b] hover:bg-[#322c25] text-[#b8ada0] hover:text-[#f4efe6] transition-colors"
-                title="Ouvrir avec le minutage exact sur YouTube"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>YouTube ↗</span>
-              </a>
             )}
           </div>
         </div>
 
-        {/* Slow-motion / Ralenti & Playback Speed Bar with Play/Pause */}
+        {/* Slow-motion / Ralenti & Playback Speed Bar */}
         <div className="px-3 sm:px-4 py-2 bg-[#13100d] border-b border-[#29221a] flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 text-[#e5a93b] font-semibold text-xs">
@@ -635,29 +760,6 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 </button>
               ))}
             </div>
-
-            {/* Bouton Pause / Play à droite du ralenti */}
-            <button
-              onClick={togglePlayPause}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
-                isPlaying
-                  ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
-                  : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
-              }`}
-              title={isPlaying ? "Mettre en pause (image nette sans barre rouge)" : "Lancer la vidéo"}
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-3.5 h-3.5 fill-current" />
-                  <span>Pause</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Lancer la vidéo</span>
-                </>
-              )}
-            </button>
           </div>
           <span className="text-[11px] text-[#7a6f62] italic hidden sm:inline">
             Pratique pour décomposer le zapateado, les compás et les falsetas
@@ -768,7 +870,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 {landmarks.map((lm, idx) => {
                   const minutes = Math.floor(lm.timeSeconds / 60);
                   const secs = (lm.timeSeconds % 60).toString().padStart(2, '0');
-                  const isCurrent = Math.abs(currentStart - lm.timeSeconds) < 4;
+                  const isCurrent = Math.abs(currentPosition - lm.timeSeconds) < 4;
                   return (
                     <button
                       key={idx}
@@ -906,7 +1008,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         type="text"
                         value={newLmTime}
                         onChange={e => setNewLmTime(e.target.value)}
-                        placeholder={formatSecondsToMinutes(currentStart)}
+                        placeholder={formatSecondsToMinutes(currentPosition)}
                         className="w-16 bg-transparent text-xs text-[#f4efe6] font-mono focus:outline-none"
                         title="Entrez le minutage (ex: 1:45 ou 105)"
                       />
@@ -930,7 +1032,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     </button>
                   </div>
                   <p className="text-[10px] text-[#8c8173]">
-                    💡 Astuce : laissez le temps vide pour utiliser automatiquement la position courante du lecteur ({formatSecondsToMinutes(currentStart)}).
+                    💡 Astuce : laissez le temps vide pour utiliser automatiquement la position courante du lecteur ({formatSecondsToMinutes(currentPosition)}).
                   </p>
                 </form>
               </div>
