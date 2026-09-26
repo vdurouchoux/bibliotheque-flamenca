@@ -5,6 +5,7 @@ import { extractYouTubeInfo } from '../utils/storage';
 
 export interface DanseArborescenceTreeProps {
   onNavigate?: (key: 'structure' | 'maitres' | 'letras' | 'compas' | 'cours' | 'montages') => void;
+  onOpenBibliotheque?: () => void;
   onOpenLexique?: () => void;
   defaultExpanded?: boolean;
   title?: React.ReactNode;
@@ -232,11 +233,11 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
           {openFolders['biblio'] && (
             <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-3">
               
-              {/* --- SOUS-DOSSIER : LES GRANDS MAÎTRES --- */}
+              {/* --- SOUS-DOSSIER : GRANDS MAÎTRES --- */}
               <div className="relative group">
                 <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -245,7 +246,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('maitres');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
@@ -257,18 +258,15 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
-                            Les Grands Maîtres
+                          <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac] group-hover:text-white transition-colors">
+                            Grands maîtres
                           </span>
                           {counts?.maitres !== undefined && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#86efac]/15 text-[#86efac] border border-[#86efac]/30 font-medium">
-                              {counts.maitres} vidéo{counts.maitres > 1 ? 's' : ''}
+                              {counts.maitres} média{counts.maitres > 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-[#8c8173] block truncate">
-                          Vidéos, archives & références historiques
-                        </span>
                       </div>
                     </div>
 
@@ -280,7 +278,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                             e.stopPropagation();
                             onNavigate('maitres');
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0f1711] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0b1710] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
                           title="Accéder aux Grands Maîtres"
                         >
                           <span>Accéder</span>
@@ -295,7 +293,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                           toggleFolder('maitres');
                         }}
                         className="p-1 rounded text-[#a69c8f] hover:text-[#86efac] hover:bg-[#86efac]/10 transition-colors cursor-pointer"
-                        title={openFolders['maitres'] ? "Masquer les détails" : "Voir les détails"}
+                        title={openFolders['maitres'] ? "Masquer les vidéos" : "Voir les vidéos"}
                       >
                         <ChevronDown
                           className={`w-4 h-4 text-[#a69c8f] transition-transform duration-200 ${
@@ -307,139 +305,140 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                   </div>
 
                   {openFolders['maitres'] && (
-                    <div className="px-3.5 sm:px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#233325] bg-[#0e140f] space-y-3 animate-in fade-in duration-150">
-                      {/* Affichage des médias : Liste minimaliste ou Icônes */}
-                      {maitresVideos && maitresVideos.length > 0 ? (
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-[#1c291e] flex-wrap">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#86efac] flex items-center gap-1.5">
-                              <Film className="w-3.5 h-3.5" />
-                              <span>Médias ({maitresVideos.length})</span>
-                            </span>
+                    <div className="px-3 sm:px-4 pb-3.5 pt-2 border-t border-[#2b2118] bg-[#120f0d] space-y-3 animate-in fade-in duration-150">
+                      <p className="text-xs text-[#a69c8f] leading-relaxed">
+                        Interprétations de référence pour nourrir le regard, la posture et l'énergie du baile.
+                      </p>
 
-                            {/* Commutateur Vue Liste / Vue Icônes */}
-                            <div className="flex items-center rounded-lg bg-[#141b15] p-0.5 border border-[#233325]">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTreeMaitresViewMode('list');
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  treeMaitresViewMode === 'list'
-                                    ? 'bg-[#86efac] text-[#0f1711] font-bold shadow-xs'
-                                    : 'text-[#8c8173] hover:text-[#f4efe6]'
-                                }`}
-                                title="Vue liste minimaliste (seulement les noms)"
-                              >
-                                <List className="w-3 h-3" />
-                                <span>Liste</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTreeMaitresViewMode('icons');
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  treeMaitresViewMode === 'icons'
-                                    ? 'bg-[#86efac] text-[#0f1711] font-bold shadow-xs'
-                                    : 'text-[#8c8173] hover:text-[#f4efe6]'
-                                }`}
-                                title="Vue icônes (vignettes & noms)"
-                              >
-                                <LayoutGrid className="w-3 h-3" />
-                                <span>Icônes</span>
-                              </button>
-                            </div>
+                      {/* Commutateur de vue : Liste minimaliste (nom seul) / Icônes (vignette & nom) */}
+                      {maitresVideos && maitresVideos.length > 0 && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#241c15]">
+                          <span className="text-[11px] text-[#8c8173] font-medium">
+                            {maitresVideos.length} interprétation{maitresVideos.length > 1 ? 's' : ''} disponible{maitresVideos.length > 1 ? 's' : ''} :
+                          </span>
+                          <div className="flex items-center rounded-lg bg-[#181410] p-0.5 border border-[#2b2118]">
+                            <button
+                              type="button"
+                              onClick={() => setTreeMaitresViewMode('list')}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeMaitresViewMode === 'list'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title="Affichage liste (seulement les noms)"
+                            >
+                              <List className="w-3 h-3" />
+                              <span>Liste</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTreeMaitresViewMode('icons')}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeMaitresViewMode === 'icons'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title="Affichage icônes (vignettes & noms)"
+                            >
+                              <LayoutGrid className="w-3 h-3" />
+                              <span>Icônes</span>
+                            </button>
                           </div>
-
-                          {/* Vue Liste Minimaliste : SEULEMENT LE NOM */}
-                          {treeMaitresViewMode === 'list' ? (
-                            <div className="space-y-1 bg-[#121a13] p-1.5 rounded-xl border border-[#202d21]">
-                              {maitresVideos.map(video => (
-                                <div
-                                  key={video.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onPlayVideo) {
-                                      onPlayVideo(video, 'Grands Maîtres');
-                                    } else if (onNavigate) {
-                                      onNavigate('maitres');
-                                    }
-                                  }}
-                                  className="group flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#152016] hover:bg-[#1f2f21] border border-[#223324] hover:border-[#86efac]/60 transition-all cursor-pointer select-none"
-                                  title={`Lancer ${video.title}`}
-                                >
-                                  <div className="w-5 h-5 rounded-md bg-[#223324] group-hover:bg-[#86efac] text-[#86efac] group-hover:text-[#0f1711] flex items-center justify-center shrink-0 transition-colors shadow-xs">
-                                    <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                                  </div>
-                                  <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-[#fff] transition-colors truncate flex-1">
-                                    {video.title}
-                                  </span>
-                                  {video.isCustom && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#2a1c38] text-[#c99eff] border border-[#432b5e] shrink-0 font-medium">
-                                      Perso
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            /* Vue Icônes */
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[#121a13] p-2 rounded-xl border border-[#202d21]">
-                              {maitresVideos.map(video => {
-                                const yt = extractYouTubeInfo(video.url);
-                                const thumbUrl = yt.videoId ? `https://img.youtube.com/vi/${yt.videoId}/mqdefault.jpg` : null;
-                                return (
-                                  <div
-                                    key={video.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onPlayVideo) {
-                                        onPlayVideo(video, 'Grands Maîtres');
-                                      } else if (onNavigate) {
-                                        onNavigate('maitres');
-                                      }
-                                    }}
-                                    className="group p-2 rounded-lg bg-[#152016] hover:bg-[#1f2f21] border border-[#223324] hover:border-[#86efac]/60 transition-all cursor-pointer flex flex-col items-center text-center shadow-xs"
-                                    title={`Lancer ${video.title}`}
-                                  >
-                                    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-[#0d140e] border border-[#202f22] flex items-center justify-center">
-                                      {thumbUrl ? (
-                                        <img src={thumbUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                                      ) : (
-                                        <VideoIcon className="w-6 h-6 text-[#86efac]/60" />
-                                      )}
-                                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                        <div className="w-6 h-6 rounded-full bg-[#86efac] text-[#0f1711] flex items-center justify-center shadow-md">
-                                          <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <span className="mt-1.5 text-[11px] font-semibold text-[#ded3c5] group-hover:text-[#fff] line-clamp-2 leading-snug px-0.5">
-                                      {video.title}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
-                      ) : null}
+                      )}
 
-                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#ded3c5] pt-1 border-t border-[#1c291e]/60">
-                        <li>Observez le style, la posture et les nuances d'interprétation des figures de référence (Carmen Amaya, Antonio Gades, Vicente Escudero, Matilde Coral...).</li>
-                        <li>Étudiez les appels (llamadas) et sorties de scène historiques pour nourrir votre propre gestuelle.</li>
-                      </ul>
+                      {/* VUE 1 : LISTE MINIMALISTE (SEULEMENT LES NOMS) */}
+                      {maitresVideos && maitresVideos.length > 0 && treeMaitresViewMode === 'list' && (
+                        <div className="space-y-1">
+                          {maitresVideos.map((video) => (
+                            <div
+                              key={video.id}
+                              onClick={() => {
+                                if (onPlayVideo) {
+                                  onPlayVideo(video, 'Grands Maîtres');
+                                } else if (onNavigate) {
+                                  onNavigate('maitres');
+                                }
+                              }}
+                              className="group/item flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-lg bg-[#181410] hover:bg-[#221c16] border border-[#261f18] hover:border-[#86efac]/60 transition-all cursor-pointer select-none"
+                              title="Cliquer pour visionner et travailler cette vidéo"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="w-5 h-5 rounded-md bg-[#221c16] group-hover/item:bg-[#86efac] text-[#86efac] group-hover/item:text-[#0b1710] flex items-center justify-center shrink-0 transition-colors">
+                                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                                </div>
+                                <span className="text-xs font-semibold text-[#ded3c5] group-hover/item:text-[#86efac] transition-colors truncate">
+                                  {video.title}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-[#8c8173] group-hover/item:text-[#ded3c5] shrink-0 font-medium">
+                                Visionner ›
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* VUE 2 : GRILLE D'ICÔNES (VIGNETTES AVEC NOM EN DESSOUS) */}
+                      {maitresVideos && maitresVideos.length > 0 && treeMaitresViewMode === 'icons' && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {maitresVideos.map((video) => {
+                            const ytInfo = extractYouTubeInfo(video.url);
+                            const thumbUrl = ytInfo.videoId ? `https://img.youtube.com/vi/${ytInfo.videoId}/mqdefault.jpg` : null;
+
+                            return (
+                              <div
+                                key={video.id}
+                                onClick={() => {
+                                  if (onPlayVideo) {
+                                    onPlayVideo(video, 'Grands Maîtres');
+                                  } else if (onNavigate) {
+                                    onNavigate('maitres');
+                                  }
+                                }}
+                                className="group/thumb flex flex-col p-2 rounded-lg bg-[#181410] hover:bg-[#221c16] border border-[#261f18] hover:border-[#86efac]/70 transition-all cursor-pointer shadow-xs select-none"
+                                title="Cliquer pour visionner cette vidéo"
+                              >
+                                <div className="relative w-full aspect-video rounded overflow-hidden bg-black/60 border border-[#2e261e] mb-1.5 flex items-center justify-center">
+                                  {thumbUrl ? (
+                                    <img
+                                      src={thumbUrl}
+                                      alt={video.title}
+                                      className="w-full h-full object-cover transition-transform duration-200 group-hover/thumb:scale-105"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <Film className="w-6 h-6 text-[#86efac]/50" />
+                                  )}
+                                  <div className="absolute inset-0 bg-black/35 group-hover/thumb:bg-black/15 transition-colors flex items-center justify-center">
+                                    <div className="w-6 h-6 rounded-full bg-[#86efac] text-[#0b1710] flex items-center justify-center shadow">
+                                      <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="text-[11px] font-semibold text-[#ded3c5] group-hover/thumb:text-[#86efac] line-clamp-2 leading-tight text-center font-serif">
+                                  {video.title}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {(!maitresVideos || maitresVideos.length === 0) && (
+                        <p className="text-xs text-[#8c8173] italic">
+                          Consultez l'espace complet pour voir toutes les versions.
+                        </p>
+                      )}
+
                       {onNavigate && (
                         <div className="pt-1 flex justify-end">
                           <button
                             type="button"
                             onClick={() => onNavigate('maitres')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0f1711] font-bold text-xs transition-colors cursor-pointer shadow"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0b1710] font-bold text-xs transition-colors cursor-pointer shadow"
                           >
-                            <span>Ouvrir l'espace complet Les Grands Maîtres</span>
+                            <span>Ouvrir l'espace Grands Maîtres</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -449,11 +448,11 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                 </div>
               </div>
 
-              {/* --- SOUS-DOSSIER : MES COURS & STAGES --- */}
+              {/* --- SOUS-DOSSIER : COURS ET STAGES --- */}
               <div className="relative group">
                 <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -462,7 +461,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('cours');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
@@ -474,8 +473,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
-                            Mes Cours & Stages
+                          <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac] group-hover:text-white transition-colors">
+                            Cours et stages
                           </span>
                           {counts?.cours !== undefined && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#86efac]/15 text-[#86efac] border border-[#86efac]/30 font-medium">
@@ -483,9 +482,6 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-[#8c8173] block truncate">
-                          Prises de vue atelier & chorégraphies apprises
-                        </span>
                       </div>
                     </div>
 
@@ -497,8 +493,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                             e.stopPropagation();
                             onNavigate('cours');
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0f1711] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                          title="Accéder à Mes Cours & Stages"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0b1710] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          title="Accéder aux Cours et Stages"
                         >
                           <span>Accéder</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -512,7 +508,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                           toggleFolder('cours');
                         }}
                         className="p-1 rounded text-[#a69c8f] hover:text-[#86efac] hover:bg-[#86efac]/10 transition-colors cursor-pointer"
-                        title={openFolders['cours'] ? "Masquer les détails" : "Voir les détails"}
+                        title={openFolders['cours'] ? "Masquer les vidéos" : "Voir les vidéos"}
                       >
                         <ChevronDown
                           className={`w-4 h-4 text-[#a69c8f] transition-transform duration-200 ${
@@ -524,143 +520,140 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                   </div>
 
                   {openFolders['cours'] && (
-                    <div className="px-3.5 sm:px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#233325] bg-[#0e140f] space-y-3 animate-in fade-in duration-150">
-                      {/* Affichage des médias : Liste minimaliste ou Icônes */}
-                      {coursVideos && coursVideos.length > 0 ? (
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-[#1c291e] flex-wrap">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#86efac] flex items-center gap-1.5">
-                              <Film className="w-3.5 h-3.5" />
-                              <span>Médias de cours ({coursVideos.length})</span>
-                            </span>
+                    <div className="px-3 sm:px-4 pb-3.5 pt-2 border-t border-[#2b2118] bg-[#120f0d] space-y-3 animate-in fade-in duration-150">
+                      <p className="text-xs text-[#a69c8f] leading-relaxed">
+                        Ajoutez vos vidéos de cours, stages et entraînements personnels pour travailler pas à pas.
+                      </p>
 
-                            {/* Commutateur Vue Liste / Vue Icônes */}
-                            <div className="flex items-center rounded-lg bg-[#141b15] p-0.5 border border-[#233325]">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTreeCoursViewMode('list');
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  treeCoursViewMode === 'list'
-                                    ? 'bg-[#86efac] text-[#0f1711] font-bold shadow-xs'
-                                    : 'text-[#8c8173] hover:text-[#f4efe6]'
-                                }`}
-                                title="Vue liste minimaliste (seulement les noms)"
-                              >
-                                <List className="w-3 h-3" />
-                                <span>Liste</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTreeCoursViewMode('icons');
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  treeCoursViewMode === 'icons'
-                                    ? 'bg-[#86efac] text-[#0f1711] font-bold shadow-xs'
-                                    : 'text-[#8c8173] hover:text-[#f4efe6]'
-                                }`}
-                                title="Vue icônes (vignettes & noms)"
-                              >
-                                <LayoutGrid className="w-3 h-3" />
-                                <span>Icônes</span>
-                              </button>
-                            </div>
+                      {/* Commutateur de vue pour les cours : Liste (nom seul) / Icônes */}
+                      {coursVideos && coursVideos.length > 0 && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#241c15]">
+                          <span className="text-[11px] text-[#8c8173] font-medium">
+                            {coursVideos.length} vidéo{coursVideos.length > 1 ? 's' : ''} personnelle{coursVideos.length > 1 ? 's' : ''} :
+                          </span>
+                          <div className="flex items-center rounded-lg bg-[#181410] p-0.5 border border-[#2b2118]">
+                            <button
+                              type="button"
+                              onClick={() => setTreeCoursViewMode('list')}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeCoursViewMode === 'list'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title="Affichage liste (seulement les noms)"
+                            >
+                              <List className="w-3 h-3" />
+                              <span>Liste</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTreeCoursViewMode('icons')}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeCoursViewMode === 'icons'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title="Affichage icônes (vignettes & noms)"
+                            >
+                              <LayoutGrid className="w-3 h-3" />
+                              <span>Icônes</span>
+                            </button>
                           </div>
-
-                          {/* Vue Liste Minimaliste : SEULEMENT LE NOM */}
-                          {treeCoursViewMode === 'list' ? (
-                            <div className="space-y-1 bg-[#121a13] p-1.5 rounded-xl border border-[#202d21]">
-                              {coursVideos.map(video => (
-                                <div
-                                  key={video.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onPlayVideo) {
-                                      onPlayVideo(video, 'Mes Cours & Stages');
-                                    } else if (onNavigate) {
-                                      onNavigate('cours');
-                                    }
-                                  }}
-                                  className="group flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#152016] hover:bg-[#1f2f21] border border-[#223324] hover:border-[#86efac]/60 transition-all cursor-pointer select-none"
-                                  title={`Lancer ${video.title}`}
-                                >
-                                  <div className="w-5 h-5 rounded-md bg-[#223324] group-hover:bg-[#86efac] text-[#86efac] group-hover:text-[#0f1711] flex items-center justify-center shrink-0 transition-colors shadow-xs">
-                                    <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                                  </div>
-                                  <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-[#fff] transition-colors truncate flex-1">
-                                    {video.title}
-                                  </span>
-                                  {video.isCustom && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#2a1c38] text-[#c99eff] border border-[#432b5e] shrink-0 font-medium">
-                                      Perso
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            /* Vue Icônes */
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[#121a13] p-2 rounded-xl border border-[#202d21]">
-                              {coursVideos.map(video => {
-                                const yt = extractYouTubeInfo(video.url);
-                                const thumbUrl = yt.videoId ? `https://img.youtube.com/vi/${yt.videoId}/mqdefault.jpg` : null;
-                                return (
-                                  <div
-                                    key={video.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onPlayVideo) {
-                                        onPlayVideo(video, 'Mes Cours & Stages');
-                                      } else if (onNavigate) {
-                                        onNavigate('cours');
-                                      }
-                                    }}
-                                    className="group p-2 rounded-lg bg-[#152016] hover:bg-[#1f2f21] border border-[#223324] hover:border-[#86efac]/60 transition-all cursor-pointer flex flex-col items-center text-center shadow-xs"
-                                    title={`Lancer ${video.title}`}
-                                  >
-                                    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-[#0d140e] border border-[#202f22] flex items-center justify-center">
-                                      {thumbUrl ? (
-                                        <img src={thumbUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                                      ) : (
-                                        <VideoIcon className="w-6 h-6 text-[#86efac]/60" />
-                                      )}
-                                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                        <div className="w-6 h-6 rounded-full bg-[#86efac] text-[#0f1711] flex items-center justify-center shadow-md">
-                                          <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <span className="mt-1.5 text-[11px] font-semibold text-[#ded3c5] group-hover:text-[#fff] line-clamp-2 leading-snug px-0.5">
-                                      {video.title}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-2.5 rounded-lg bg-[#131b14] border border-[#223224] text-[11px] text-[#8c8173] text-center">
-                          Aucune vidéo de cours ajoutée pour le moment.
                         </div>
                       )}
 
-                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#ded3c5] pt-1 border-t border-[#1c291e]/60">
-                        <li>Centralisez les vidéos prises à la fin de vos cours et stages hebdomadaires ou intensifs.</li>
-                        <li>Archivez les consignes de vos professeurs et les variations de bras, buste et zapateado.</li>
-                      </ul>
+                      {/* VUE 1 : LISTE MINIMALISTE DES COURS (SEULEMENT LES NOMS) */}
+                      {coursVideos && coursVideos.length > 0 && treeCoursViewMode === 'list' && (
+                        <div className="space-y-1">
+                          {coursVideos.map((video) => (
+                            <div
+                              key={video.id}
+                              onClick={() => {
+                                if (onPlayVideo) {
+                                  onPlayVideo(video, 'Mes Cours & Stages');
+                                } else if (onNavigate) {
+                                  onNavigate('cours');
+                                }
+                              }}
+                              className="group/item flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-lg bg-[#181410] hover:bg-[#221c16] border border-[#261f18] hover:border-[#86efac]/60 transition-all cursor-pointer select-none"
+                              title="Cliquer pour visionner et travailler cette vidéo"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="w-5 h-5 rounded-md bg-[#221c16] group-hover/item:bg-[#86efac] text-[#86efac] group-hover/item:text-[#0b1710] flex items-center justify-center shrink-0 transition-colors">
+                                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                                </div>
+                                <span className="text-xs font-semibold text-[#ded3c5] group-hover/item:text-[#86efac] transition-colors truncate">
+                                  {video.title}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-[#8c8173] group-hover/item:text-[#ded3c5] shrink-0 font-medium">
+                                Visionner ›
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* VUE 2 : GRILLE D'ICÔNES DES COURS (VIGNETTES AVEC NOM EN DESSOUS) */}
+                      {coursVideos && coursVideos.length > 0 && treeCoursViewMode === 'icons' && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {coursVideos.map((video) => {
+                            const ytInfo = extractYouTubeInfo(video.url);
+                            const thumbUrl = ytInfo.videoId ? `https://img.youtube.com/vi/${ytInfo.videoId}/mqdefault.jpg` : null;
+
+                            return (
+                              <div
+                                key={video.id}
+                                onClick={() => {
+                                  if (onPlayVideo) {
+                                    onPlayVideo(video, 'Mes Cours & Stages');
+                                  } else if (onNavigate) {
+                                    onNavigate('cours');
+                                  }
+                                }}
+                                className="group/thumb flex flex-col p-2 rounded-lg bg-[#181410] hover:bg-[#221c16] border border-[#261f18] hover:border-[#86efac]/70 transition-all cursor-pointer shadow-xs select-none"
+                                title="Cliquer pour visionner cette vidéo"
+                              >
+                                <div className="relative w-full aspect-video rounded overflow-hidden bg-black/60 border border-[#2e261e] mb-1.5 flex items-center justify-center">
+                                  {thumbUrl ? (
+                                    <img
+                                      src={thumbUrl}
+                                      alt={video.title}
+                                      className="w-full h-full object-cover transition-transform duration-200 group-hover/thumb:scale-105"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <Film className="w-6 h-6 text-[#86efac]/50" />
+                                  )}
+                                  <div className="absolute inset-0 bg-black/35 group-hover/thumb:bg-black/15 transition-colors flex items-center justify-center">
+                                    <div className="w-6 h-6 rounded-full bg-[#86efac] text-[#0b1710] flex items-center justify-center shadow">
+                                      <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="text-[11px] font-semibold text-[#ded3c5] group-hover/thumb:text-[#86efac] line-clamp-2 leading-tight text-center font-serif">
+                                  {video.title}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {(!coursVideos || coursVideos.length === 0) && (
+                        <p className="text-xs text-[#8c8173] italic">
+                          Aucune vidéo ajoutée pour l'instant. Ajoutez vos vidéos dans l'espace complet.
+                        </p>
+                      )}
+
                       {onNavigate && (
                         <div className="pt-1 flex justify-end">
                           <button
                             type="button"
                             onClick={() => onNavigate('cours')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0f1711] font-bold text-xs transition-colors cursor-pointer shadow"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0b1710] font-bold text-xs transition-colors cursor-pointer shadow"
                           >
-                            <span>Ouvrir l'espace complet Mes Cours & Stages</span>
+                            <span>Ouvrir l'espace Cours & Stages</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -670,11 +663,11 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                 </div>
               </div>
 
-              {/* --- SOUS-DOSSIER : LETRAS & TEXTES --- */}
+              {/* --- SOUS-DOSSIER : LETRAS --- */}
               <div className="relative group">
                 <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -683,7 +676,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('letras');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
@@ -694,18 +687,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         )
                       )}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
-                            Letras & Textes poétiques
-                          </span>
-                          {counts?.letras !== undefined && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#86efac]/15 text-[#86efac] border border-[#86efac]/30 font-medium">
-                              {counts.letras} chants
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-[#8c8173] block truncate">
-                          Paroles, sens & traductions
+                        <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac] group-hover:text-white transition-colors">
+                          Letras
                         </span>
                       </div>
                     </div>
@@ -718,8 +701,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                             e.stopPropagation();
                             onNavigate('letras');
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0f1711] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                          title="Accéder aux Letras & Textes"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0b1710] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          title="Accéder aux Letras"
                         >
                           <span>Accéder</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -745,19 +728,18 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                   </div>
 
                   {openFolders['letras'] && (
-                    <div className="px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#233325] bg-[#0e140f] space-y-2 animate-in fade-in duration-150">
-                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#ded3c5]">
-                        <li>Comprenez le sens littéral et émotionnel du cante pour ajuster votre interprétation et votre corporalité.</li>
-                        <li>Repérez la structure poétique (couplets de 3 ou 4 vers) et les respirations du chanteur pour placer vos marcajes.</li>
-                      </ul>
+                    <div className="px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#2b2118] bg-[#120f0d] space-y-2 animate-in fade-in duration-150">
+                      <p>
+                        Poésie, textes originaux et traductions françaises pour comprendre le sens des vers et marquer le chant avec justesse.
+                      </p>
                       {onNavigate && (
                         <div className="pt-1 flex justify-end">
                           <button
                             type="button"
                             onClick={() => onNavigate('letras')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0f1711] font-bold text-xs transition-colors cursor-pointer shadow"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0b1710] font-bold text-xs transition-colors cursor-pointer shadow"
                           >
-                            <span>Ouvrir l'espace Letras & Textes</span>
+                            <span>Ouvrir l'espace Letras</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -767,11 +749,11 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                 </div>
               </div>
 
-              {/* --- SOUS-DOSSIER : COMPÁS & PALMAS --- */}
+              {/* --- SOUS-DOSSIER : COMPÁS --- */}
               <div className="relative group">
                 <div className="absolute -left-4 sm:-left-6 top-5 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
 
-                <div className="rounded-xl bg-[#141210] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
+                <div className="rounded-xl bg-[#171310] border border-[#2b2118] hover:border-[#4a3a2a] overflow-hidden transition-all shadow-md">
                   <div
                     onClick={() => {
                       if (onNavigate) {
@@ -780,7 +762,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         toggleFolder('compas');
                       }
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1a1714] transition-colors select-none"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#1c1713] transition-colors select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
@@ -791,16 +773,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                         )
                       )}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-serif text-xs sm:text-sm font-bold text-[#bbf7d0] group-hover:text-[#fff] transition-colors">
-                            Compás & Palmas
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#86efac]/15 text-[#86efac] border border-[#86efac]/30 font-medium">
-                            {counts?.compas || '4 temps'}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-[#8c8173] block truncate">
-                          Cadence, accents rythmiques & vitesse
+                        <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac] group-hover:text-white transition-colors">
+                          Compás
                         </span>
                       </div>
                     </div>
@@ -813,8 +787,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                             e.stopPropagation();
                             onNavigate('compas');
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0f1711] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                          title="Accéder au Compás & Palmas"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#86efac]/15 hover:bg-[#86efac] text-[#86efac] hover:text-[#0b1710] border border-[#86efac]/40 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          title="Accéder au Compás"
                         >
                           <span>Accéder</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -840,19 +814,18 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                   </div>
 
                   {openFolders['compas'] && (
-                    <div className="px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#233325] bg-[#0e140f] space-y-2 animate-in fade-in duration-150">
-                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#ded3c5]">
-                        <li>Intégrez le patron rythmique propre au palo (ex: 4 temps pour la Farruca, 12 temps pour la Solea ou l'Alegría).</li>
-                        <li>Travaillez la précision des palmas (sordas pour accompagner le cante, abiertas pour les accélérations et remates).</li>
-                      </ul>
+                    <div className="px-4 pb-3.5 pt-2 text-xs text-[#ded3c5] leading-relaxed border-t border-[#2b2118] bg-[#120f0d] space-y-2 animate-in fade-in duration-150">
+                      <p>
+                        Métronome visuel et sonore (palmas & cajón réels) sur le compás binaire pour répéter et caler le zapateado.
+                      </p>
                       {onNavigate && (
                         <div className="pt-1 flex justify-end">
                           <button
                             type="button"
                             onClick={() => onNavigate('compas')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0f1711] font-bold text-xs transition-colors cursor-pointer shadow"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#86efac] hover:bg-[#a7f3d0] text-[#0b1710] font-bold text-xs transition-colors cursor-pointer shadow"
                           >
-                            <span>Ouvrir l'espace Compás & Palmas</span>
+                            <span>Ouvrir l'espace Compás</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -861,9 +834,11 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                   )}
                 </div>
               </div>
+
             </div>
           )}
         </div>
+
 
         {/* ========================================================================= */}
         {/* DOSSIER 2 (DESSOUS) : ATELIER DE CRÉATION (AVEC SES SOUS-DOSSIERS ENFANTS) */}

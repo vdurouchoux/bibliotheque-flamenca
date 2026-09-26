@@ -45,6 +45,7 @@ export default function App() {
   const [selectedPaloKey, setSelectedPaloKey] = useState<string | null>(null);
   const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
   const [danseTab, setDanseTab] = useState<DanseSectionTab>('hub');
+  const [isBiblioPageOpen, setIsBiblioPageOpen] = useState<boolean>(false);
 
   // Modals state
   const [activeVideoData, setActiveVideoData] = useState<{
@@ -248,6 +249,7 @@ export default function App() {
   const handleToggleDiscipline = (mode: DisciplineMode) => {
     setDiscipline(mode);
     setDanseTab('hub');
+    setIsBiblioPageOpen(false);
     try {
       localStorage.setItem('flamenco_discipline', mode);
     } catch (e) {
@@ -301,6 +303,7 @@ export default function App() {
     setSelectedVariantKey(null);
     setPaloInitialTab(initialTab);
     setDanseTab('hub');
+    setIsBiblioPageOpen(false);
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -309,6 +312,9 @@ export default function App() {
     setSelectedPaloKey(paloKey);
     setSelectedVariantKey(null);
     setDanseTab(tab);
+    if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
+      setIsBiblioPageOpen(true);
+    }
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -339,27 +345,18 @@ export default function App() {
     } else if (currentView === 'palo-detail') {
       if (discipline === 'danse') {
         if (danseTab !== 'hub') {
-          // Si on est dans un des 6 blocs (ex: Grands Maîtres, Mes montages), on retourne directement aux 6 carrés !
+          // Si on est dans un dossier (ex: Grands Maîtres, Cours, Letras, Compás, etc.), on retourne à l'arborescence de la Farruca avec les dossiers verts
           setDanseTab('hub');
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              const el = document.getElementById('danse-espaces-etude');
-              if (el) {
-                const headerOffset = 70;
-                const elementPosition = el.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                window.scrollTo({
-                  top: Math.max(0, offsetPosition),
-                  behavior: 'smooth'
-                });
-              } else {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }
-            }, 60);
-          });
+          setIsBiblioPageOpen(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        } else if (isBiblioPageOpen) {
+          // Si on est sur l'arborescence de la Farruca avec les dossiers verts, on retourne à la vue principale du palo
+          setIsBiblioPageOpen(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } else {
-          // Déjà sur les 6 blocs, on revient à la liste des palos
+          // Déjà sur la vue principale du palo, on revient à la liste des palos
           setSelectedPaloKey(null);
           setCurrentView('home');
         }
@@ -400,6 +397,8 @@ export default function App() {
   const handleNavigateHome = () => {
     setSelectedPaloKey(null);
     setSelectedVariantKey(null);
+    setDanseTab('hub');
+    setIsBiblioPageOpen(false);
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -509,7 +508,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 pb-24">
+      <main className={`flex-1 w-full mx-auto p-3 sm:p-6 pb-24 ${isBiblioPageOpen ? 'max-w-6xl' : 'max-w-4xl'}`}>
         {/* Sync notification toast */}
         {syncToast && (
           <div className="mb-5 p-3.5 sm:p-4 rounded-2xl bg-[#261f17] border-2 border-[#e5a93b] text-[#f4efe6] shadow-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -629,8 +628,13 @@ export default function App() {
               onOpenAddVideo={section => setAddVideoSection(section)}
               onBack={handleGoBack}
               activeTab={danseTab}
+              isBiblioPageOpen={isBiblioPageOpen}
+              onToggleBiblioPage={setIsBiblioPageOpen}
               onTabChange={tab => {
                 setDanseTab(tab);
+                if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
+                  setIsBiblioPageOpen(true);
+                }
                 if (tab === 'hub') {
                   requestAnimationFrame(() => {
                     setTimeout(() => {

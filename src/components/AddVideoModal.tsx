@@ -35,9 +35,9 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   const isLocal = isLocalVideoUrl(url) || !!selectedFileName;
   const detectedDevice = detectDeviceFromUrl(url) || currentDevice;
 
-  const isDanceSection = ['danses', 'maitres', 'cours', 'structure', 'marcajes', 'zapateado', 'llamadas'].includes(initialSection) || paloName.includes('Danse');
+  const isDanceSection = ['danses', 'maitres', 'cours', 'structure', 'marcajes', 'zapateado', 'llamadas'].includes(initialSection) || initialSection.startsWith('folder_') || paloName.includes('Danse');
 
-  const categories = isDanceSection
+  const baseCategories = isDanceSection
     ? [
         { key: 'cours', label: 'Mes Cours & Stages', icon: '🎓' },
         { key: 'maitres', label: 'Danses & Maîtres', icon: 'bailaora' },
@@ -48,6 +48,10 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
         { key: 'cante', label: 'Cante', icon: 'cantaor' },
         { key: 'baile', label: 'Baile', icon: 'bailaora' }
       ];
+
+  const categories = initialSection.startsWith('folder_')
+    ? [{ key: initialSection, label: 'Dossier personnalisé', icon: '📁' }, ...baseCategories]
+    : baseCategories;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

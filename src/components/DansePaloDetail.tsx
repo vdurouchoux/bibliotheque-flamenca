@@ -4,7 +4,7 @@ import {
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
   LayoutGrid, List, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
-  AlertTriangle, Laptop, Smartphone
+  AlertTriangle, Laptop, Smartphone, Folder, FolderOpen, MoreVertical, FolderPlus, Check
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
@@ -23,11 +23,14 @@ import {
   getDanseMontageKeys, saveDanseMontageKeys, deleteDanseMontage,
   getDanseBlockLinks, saveDanseBlockLink, deleteDanseBlockLink,
   getDanseSpacesOrder, saveDanseSpacesOrder, resetDanseSpacesOrder,
-  getDanseMontageTitles, saveDanseMontageTitle, deleteDanseMontageTitle
+  getDanseMontageTitles, saveDanseMontageTitle, deleteDanseMontageTitle,
+  getDanseFolders, saveDanseFolder, deleteDanseFolder, DanseFolderNode,
+  getFarrucaTreeViewMode, setFarrucaTreeViewMode
 } from '../utils/storage';
 import { shareSection, shareVideoItem, getVideoShareData, getSectionShareData, ShareOptions } from '../utils/shareUtils';
 import { ShareModal } from './ShareModal';
 import { ShareMontageModal } from './ShareMontageModal';
+import { AddDanseFolderModal } from './AddDanseFolderModal';
 import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
 import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
 
@@ -40,6 +43,8 @@ interface DansePaloDetailProps {
   onBack: () => void;
   activeTab?: DanseSectionTab;
   onTabChange?: (tab: DanseSectionTab) => void;
+  isBiblioPageOpen?: boolean;
+  onToggleBiblioPage?: (open: boolean) => void;
 }
 
 const ESPACE_INFO_MAP: Record<Exclude<DanseSectionTab, 'hub'>, { title: string; subtitle: string; icon: string }> = {
@@ -92,10 +97,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   onOpenAddVideo,
   onBack,
   activeTab: activeTabProp,
-  onTabChange
+  onTabChange,
+  isBiblioPageOpen: isBiblioPageOpenProp,
+  onToggleBiblioPage
 }) => {
   const [internalTab, setInternalTab] = useState<DanseSectionTab>('hub');
   const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
+
+  const [internalBiblioPageOpen, setInternalBiblioPageOpen] = useState<boolean>(false);
+  const isBiblioPageOpen = isBiblioPageOpenProp !== undefined ? isBiblioPageOpenProp : internalBiblioPageOpen;
+
+  const setIsBiblioPageOpen = (open: boolean) => {
+    if (onToggleBiblioPage) {
+      onToggleBiblioPage(open);
+    } else {
+      setInternalBiblioPageOpen(open);
+    }
+  };
 
   const scrollToEspacesEtude = () => {
     requestAnimationFrame(() => {
@@ -152,6 +170,84 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       localStorage.setItem('flamenco_danse_media_view_mode', mode);
     } catch {}
   };
+
+  // État des dossiers personnalisés et de l'arborescence
+  const [danseFolders, setDanseFolders] = useState<DanseFolderNode[]>(() => getDanseFolders(palo.id));
+  const [farrucaTreeViewMode, setFarrucaTreeViewModeState] = useState<'list' | 'icons'>('list');
+  const [activeCustomFolderId, setActiveCustomFolderId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [addFolderModal, setAddFolderModal] = useState<{ isOpen: boolean; parentId: string | null; parentName: string } | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<DanseFolderNode | null>(null);
+
+  // Synchronisation avec les mises à jour de dossiers
+  useEffect(() => {
+    setDanseFolders(getDanseFolders(palo.id));
+    const handleUpdate = () => {
+      setDanseFolders(getDanseFolders(palo.id));
+    };
+    window.addEventListener('flamenco_danse_folders_updated', handleUpdate);
+    return () => window.removeEventListener('flamenco_danse_folders_updated', handleUpdate);
+  }, [palo.id]);
+
+  // Fermeture des menus au clic extérieur
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.dropdown-menu-container') && !target.closest('.dropdown-menu-trigger')) {
+        setOpenDropdownId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCreateDanseFolder = (name: string, parentId: string | null) => {
+    saveDanseFolder(palo.id, name, parentId);
+    setDanseFolders(getDanseFolders(palo.id));
+    setShareToastMessage(`Dossier « ${name} » créé avec succès !`);
+    setTimeout(() => setShareToastMessage(null), 3500);
+  };
+
+  const handleDeleteDanseFolder = (folder: DanseFolderNode) => {
+    deleteDanseFolder(palo.id, folder.id);
+    setDanseFolders(getDanseFolders(palo.id));
+    if (activeCustomFolderId === folder.id) {
+      setActiveCustomFolderId(null);
+      setActiveTab('hub');
+      setIsBiblioPageOpen(true);
+    }
+    setFolderToDelete(null);
+    setShareToastMessage(`Dossier « ${folder.name} » supprimé.`);
+    setTimeout(() => setShareToastMessage(null), 3000);
+  };
+
+  const handleToggleTreeViewMode = (mode: 'list' | 'icons') => {
+    setFarrucaTreeViewModeState(mode);
+    setFarrucaTreeViewMode(mode);
+    setOpenDropdownId(null);
+  };
+
+  const handleShareFolder = (folderName: string, folderId?: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('discipline', 'danse');
+    url.searchParams.set('palo', palo.id);
+    if (folderId) {
+      url.searchParams.set('section', folderId);
+    } else {
+      url.searchParams.delete('section');
+    }
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url.toString());
+      }
+      setShareToastMessage(`Lien vers « ${folderName} » copié dans le presse-papiers !`);
+    } catch {
+      setShareToastMessage(`Partage : ${folderName}`);
+    }
+    setTimeout(() => setShareToastMessage(null), 3500);
+  };
+
+  const getSubfoldersOf = (parentId: string) => danseFolders.filter(f => f.parentId === parentId);
 
   // Menus déroulants pour les 3 rubriques fondamentales du palo (Caractère de la danse, Costume & Posture, Compás & Dynamique)
   // Repliés par défaut quand on arrive sur la page
@@ -1425,6 +1521,417 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     );
   };
 
+  const standardFolders: Array<{ id: string; name: string; tab: DanseSectionTab }> = [
+    { id: 'maitres', name: 'Grands Maîtres', tab: 'maitres' },
+    { id: 'cours', name: 'Cours et stages', tab: 'cours' },
+    { id: 'letras', name: 'Letras', tab: 'letras' },
+    { id: 'compas', name: 'Compas', tab: 'compas' }
+  ];
+
+  const topLevelCustomFolders = danseFolders.filter(f => !f.parentId);
+
+  const getFolderItemCount = (folderId: string): { files: number; subfolders: number } => {
+    const subs = getSubfoldersOf(folderId).length;
+    let files = 0;
+    if (folderId === 'maitres') {
+      files = getMaitresVideos().length;
+    } else if (folderId === 'cours') {
+      files = getCoursVideos().length;
+    } else if (folderId === 'letras') {
+      files = palo.letras?.length || 0;
+    } else if (folderId === 'compas') {
+      files = 1;
+    } else {
+      files = (getCustomVideos()[palo.id]?.[`folder_${folderId}`] || []).length;
+    }
+    return { files, subfolders: subs };
+  };
+
+  const handleOpenStandardTab = (tab: DanseSectionTab) => {
+    setActiveCustomFolderId(null);
+    setIsBiblioPageOpen(true);
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenCustomFolder = (folderId: string) => {
+    setActiveCustomFolderId(folderId);
+    setIsBiblioPageOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderFolderDropdownMenu = (
+    menuId: string,
+    folderName: string,
+    folderId: string | null,
+    customFolder?: DanseFolderNode,
+    onSelectView?: (mode: 'list' | 'icons') => void,
+    currentView?: 'list' | 'icons'
+  ) => {
+    if (openDropdownId !== menuId) return null;
+
+    return (
+      <div 
+        className="dropdown-menu-container absolute right-0 top-full mt-1.5 z-50 w-56 rounded-xl bg-[#1c1814] border border-[#3e3226] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Action 1 : Ajouter un dossier (ou sous-dossier) */}
+        <button
+          type="button"
+          onClick={() => {
+            setOpenDropdownId(null);
+            setAddFolderModal({
+              isOpen: true,
+              parentId: folderId,
+              parentName: folderName
+            });
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-white hover:bg-emerald-950/50 transition-colors cursor-pointer group"
+        >
+          <FolderPlus className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+          <span className="font-semibold text-emerald-300 group-hover:text-emerald-200">
+            {folderId === null ? 'Ajouter un dossier' : 'Ajouter un sous-dossier'}
+          </span>
+        </button>
+
+        {/* Option de suppression pour dossiers personnalisés */}
+        {customFolder && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenDropdownId(null);
+              setFolderToDelete(customFolder);
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Supprimer ce dossier</span>
+          </button>
+        )}
+
+        <div className="h-px bg-[#2e251e] my-1" />
+
+        {/* Action 2 : Affichage */}
+        <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-[#8c8173] font-semibold">
+          Affichage
+        </div>
+        {onSelectView ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                onSelectView('list');
+                setOpenDropdownId(null);
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-left text-[#ded3c5] hover:text-white hover:bg-[#26201a] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <List className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span>Vue liste</span>
+              </div>
+              {currentView === 'list' && (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSelectView('icons');
+                setOpenDropdownId(null);
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-left text-[#ded3c5] hover:text-white hover:bg-[#26201a] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <span>Vue icônes</span>
+              </div>
+              {currentView === 'icons' && (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+            </button>
+          </>
+        ) : (
+          <div className="w-full flex items-center justify-between px-3 py-1.5 text-left text-[#ded3c5]">
+            <div className="flex items-center gap-2">
+              <List className="w-3.5 h-3.5 text-[#e5a93b]" />
+              <span>Vue arborescente</span>
+            </div>
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+        )}
+
+        <div className="h-px bg-[#2e251e] my-1" />
+
+        {/* Action 3 : Partage */}
+        <button
+          type="button"
+          onClick={() => {
+            setOpenDropdownId(null);
+            handleShareFolder(folderName, folderId || undefined);
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+        >
+          <Share2 className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
+          <span>Partager</span>
+        </button>
+      </div>
+    );
+  };
+
+  const renderFarrucaTreeSidebar = () => (
+    <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-3.5 sm:p-4 shadow-xl space-y-3.5 md:sticky md:top-20">
+      {/* En haut : Farruca avec trois petits points */}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveCustomFolderId(null);
+            setIsBiblioPageOpen(true);
+            setActiveTab('hub');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="flex-1 flex items-center gap-2 text-left group hover:text-emerald-400 transition-colors cursor-pointer min-w-0"
+          title="Retourner à l'arborescence complète"
+        >
+          <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-base sm:text-lg font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300 truncate">
+            {palo.name}
+          </span>
+        </button>
+
+        {/* Trois petits points pour Farruca */}
+        <div className="relative dropdown-menu-trigger">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenDropdownId(prev => prev === 'sidebar_farruca' ? null : 'sidebar_farruca');
+            }}
+            className="p-1 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 transition-colors cursor-pointer"
+            title="Options Farruca"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+          {renderFolderDropdownMenu('sidebar_farruca', palo.name, null, undefined, handleToggleTreeViewMode, farrucaTreeViewMode)}
+        </div>
+      </div>
+
+      {/* En dessous : arborescence des dossiers & sous-dossiers */}
+      <div className="ml-2.5 pl-3 border-l-2 border-[#382d22] space-y-2 pt-0.5">
+        {/* Dossiers standards */}
+        {standardFolders.map(item => {
+          const isActive = !activeCustomFolderId && activeTab === item.tab;
+          const subfolders = getSubfoldersOf(item.id);
+          return (
+            <div key={item.id} className="space-y-1">
+              <div className="relative group flex items-center">
+                <div
+                  className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
+                    isActive ? 'bg-emerald-500' : 'bg-[#382d22] group-hover:bg-emerald-500/60'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleOpenStandardTab(item.tab)}
+                  className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-left cursor-pointer transition-all ${
+                    isActive
+                      ? 'bg-emerald-950/40 border border-emerald-500/60 text-white font-bold shadow-xs'
+                      : 'bg-[#1a1714] hover:bg-[#221e1a] border border-[#2e241c] hover:border-emerald-500/40 text-[#ded3c5]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 truncate">
+                    {isActive ? (
+                      <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                    )}
+                    <span className="text-xs sm:text-sm truncate">
+                      {item.name}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  )}
+                </button>
+
+                {/* Bouton trois petits points */}
+                <div className="relative dropdown-menu-trigger ml-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdownId(prev => prev === `side_${item.id}` ? null : `side_${item.id}`);
+                    }}
+                    className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                    title={`Options ${item.name}`}
+                  >
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </button>
+                  {renderFolderDropdownMenu(`side_${item.id}`, item.name, item.id)}
+                </div>
+              </div>
+
+              {/* Sous-dossiers au niveau inférieur */}
+              {subfolders.length > 0 && (
+                <div className="ml-3 pl-3 border-l-2 border-[#2e241c] space-y-1 pt-0.5">
+                  {subfolders.map(sub => {
+                    const isSubActive = activeCustomFolderId === sub.id;
+                    return (
+                      <div key={sub.id} className="relative group flex items-center">
+                        <div
+                          className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
+                            isSubActive ? 'bg-emerald-500' : 'bg-[#2e241c] group-hover:bg-emerald-500/60'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomFolder(sub.id)}
+                          className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-left cursor-pointer transition-all ${
+                            isSubActive
+                              ? 'bg-emerald-950/50 border border-emerald-500/60 text-white font-semibold'
+                              : 'bg-[#15120f] hover:bg-[#1e1915] border border-[#282017] text-[#c7bcad]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0 truncate">
+                            <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="text-[11px] sm:text-xs truncate">{sub.name}</span>
+                          </div>
+                          {isSubActive && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          )}
+                        </button>
+
+                        <div className="relative dropdown-menu-trigger ml-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `side_sub_${sub.id}` ? null : `side_sub_${sub.id}`);
+                            }}
+                            className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                            title={`Options ${sub.name}`}
+                          >
+                            <MoreVertical className="w-3 h-3" />
+                          </button>
+                          {renderFolderDropdownMenu(`side_sub_${sub.id}`, sub.name, sub.id, sub)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Dossiers personnalisés de niveau 1 */}
+        {topLevelCustomFolders.map(folder => {
+          const isActive = activeCustomFolderId === folder.id;
+          const subfolders = getSubfoldersOf(folder.id);
+          return (
+            <div key={folder.id} className="space-y-1">
+              <div className="relative group flex items-center">
+                <div
+                  className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
+                    isActive ? 'bg-emerald-500' : 'bg-[#382d22] group-hover:bg-emerald-500/60'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleOpenCustomFolder(folder.id)}
+                  className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-left cursor-pointer transition-all ${
+                    isActive
+                      ? 'bg-emerald-950/40 border border-emerald-500/60 text-white font-bold shadow-xs'
+                      : 'bg-[#1a1714] hover:bg-[#221e1a] border border-[#2e241c] hover:border-emerald-500/40 text-[#ded3c5]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 truncate">
+                    {isActive ? (
+                      <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                    )}
+                    <span className="text-xs sm:text-sm truncate">
+                      {folder.name}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  )}
+                </button>
+
+                <div className="relative dropdown-menu-trigger ml-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdownId(prev => prev === `side_${folder.id}` ? null : `side_${folder.id}`);
+                    }}
+                    className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                    title={`Options ${folder.name}`}
+                  >
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </button>
+                  {renderFolderDropdownMenu(`side_${folder.id}`, folder.name, folder.id, folder)}
+                </div>
+              </div>
+
+              {/* Sous-dossiers indentés */}
+              {subfolders.length > 0 && (
+                <div className="ml-3 pl-3 border-l-2 border-[#2e241c] space-y-1 pt-0.5">
+                  {subfolders.map(sub => {
+                    const isSubActive = activeCustomFolderId === sub.id;
+                    return (
+                      <div key={sub.id} className="relative group flex items-center">
+                        <div
+                          className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
+                            isSubActive ? 'bg-emerald-500' : 'bg-[#2e241c] group-hover:bg-emerald-500/60'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomFolder(sub.id)}
+                          className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-left cursor-pointer transition-all ${
+                            isSubActive
+                              ? 'bg-emerald-950/50 border border-emerald-500/60 text-white font-semibold'
+                              : 'bg-[#15120f] hover:bg-[#1e1915] border border-[#282017] text-[#c7bcad]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0 truncate">
+                            <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="text-[11px] sm:text-xs truncate">{sub.name}</span>
+                          </div>
+                          {isSubActive && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          )}
+                        </button>
+
+                        <div className="relative dropdown-menu-trigger ml-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `side_sub_${sub.id}` ? null : `side_sub_${sub.id}`);
+                            }}
+                            className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                            title={`Options ${sub.name}`}
+                          >
+                            <MoreVertical className="w-3 h-3" />
+                          </button>
+                          {renderFolderDropdownMenu(`side_sub_${sub.id}`, sub.name, sub.id, sub)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-5">
       {/* Toast notification de partage */}
@@ -1448,8 +1955,434 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
+      {/* VUE NOUVELLE PAGE : ARBORESCENCE BIBLIOTHÈQUE FLAMENCA MINIMALISTE */}
+      {activeTab === 'hub' && isBiblioPageOpen && !activeCustomFolderId && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+            {/* En haut : Farruca avec trois petits points à droite au bout de la ligne */}
+            <div className="flex items-center justify-between gap-3 relative pb-2 border-b border-[#2b2118]/80">
+              <div className="flex items-center gap-3 min-w-0">
+                <FolderOpen className="w-6 h-6 text-emerald-400 shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] truncate">
+                  {palo.name}
+                </span>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 hidden xs:inline font-medium">
+                  Arborescence
+                </span>
+              </div>
+
+              {/* TROIS PETITS POINTS À DROITE DE FARRUCA AU BOUT DE LA LIGNE */}
+              <div className="relative dropdown-menu-trigger">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdownId(prev => prev === 'farruca_root' ? null : 'farruca_root');
+                  }}
+                  className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                  title="Options Farruca"
+                >
+                  <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                {renderFolderDropdownMenu('farruca_root', palo.name, null, undefined, handleToggleTreeViewMode, farrucaTreeViewMode)}
+              </div>
+            </div>
+
+            {/* En dessous : arborescence des dossiers & sous-dossiers */}
+            <div className="ml-3 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-1">
+              {/* 1. Dossiers standards (Grands Maîtres, Cours, Letras, Compas) */}
+                {standardFolders.map(item => {
+                  const counts = getFolderItemCount(item.id);
+                  const subfolders = getSubfoldersOf(item.id);
+
+                  return (
+                    <div key={item.id} className="space-y-2">
+                      <div className="relative group flex items-center">
+                        <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22] group-hover:bg-emerald-500/60 transition-colors" />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenStandardTab(item.tab)}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-[#2e241c] hover:border-emerald-500/50 transition-all text-left cursor-pointer group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                            <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                              {item.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#251f18] text-[#a69c8f] border border-[#382e22]">
+                              {counts.files} {counts.files > 1 ? 'médias' : 'média'}
+                              {counts.subfolders > 0 && ` • ${counts.subfolders} sous-dossier${counts.subfolders > 1 ? 's' : ''}`}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                        </button>
+
+                        {/* Trois petits points pour chaque dossier */}
+                        <div className="relative dropdown-menu-trigger ml-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `tree_${item.id}` ? null : `tree_${item.id}`);
+                            }}
+                            className="p-2 rounded-xl text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
+                            title={`Options ${item.name}`}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {renderFolderDropdownMenu(`tree_${item.id}`, item.name, item.id)}
+                        </div>
+                      </div>
+
+                      {/* Sous-dossiers au niveau inférieur */}
+                      {subfolders.length > 0 && (
+                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1">
+                          {subfolders.map(sub => {
+                            const subCounts = getFolderItemCount(sub.id);
+                            return (
+                              <div key={sub.id} className="relative group flex items-center">
+                                <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCustomFolder(sub.id)}
+                                  className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-[#271f16] hover:border-emerald-500/40 transition-all text-left cursor-pointer group shadow-xs"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                      {sub.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#201a14] text-[#8c8173]">
+                                      {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
+                                    </span>
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all" />
+                                  </div>
+                                </button>
+
+                                <div className="relative dropdown-menu-trigger ml-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(prev => prev === `tree_sub_${sub.id}` ? null : `tree_sub_${sub.id}`);
+                                    }}
+                                    className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                                    title={`Options ${sub.name}`}
+                                  >
+                                    <MoreVertical className="w-3.5 h-3.5" />
+                                  </button>
+                                  {renderFolderDropdownMenu(`tree_sub_${sub.id}`, sub.name, sub.id, sub)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 2. Dossiers personnalisés de niveau 1 (ajoutés à la suite) */}
+                {topLevelCustomFolders.map(folder => {
+                  const counts = getFolderItemCount(folder.id);
+                  const subfolders = getSubfoldersOf(folder.id);
+
+                  return (
+                    <div key={folder.id} className="space-y-2">
+                      <div className="relative group flex items-center">
+                        <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22] group-hover:bg-emerald-500/60 transition-colors" />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomFolder(folder.id)}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-[#2e241c] hover:border-emerald-500/50 transition-all text-left cursor-pointer group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                            <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                              {folder.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#251f18] text-[#a69c8f] border border-[#382e22]">
+                              {counts.files} {counts.files > 1 ? 'médias' : 'média'}
+                              {counts.subfolders > 0 && ` • ${counts.subfolders} sous-dossier${counts.subfolders > 1 ? 's' : ''}`}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                        </button>
+
+                        <div className="relative dropdown-menu-trigger ml-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `tree_${folder.id}` ? null : `tree_${folder.id}`);
+                            }}
+                            className="p-2 rounded-xl text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
+                            title={`Options ${folder.name}`}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {renderFolderDropdownMenu(`tree_${folder.id}`, folder.name, folder.id, folder)}
+                        </div>
+                      </div>
+
+                      {/* Sous-dossiers indentés au niveau inférieur */}
+                      {subfolders.length > 0 && (
+                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1">
+                          {subfolders.map(sub => {
+                            const subCounts = getFolderItemCount(sub.id);
+                            return (
+                              <div key={sub.id} className="relative group flex items-center">
+                                <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCustomFolder(sub.id)}
+                                  className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-[#271f16] hover:border-emerald-500/40 transition-all text-left cursor-pointer group shadow-xs"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                      {sub.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#201a14] text-[#8c8173]">
+                                      {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
+                                    </span>
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all" />
+                                  </div>
+                                </button>
+
+                                <div className="relative dropdown-menu-trigger ml-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(prev => prev === `tree_sub_${sub.id}` ? null : `tree_sub_${sub.id}`);
+                                    }}
+                                    className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                                    title={`Options ${sub.name}`}
+                                  >
+                                    <MoreVertical className="w-3.5 h-3.5" />
+                                  </button>
+                                  {renderFolderDropdownMenu(`tree_sub_${sub.id}`, sub.name, sub.id, sub)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+          </div>
+        </div>
+      )}
+
+      {/* VUE DOSSIER PERSONNALISÉ OU SOUS-DOSSIER */}
+      {activeCustomFolderId && (
+        <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-5 w-full animate-in fade-in duration-200">
+          <div className="w-full md:w-52 lg:w-56 shrink-0">
+            {renderFarrucaTreeSidebar()}
+          </div>
+
+          {(() => {
+            const currentFolder = danseFolders.find(f => f.id === activeCustomFolderId);
+            if (!currentFolder) return null;
+            const parentFolder = currentFolder.parentId ? (
+              standardFolders.find(s => s.id === currentFolder.parentId) || 
+              danseFolders.find(f => f.id === currentFolder.parentId)
+            ) : null;
+            const subfolders = getSubfoldersOf(currentFolder.id);
+            const folderVideos = getCustomVideos()[palo.id]?.[`folder_${currentFolder.id}`] || [];
+
+            return (
+              <div className="flex-1 min-w-0 w-full space-y-4">
+                {/* En-tête épurée du dossier : Titre, compteur, bouton Ajouter et trois petits points */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex items-center justify-between gap-3 flex-wrap">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#8c8173]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveCustomFolderId(null);
+                          setIsBiblioPageOpen(true);
+                          setActiveTab('hub');
+                        }}
+                        className="hover:text-emerald-400 transition-colors cursor-pointer"
+                      >
+                        {palo.name}
+                      </button>
+                      {parentFolder && (
+                        <>
+                          <span>/</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if ('tab' in parentFolder) {
+                                handleOpenStandardTab(parentFolder.tab as DanseSectionTab);
+                              } else {
+                                handleOpenCustomFolder(parentFolder.id);
+                              }
+                            }}
+                            className="hover:text-emerald-400 transition-colors cursor-pointer"
+                          >
+                            {parentFolder.name}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif">
+                        {currentFolder.name}
+                      </h3>
+                      <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
+                        {folderVideos.length} {folderVideos.length > 1 ? 'fichiers' : 'fichier'}
+                        {subfolders.length > 0 && ` • ${subfolders.length} sous-dossier${subfolders.length > 1 ? 's' : ''}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <button
+                      onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Ajouter une vidéo</span>
+                    </button>
+
+                    <div className="relative dropdown-menu-trigger">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(prev => prev === `custom_page_${currentFolder.id}` ? null : `custom_page_${currentFolder.id}`);
+                        }}
+                        className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                        title="Options du dossier"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {renderFolderDropdownMenu(
+                        `custom_page_${currentFolder.id}`,
+                        currentFolder.name,
+                        currentFolder.id,
+                        currentFolder,
+                        handleSetMediaViewMode,
+                        mediaViewMode
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sous-dossiers au niveau inférieur */}
+                {subfolders.length > 0 && (
+                  <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+                    <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Sous-dossiers ({subfolders.length})</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {subfolders.map(sub => (
+                        <div
+                          key={sub.id}
+                          onClick={() => handleOpenCustomFolder(sub.id)}
+                          className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                            <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                              {sub.name}
+                            </span>
+                          </div>
+                          <div className="relative dropdown-menu-trigger">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
+                              }}
+                              className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                              title="Options"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                            {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, sub)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Vidéos dans ce dossier */}
+                {folderVideos.length > 0 ? (
+                  mediaViewMode === 'list' ? (
+                    <div className="space-y-1.5">
+                      {folderVideos.map((v, i) => renderVideoListMinimal(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
+                    </div>
+                  ) : mediaViewMode === 'icons' ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {folderVideos.map(v => renderVideoGridIcons(v, currentFolder.name, `folder_${currentFolder.id}`))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {folderVideos.map(v => renderVideoCard(v, currentFolder.name, `folder_${currentFolder.id}`))}
+                    </div>
+                  )
+                ) : (
+                  <div className="p-8 rounded-2xl bg-[#14120f] border border-[#2b2219] text-center space-y-3">
+                    <Folder className="w-10 h-10 text-[#73685a] mx-auto opacity-50" />
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-[#ded3c5]">
+                        Ce dossier est vide
+                      </h4>
+                      <p className="text-xs text-[#8c8173] max-w-sm mx-auto">
+                        Alimentez ce dossier avec vos vidéos ou créez des sous-dossiers pour organiser vos répétitions.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#0a1710] text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ajouter une vidéo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddFolderModal({
+                            isOpen: true,
+                            parentId: currentFolder.id,
+                            parentName: currentFolder.name
+                          });
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2b251f] text-[#ded3c5] border border-[#3d3227] text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Nouveau sous-dossier</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Hero Card Palo Danse compact : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
-      {activeTab === 'hub' && (
+      {activeTab === 'hub' && !isBiblioPageOpen && (
         <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 shadow-lg">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 font-bold text-xs uppercase tracking-wider shrink-0 shadow-xs">
@@ -1464,13 +2397,29 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       )}
 
       {/* VUE 1 : DIRECTEMENT LES 2 ARBORESCENCES CLIQUABLES (BIBLIOTHÈQUE FLAMENCA ET ATELIER DE CRÉATION) */}
-      {activeTab === 'hub' && (
-        <div id="danse-espaces-etude" className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20">
+      {activeTab === 'hub' && !isBiblioPageOpen && (
+        <div 
+          id="danse-espaces-etude" 
+          className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20"
+          onClickCapture={(e) => {
+            const target = e.target as HTMLElement;
+            const isBiblio = target.closest('.border-emerald-500') || (target.textContent?.includes('Bibliothèque Flamenca') ? target.closest('.cursor-pointer') : null);
+            if (isBiblio) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsBiblioPageOpen(true);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        >
           {/* Arborescence réelle cliquable pointant vers les mêmes pages */}
           <DanseArborescenceTree
             title="Commencer à travailler, explorer et créer"
             borderedFolders={true}
             onNavigate={(tab) => {
+              if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
+                setIsBiblioPageOpen(true);
+              }
               setActiveTab(tab);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
@@ -1837,104 +2786,121 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
       {/* TAB 2: Grands Maîtres & Références */}
       {activeTab === 'maitres' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h4 className="text-sm sm:text-base font-bold text-[#f4efe6] flex items-center gap-2">
-                <span>Interprétations de Référence & Grands Maîtres</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[#e5a93b]/20 text-[#e5a93b] font-normal">
-                  Inspiration & Caractère
-                </span>
-              </h4>
-              <p className="text-xs text-[#8c8173] mt-1">
-                Les versions d'anthologie d'Iván Vargas, El Güito, Antonio Gades, Sara Baras et Farruquito pour imprégner son regard et sa ligne de corps.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
-              {/* Commutateur de vue : Liste (minimaliste nom seul) / Icônes / Cartes */}
-              <div className="flex items-center rounded-lg bg-[#14120f] p-0.5 border border-[#302820]">
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('list')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'list'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue liste minimaliste (seulement les noms)"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Liste</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('icons')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'icons'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue icônes (vignettes & noms)"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Icônes</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('cards')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'cards'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue cartes détaillées"
-                >
-                  <Film className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Détaillée</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleShareSpace}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#201a14] hover:bg-[#2b2219] text-[#9c9183] hover:text-[#e5a93b] border border-[#33291f] hover:border-[#4d3d2a] text-xs font-medium transition-colors cursor-pointer"
-                title="Partager un lien direct vers les Grands Maîtres"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Partager</span>
-              </button>
-              <button
-                onClick={() => onOpenAddVideo('maitres')}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Ajouter une vidéo</span>
-              </button>
-            </div>
+        <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-5 w-full animate-in fade-in duration-200">
+          {/* Arborescence de la Farruca le plus à gauche possible */}
+          <div className="w-full md:w-52 lg:w-56 shrink-0">
+            {renderFarrucaTreeSidebar()}
           </div>
 
-          {/* Rendu dynamique des médias selon le mode choisi */}
-          {mediaViewMode === 'list' ? (
-            <div className="space-y-1.5">
-              {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, 'Grands Maîtres', 'maitres', i))}
+          {/* Liste de tous les fichiers qui sont dans grands maîtres */}
+          <div className="flex-1 min-w-0 w-full space-y-3">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+                <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif">
+                  Grands Maîtres
+                </h3>
+                <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
+                  {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
+                  {getSubfoldersOf('maitres').length > 0 && ` • ${getSubfoldersOf('maitres').length} sous-dossier${getSubfoldersOf('maitres').length > 1 ? 's' : ''}`}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                <button
+                  onClick={() => onOpenAddVideo('maitres')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter une vidéo</span>
+                </button>
+
+                {/* Trois petits points en bout de ligne */}
+                <div className="relative dropdown-menu-trigger">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdownId(prev => prev === 'header_maitres' ? null : 'header_maitres');
+                    }}
+                    className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                    title="Options Grands Maîtres"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {renderFolderDropdownMenu('header_maitres', 'Grands Maîtres', 'maitres', undefined, handleSetMediaViewMode, mediaViewMode)}
+                </div>
+              </div>
             </div>
-          ) : mediaViewMode === 'icons' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {getMaitresVideos().map(v => renderVideoGridIcons(v, 'Grands Maîtres', 'maitres'))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {getMaitresVideos().map(v => renderVideoCard(v, 'Grands Maîtres', 'maitres'))}
-            </div>
-          )}
+
+            {/* Sous-dossiers au niveau inférieur */}
+            {getSubfoldersOf('maitres').length > 0 && (
+              <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+                <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                  <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sous-dossiers ({getSubfoldersOf('maitres').length})</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {getSubfoldersOf('maitres').map(sub => (
+                    <div
+                      key={sub.id}
+                      onClick={() => handleOpenCustomFolder(sub.id)}
+                      className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                        <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                          {sub.name}
+                        </span>
+                      </div>
+                      <div className="relative dropdown-menu-trigger">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
+                          }}
+                          className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                          title="Options"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, sub)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rendu dynamique des médias selon le mode choisi */}
+            {mediaViewMode === 'list' ? (
+              <div className="space-y-1.5">
+                {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, 'Grands Maîtres', 'maitres', i))}
+              </div>
+            ) : mediaViewMode === 'icons' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {getMaitresVideos().map(v => renderVideoGridIcons(v, 'Grands Maîtres', 'maitres'))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {getMaitresVideos().map(v => renderVideoCard(v, 'Grands Maîtres', 'maitres'))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB: Letras & Textes Traditionnels */}
       {activeTab === 'letras' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Header Card Letras */}
+        <div className={`animate-in fade-in duration-200 ${isBiblioPageOpen ? 'flex flex-col md:flex-row items-start gap-4 lg:gap-5 w-full' : 'space-y-6'}`}>
+          {isBiblioPageOpen && (
+            <div className="w-full md:w-52 lg:w-56 shrink-0">
+              {renderFarrucaTreeSidebar()}
+            </div>
+          )}
+          <div className={isBiblioPageOpen ? 'flex-1 min-w-0 w-full space-y-6' : 'space-y-6'}>
+            {/* Header Card Letras */}
           <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
@@ -1955,17 +2921,64 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   <Languages className="w-3.5 h-3.5" />
                   <span>Bilingue ES / FR</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={handleShareSpace}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#201a14] hover:bg-[#2b2219] text-[#9c9183] hover:text-[#e5a93b] border border-[#33291f] hover:border-[#4d3d2a] text-xs font-medium transition-colors cursor-pointer"
-                  title="Partager un lien direct vers les Letras traditionnelles"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Partager</span>
-                </button>
+                
+                {/* Trois petits points */}
+                <div className="relative dropdown-menu-trigger">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdownId(prev => prev === 'header_letras' ? null : 'header_letras');
+                    }}
+                    className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                    title="Options Letras"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {renderFolderDropdownMenu('header_letras', 'Letras', 'letras')}
+                </div>
               </div>
             </div>
+
+            {/* Sous-dossiers au niveau inférieur dans Letras */}
+            {getSubfoldersOf('letras').length > 0 && (
+              <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+                <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                  <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sous-dossiers ({getSubfoldersOf('letras').length})</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {getSubfoldersOf('letras').map(sub => (
+                    <div
+                      key={sub.id}
+                      onClick={() => handleOpenCustomFolder(sub.id)}
+                      className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                        <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                          {sub.name}
+                        </span>
+                      </div>
+                      <div className="relative dropdown-menu-trigger">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
+                          }}
+                          className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                          title="Options"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, sub)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-[#1f1a14] border border-[#332a20] rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-[#d4c9ba] leading-relaxed space-y-2">
               <p>
@@ -2181,12 +3194,19 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             )}
           </div>
         </div>
+      </div>
       )}
 
       {/* TAB 6: Compás & Métronome (4 temps) */}
       {activeTab === 'compas' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="p-4 rounded-xl bg-[#171411] border border-[#2e261f] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className={`animate-in fade-in duration-200 ${isBiblioPageOpen ? 'flex flex-col md:flex-row items-start gap-4 lg:gap-5 w-full' : 'space-y-4'}`}>
+          {isBiblioPageOpen && (
+            <div className="w-full md:w-52 lg:w-56 shrink-0">
+              {renderFarrucaTreeSidebar()}
+            </div>
+          )}
+          <div className={isBiblioPageOpen ? 'flex-1 min-w-0 w-full space-y-4' : 'space-y-4'}>
+            <div className="p-4 rounded-xl bg-[#171411] border border-[#2e261f] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="text-sm font-bold text-[#f4efe6] flex items-center gap-2">
                 <span>Compás Binaire & Métronome de Farruca</span>
@@ -2199,17 +3219,62 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </p>
             </div>
             <div className="shrink-0 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={handleShareSpace}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#201a14] hover:bg-[#2b2219] text-[#9c9183] hover:text-[#e5a93b] border border-[#33291f] hover:border-[#4d3d2a] text-xs font-medium transition-colors cursor-pointer"
-                title="Partager un lien direct vers le Compás"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Partager</span>
-              </button>
+              <div className="relative dropdown-menu-trigger">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdownId(prev => prev === 'header_compas' ? null : 'header_compas');
+                  }}
+                  className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                  title="Options Compás"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {renderFolderDropdownMenu('header_compas', 'Compas', 'compas')}
+              </div>
             </div>
           </div>
+
+          {/* Sous-dossiers au niveau inférieur dans Compás */}
+          {getSubfoldersOf('compas').length > 0 && (
+            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+              <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sous-dossiers ({getSubfoldersOf('compas').length})</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {getSubfoldersOf('compas').map(sub => (
+                  <div
+                    key={sub.id}
+                    onClick={() => handleOpenCustomFolder(sub.id)}
+                    className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                        {sub.name}
+                      </span>
+                    </div>
+                    <div className="relative dropdown-menu-trigger">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
+                        }}
+                        className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                        title="Options"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                      {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, sub)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <CompasVisualizer
             compas={palo.compas}
@@ -2301,12 +3366,19 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* TAB 5: Cours/Tutoriels/Stages/Vidéos personnelles */}
       {activeTab === 'cours' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
-          {/* Header Card & Actions */}
+        <div className={`animate-in fade-in duration-200 ${isBiblioPageOpen ? 'flex flex-col md:flex-row items-start gap-4 lg:gap-5 w-full' : 'space-y-5'}`}>
+          {isBiblioPageOpen && (
+            <div className="w-full md:w-52 lg:w-56 shrink-0">
+              {renderFarrucaTreeSidebar()}
+            </div>
+          )}
+          <div className={isBiblioPageOpen ? 'flex-1 min-w-0 w-full space-y-5' : 'space-y-5'}>
+            {/* Header Card & Actions */}
           <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -2322,68 +3394,72 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
-              {/* Commutateur de vue : Liste (minimaliste nom seul) / Icônes / Cartes */}
-              <div className="flex items-center rounded-lg bg-[#14120f] p-0.5 border border-[#302820]">
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('list')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'list'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue liste minimaliste (seulement les noms)"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Liste</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('icons')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'icons'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue icônes (vignettes & noms)"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Icônes</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('cards')}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    mediaViewMode === 'cards'
-                      ? 'bg-[#e5a93b] text-[#121110] font-bold shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#f4efe6]'
-                  }`}
-                  title="Vue cartes détaillées"
-                >
-                  <Film className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Détaillée</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleShareSpace}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#201a14] hover:bg-[#2b2219] text-[#9c9183] hover:text-[#e5a93b] border border-[#33291f] hover:border-[#4d3d2a] text-xs font-medium transition-colors cursor-pointer"
-                title="Partager un lien direct vers Cours & Stages"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Partager</span>
-              </button>
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
               <button
                 onClick={() => onOpenAddVideo('cours')}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-sm shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Ajouter une vidéo</span>
               </button>
+
+              {/* Trois petits points en bout de ligne */}
+              <div className="relative dropdown-menu-trigger">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdownId(prev => prev === 'header_cours' ? null : 'header_cours');
+                  }}
+                  className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                  title="Options Cours & Stages"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {renderFolderDropdownMenu('header_cours', 'Cours et stages', 'cours', undefined, handleSetMediaViewMode, mediaViewMode)}
+              </div>
             </div>
           </div>
+
+          {/* Sous-dossiers au niveau inférieur dans Cours & Stages */}
+          {getSubfoldersOf('cours').length > 0 && (
+            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+              <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sous-dossiers ({getSubfoldersOf('cours').length})</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {getSubfoldersOf('cours').map(sub => (
+                  <div
+                    key={sub.id}
+                    onClick={() => handleOpenCustomFolder(sub.id)}
+                    className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                        {sub.name}
+                      </span>
+                    </div>
+                    <div className="relative dropdown-menu-trigger">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
+                        }}
+                        className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                        title="Options"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                      {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, sub)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bandeau Conseil Synchronisation Multi-écrans */}
           <div className="p-3.5 sm:p-4 rounded-xl bg-[#1c1813] border border-[#382d20] flex items-start gap-3 text-xs text-[#c9bcaa] shadow-sm">
@@ -2448,6 +3524,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </div>
           )}
         </div>
+      </div>
       )}
 
       {/* TAB 6: Mon carnet de montage */}
@@ -3701,6 +4778,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 <button
                   key={tab.key}
                   onClick={() => {
+                    if (tab.key === 'maitres' || tab.key === 'cours' || tab.key === 'letras' || tab.key === 'compas') {
+                      setIsBiblioPageOpen(true);
+                    }
                     setActiveTab(tab.key as DanseSectionTab);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
@@ -4330,6 +5410,51 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           options={shareModalOptions}
           onClose={() => setShareModalOptions(null)}
         />
+      )}
+
+      {/* Modale d'ajout de dossier ou sous-dossier */}
+      {addFolderModal && (
+        <AddDanseFolderModal
+          isOpen={addFolderModal.isOpen}
+          parentId={addFolderModal.parentId}
+          parentName={addFolderModal.parentName}
+          onClose={() => setAddFolderModal(null)}
+          onAdd={handleCreateDanseFolder}
+        />
+      )}
+
+      {/* Modale de confirmation de suppression de dossier */}
+      {folderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-[#161310] border border-rose-900/40 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold font-serif text-[#f4efe6]">
+                Supprimer ce dossier ?
+              </h3>
+            </div>
+            <p className="text-xs text-[#a69c8f] leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer le dossier <strong className="text-[#f4efe6]">« {folderToDelete.name} »</strong> ?
+              Cette action supprimera également ses sous-dossiers éventuels.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#261e16]">
+              <button
+                type="button"
+                onClick={() => setFolderToDelete(null)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#a69c8f] hover:text-[#f4efe6] hover:bg-[#201a14] cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteDanseFolder(folderToDelete)}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white cursor-pointer shadow-xs"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

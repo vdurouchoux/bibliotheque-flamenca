@@ -1274,3 +1274,100 @@ export function triggerFileDownload(content: string, filename: string, mimeType 
     URL.revokeObjectURL(url);
   }, 200);
 }
+
+export interface DanseFolderNode {
+  id: string;
+  paloId: string;
+  name: string;
+  parentId?: string | null;
+  createdAt: number;
+}
+
+const STORAGE_DANSE_FOLDERS_KEY = 'flamenco_danse_folders_v1';
+const STORAGE_TREE_VIEW_MODE_KEY = 'flamenco_farruca_tree_view_mode_v1';
+
+export function getDanseFolders(paloId: string): DanseFolderNode[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_DANSE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    return store[paloId] || [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDanseFolder(paloId: string, name: string, parentId?: string | null): DanseFolderNode {
+  const folders = getDanseFolders(paloId);
+  const newFolder: DanseFolderNode = {
+    id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    paloId,
+    name: name.trim(),
+    parentId: parentId || null,
+    createdAt: Date.now()
+  };
+  const updated = [...folders, newFolder];
+  try {
+    const raw = localStorage.getItem(STORAGE_DANSE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_DANSE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_danse_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to save folder', e);
+  }
+  return newFolder;
+}
+
+export function deleteDanseFolder(paloId: string, folderId: string): DanseFolderNode[] {
+  const folders = getDanseFolders(paloId);
+  const toDelete = new Set<string>([folderId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const f of folders) {
+      if (f.parentId && toDelete.has(f.parentId) && !toDelete.has(f.id)) {
+        toDelete.add(f.id);
+        changed = true;
+      }
+    }
+  }
+  const updated = folders.filter(f => !toDelete.has(f.id));
+  try {
+    const raw = localStorage.getItem(STORAGE_DANSE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_DANSE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_danse_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to delete folder', e);
+  }
+  return updated;
+}
+
+export function getFarrucaTreeViewMode(): 'list' | 'icons' {
+  try {
+    const v = localStorage.getItem(STORAGE_TREE_VIEW_MODE_KEY);
+    if (v === 'icons') {
+      localStorage.removeItem(STORAGE_TREE_VIEW_MODE_KEY);
+    }
+    return 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+export function setFarrucaTreeViewMode(mode: 'list' | 'icons'): void {
+  try {
+    if (mode === 'icons') {
+      localStorage.removeItem(STORAGE_TREE_VIEW_MODE_KEY);
+    } else {
+      localStorage.setItem(STORAGE_TREE_VIEW_MODE_KEY, 'list');
+    }
+  } catch {}
+}
