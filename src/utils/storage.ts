@@ -1321,6 +1321,82 @@ export function saveDanseFolder(paloId: string, name: string, parentId?: string 
   return newFolder;
 }
 
+export function renameDanseFolder(paloId: string, folderId: string, newName: string): DanseFolderNode[] {
+  const folders = getDanseFolders(paloId);
+  const updated = folders.map(f => f.id === folderId ? { ...f, name: newName.trim() } : f);
+  try {
+    const raw = localStorage.getItem(STORAGE_DANSE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_DANSE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_danse_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to rename folder', e);
+  }
+  return updated;
+}
+
+const STORAGE_STANDARD_RENAMES_KEY = 'flamenco_standard_folders_renames_v1';
+const STORAGE_STANDARD_DELETED_KEY = 'flamenco_standard_folders_deleted_v1';
+
+export function getStandardFolderRenames(paloId: string): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_STANDARD_RENAMES_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    return store[paloId] || {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStandardFolderRename(paloId: string, folderId: string, newName: string): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_STANDARD_RENAMES_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    if (!store[paloId]) store[paloId] = {};
+    store[paloId][folderId] = newName.trim();
+    localStorage.setItem(STORAGE_STANDARD_RENAMES_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_danse_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to save standard folder rename', e);
+  }
+}
+
+export function getStandardFolderDeleted(paloId: string): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_STANDARD_DELETED_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    return store[paloId] || [];
+  } catch {
+    return [];
+  }
+}
+
+export function deleteStandardFolder(paloId: string, folderId: string): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_STANDARD_DELETED_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    const list = store[paloId] || [];
+    if (!list.includes(folderId)) {
+      list.push(folderId);
+    }
+    store[paloId] = list;
+    localStorage.setItem(STORAGE_STANDARD_DELETED_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_danse_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to delete standard folder', e);
+  }
+}
+
 export function deleteDanseFolder(paloId: string, folderId: string): DanseFolderNode[] {
   const folders = getDanseFolders(paloId);
   const toDelete = new Set<string>([folderId]);
