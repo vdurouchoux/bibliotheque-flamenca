@@ -1290,7 +1290,24 @@ export function getDanseFolders(paloId: string): DanseFolderNode[] {
   try {
     const raw = localStorage.getItem(STORAGE_DANSE_FOLDERS_KEY);
     const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
-    return store[paloId] || [];
+    let folders = store[paloId] || [];
+
+    if (paloId.includes('farruca') && !folders.some(f => f.name.toLowerCase() === 'essai' && f.parentId === 'maitres')) {
+      const defaultEssai: DanseFolderNode = {
+        id: 'folder_farruca_essai',
+        paloId,
+        name: 'Essai',
+        parentId: 'maitres',
+        createdAt: 1700000000000
+      };
+      folders = [...folders, defaultEssai];
+      store[paloId] = folders;
+      try {
+        localStorage.setItem(STORAGE_DANSE_FOLDERS_KEY, JSON.stringify(store));
+      } catch {}
+    }
+
+    return folders;
   } catch {
     return [];
   }
