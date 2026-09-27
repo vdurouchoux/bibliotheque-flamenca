@@ -47,6 +47,8 @@ interface DansePaloDetailProps {
   onTabChange?: (tab: DanseSectionTab) => void;
   isBiblioPageOpen?: boolean;
   onToggleBiblioPage?: (open: boolean) => void;
+  activeCustomFolderId?: string | null;
+  onCustomFolderChange?: (folderId: string | null) => void;
 }
 
 const ESPACE_INFO_MAP: Record<Exclude<DanseSectionTab, 'hub'>, { title: string; subtitle: string; icon: string }> = {
@@ -101,7 +103,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   activeTab: activeTabProp,
   onTabChange,
   isBiblioPageOpen: isBiblioPageOpenProp,
-  onToggleBiblioPage
+  onToggleBiblioPage,
+  activeCustomFolderId: activeCustomFolderIdProp,
+  onCustomFolderChange
 }) => {
   const [internalTab, setInternalTab] = useState<DanseSectionTab>('hub');
   const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
@@ -176,7 +180,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   // État des dossiers personnalisés et de l'arborescence
   const [danseFolders, setDanseFolders] = useState<DanseFolderNode[]>(() => getDanseFolders(palo.id));
   const [farrucaTreeViewMode, setFarrucaTreeViewModeState] = useState<'list' | 'icons'>('list');
-  const [activeCustomFolderId, setActiveCustomFolderId] = useState<string | null>(null);
+  const [internalCustomFolderId, setInternalCustomFolderId] = useState<string | null>(null);
+  const activeCustomFolderId = activeCustomFolderIdProp !== undefined ? activeCustomFolderIdProp : internalCustomFolderId;
+  const setActiveCustomFolderId = (folderId: string | null | ((prev: string | null) => string | null)) => {
+    const nextVal = typeof folderId === 'function' ? folderId(activeCustomFolderId) : folderId;
+    if (onCustomFolderChange) {
+      onCustomFolderChange(nextVal);
+    } else {
+      setInternalCustomFolderId(nextVal);
+    }
+  };
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [addFolderModal, setAddFolderModal] = useState<{ isOpen: boolean; parentId: string | null; parentName: string } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -1552,7 +1565,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   };
 
   const rawStandardFolders: Array<{ id: string; defaultName: string; tab: DanseSectionTab }> = [
-    { id: 'maitres', defaultName: 'Grands Maîtres', tab: 'maitres' },
+    { id: 'maitres', defaultName: 'Grand Maître', tab: 'maitres' },
     { id: 'cours', defaultName: 'Cours et stages', tab: 'cours' },
     { id: 'letras', defaultName: 'Letras', tab: 'letras' },
     { id: 'compas', defaultName: 'Compas', tab: 'compas' }
@@ -1560,17 +1573,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const standardFolders = rawStandardFolders
     .filter(item => !deletedStandardIds.includes(item.id))
-    .map(item => {
-      let name = standardRenames[item.id] || item.defaultName;
-      if (item.id === 'maitres' && (name === 'Grand Maître' || name === 'Grand Maitre' || name === 'Grands Maitres')) {
-        name = 'Grands Maîtres';
-      }
-      return {
-        id: item.id,
-        name,
-        tab: item.tab
-      };
-    });
+    .map(item => ({
+      id: item.id,
+      name: standardRenames[item.id] || item.defaultName,
+      tab: item.tab
+    }));
 
   const topLevelCustomFolders = danseFolders.filter(f => !f.parentId);
 
@@ -2740,149 +2747,134 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
-      {/* TAB 2: Grands Maîtres & Références */}
+      {/* TAB 2: Grand Maître & Références */}
       {activeTab === 'maitres' && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
-          {/* Arborescence : Farruca -> Grands Maîtres -> Essai (et dossiers rattachés) */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#13100d] border border-[#2b2219] shadow-md space-y-3">
-            {/* Niveau racine : Farruca */}
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveCustomFolderId(null);
-                  setIsBiblioPageOpen(true);
-                  setActiveTab('hub');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-                title="Retourner à Farruca"
-              >
-                <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
-                <span className="text-base sm:text-lg font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
-                  Farruca
-                </span>
-              </button>
+          {/* En haut : Farruca */}
+          <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCustomFolderId(null);
+                setIsBiblioPageOpen(true);
+                setActiveTab('hub');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
+              title="Retourner à l'arborescence Farruca"
+            >
+              <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
+                Farruca
+              </span>
+            </button>
+          </div>
+
+          {/* Dessous : Grand Maître */}
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+              <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif">
+                {standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître'}
+              </h3>
+              <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
+                {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
+                {getSubfoldersOf('maitres').length > 0 && ` • ${getSubfoldersOf('maitres').length} sous-dossier${getSubfoldersOf('maitres').length > 1 ? 's' : ''}`}
+              </span>
             </div>
 
-            {/* Niveau 1 : Grands Maîtres (avec branche d'arborescence) */}
-            <div className="ml-3 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-1">
-              <div className="relative group">
-                <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22]" />
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <button
+                onClick={() => onOpenAddVideo('maitres')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Ajouter une vidéo</span>
+              </button>
 
-                <div className="p-3 sm:p-3.5 rounded-xl bg-[#1c1814] border border-[#3d2f21] shadow-sm flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
-                    <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif truncate">
-                      {standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres'}
-                    </h3>
-                    <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] shrink-0">
-                      {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
-                    </span>
-                  </div>
+              <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    mediaViewMode === 'list'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+                  }`}
+                  title="Vue liste"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Vue liste</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaViewMode('icons')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    mediaViewMode === 'icons'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+                  }`}
+                  title="Vue icônes"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Vue icônes</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <button
-                      onClick={() => onOpenAddVideo('maitres')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter une vidéo</span>
-                    </button>
-
-                    <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSetMediaViewMode('list')}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mediaViewMode === 'list'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title="Vue liste"
-                      >
-                        <List className="w-3.5 h-3.5" />
-                        <span>Vue liste</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetMediaViewMode('icons')}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mediaViewMode === 'icons'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title="Vue icônes"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                        <span>Vue icônes</span>
-                      </button>
+          {/* Sous-dossiers au niveau inférieur */}
+          {getSubfoldersOf('maitres').length > 0 && (
+            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
+              <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sous-dossiers ({getSubfoldersOf('maitres').length})</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {getSubfoldersOf('maitres').map(sub => (
+                  <div
+                    key={sub.id}
+                    onClick={() => handleOpenCustomFolder(sub.id)}
+                    className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
+                        {sub.name}
+                      </span>
                     </div>
-
                     <div className="relative dropdown-menu-trigger">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenDropdownId(prev => prev === 'header_maitres' ? null : 'header_maitres');
+                          setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
                         }}
-                        className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
-                        title="Options Grands Maîtres"
+                        className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                        title="Options"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <MoreVertical className="w-3.5 h-3.5" />
                       </button>
-                      {renderFolderDropdownMenu('header_maitres', standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres', 'maitres')}
+                      {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id)}
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-
-              {/* Niveau 2 : Dossiers rattachés sous Grands Maîtres (ex: Essai) */}
-              {getSubfoldersOf('maitres').length > 0 && (
-                <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1">
-                  {getSubfoldersOf('maitres').map(sub => {
-                    const subCounts = getFolderItemCount(sub.id);
-                    return (
-                      <div key={sub.id} className="relative group flex items-center">
-                        <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCustomFolder(sub.id)}
-                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 transition-all text-left cursor-pointer group shadow-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate font-semibold">
-                                {sub.name}
-                              </span>
-                              <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
-                                {subCounts.files} {subCounts.files > 1 ? 'fichiers' : 'fichier'}
-                              </span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-[#5e5346] group-hover:text-emerald-400 transition-all shrink-0" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
-          {/* Rendu dynamique des fichiers directement rattachés à Grands Maîtres */}
+          {/* Rendu dynamique des médias selon le mode choisi */}
           {mediaViewMode === 'list' ? (
             <div className="space-y-1.5">
-              {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres', 'maitres', i))}
+              {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres', i))}
             </div>
           ) : mediaViewMode === 'icons' ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {getMaitresVideos().map(v => renderVideoGridIcons(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres', 'maitres'))}
+              {getMaitresVideos().map(v => renderVideoGridIcons(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres'))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {getMaitresVideos().map(v => renderVideoCard(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres', 'maitres'))}
+              {getMaitresVideos().map(v => renderVideoCard(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres'))}
             </div>
           )}
         </div>

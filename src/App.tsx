@@ -46,6 +46,7 @@ export default function App() {
   const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
   const [danseTab, setDanseTab] = useState<DanseSectionTab>('hub');
   const [isBiblioPageOpen, setIsBiblioPageOpen] = useState<boolean>(false);
+  const [danseCustomFolderId, setDanseCustomFolderId] = useState<string | null>(null);
 
   // Modals state
   const [activeVideoData, setActiveVideoData] = useState<{
@@ -303,6 +304,7 @@ export default function App() {
     setSelectedVariantKey(null);
     setPaloInitialTab(initialTab);
     setDanseTab('hub');
+    setDanseCustomFolderId(null);
     setIsBiblioPageOpen(false);
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -312,6 +314,7 @@ export default function App() {
     setSelectedPaloKey(paloKey);
     setSelectedVariantKey(null);
     setDanseTab(tab);
+    setDanseCustomFolderId(null);
     if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
       setIsBiblioPageOpen(true);
     }
@@ -344,8 +347,17 @@ export default function App() {
       else setCurrentView('home');
     } else if (currentView === 'palo-detail') {
       if (discipline === 'danse') {
-        if (danseTab !== 'hub') {
+        if (danseCustomFolderId) {
+          // Si on est dans un dossier au même niveau que essai dans l'arborescence (ou sous-dossier),
+          // on revient sur l'arborescence de la farruca en vert
+          setDanseCustomFolderId(null);
+          setDanseTab('hub');
+          setIsBiblioPageOpen(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        } else if (danseTab !== 'hub') {
           // Si on est dans un dossier (ex: Grands Maîtres, Cours, Letras, Compás, etc.), on retourne à l'arborescence de la Farruca avec les dossiers verts
+          setDanseCustomFolderId(null);
           setDanseTab('hub');
           setIsBiblioPageOpen(true);
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -384,6 +396,7 @@ export default function App() {
     setDiscipline(targetDiscipline);
     setSelectedPaloKey(paloKey);
     setSelectedVariantKey(null);
+    setDanseCustomFolderId(null);
     setCurrentView('palo-detail');
     if (targetDiscipline === 'danse' && danseTargetTab) {
       setDanseTab(danseTargetTab);
@@ -398,6 +411,7 @@ export default function App() {
     setSelectedPaloKey(null);
     setSelectedVariantKey(null);
     setDanseTab('hub');
+    setDanseCustomFolderId(null);
     setIsBiblioPageOpen(false);
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -413,8 +427,12 @@ export default function App() {
     headerSubtitle = "Tangos · Sélection de la variante";
   } else if (currentView === 'palo-detail') {
     if (discipline === 'danse') {
-      if (danseTab === 'hub') {
-        headerSubtitle = `${activeDansePalo.name} · Danse · Les 6 espaces d'étude`;
+      if (danseCustomFolderId) {
+        headerSubtitle = `${activeDansePalo.name} · Arborescence`;
+      } else if (danseTab === 'hub') {
+        headerSubtitle = isBiblioPageOpen
+          ? `${activeDansePalo.name} · Arborescence`
+          : `${activeDansePalo.name} · Danse · Les 6 espaces d'étude`;
       } else if (danseTab === 'maitres') {
         headerSubtitle = `${activeDansePalo.name} · Grands Maîtres (Chorégraphies intégrales)`;
       } else if (danseTab === 'structure') {
@@ -630,6 +648,8 @@ export default function App() {
               activeTab={danseTab}
               isBiblioPageOpen={isBiblioPageOpen}
               onToggleBiblioPage={setIsBiblioPageOpen}
+              activeCustomFolderId={danseCustomFolderId}
+              onCustomFolderChange={setDanseCustomFolderId}
               onTabChange={tab => {
                 setDanseTab(tab);
                 if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
