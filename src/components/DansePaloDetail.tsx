@@ -4,7 +4,8 @@ import {
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
   LayoutGrid, List, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
-  AlertTriangle, Laptop, Smartphone, Folder, FolderOpen, MoreVertical, FolderPlus, Check
+  AlertTriangle, Laptop, Smartphone, Folder, FolderOpen, MoreVertical, FolderPlus, Check,
+  ArrowDownAZ, ArrowUpZA
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
@@ -196,6 +197,26 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [folderToRename, setFolderToRename] = useState<{ id: string; name: string } | null>(null);
   const [standardRenames, setStandardRenames] = useState<Record<string, string>>(() => getStandardFolderRenames(palo.id));
   const [deletedStandardIds, setDeletedStandardIds] = useState<string[]>(() => getStandardFolderDeleted(palo.id));
+
+  // État de pliage/dépliage des dossiers de l'arborescence (par défaut tous ouverts)
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`flamenco_collapsed_folders_${palo.id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleFolderCollapse = (folderId: string) => {
+    setCollapsedFolderIds(prev => {
+      const next = { ...prev, [folderId]: !prev[folderId] };
+      try {
+        localStorage.setItem(`flamenco_collapsed_folders_${palo.id}`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Synchronisation avec les mises à jour de dossiers
   useEffect(() => {
@@ -1581,6 +1602,54 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const topLevelCustomFolders = danseFolders.filter(f => !f.parentId);
 
+  // Tri alphabétique des dossiers dans l'arborescence ('default' | 'asc' | 'desc')
+  const [folderSortOrder, setFolderSortOrder] = useState<'default' | 'asc' | 'desc'>(() => {
+    try {
+      const saved = localStorage.getItem('flamenco_danse_folders_sort_order');
+      if (saved === 'asc' || saved === 'desc') return saved;
+      return 'default';
+    } catch {
+      return 'default';
+    }
+  });
+
+  const handleSetFolderSortOrder = (order: 'default' | 'asc' | 'desc') => {
+    setFolderSortOrder(order);
+    try {
+      localStorage.setItem('flamenco_danse_folders_sort_order', order);
+    } catch {}
+  };
+
+  type TreeFolderItem = 
+    | { type: 'standard'; id: string; name: string; tab: DanseSectionTab }
+    | { type: 'custom'; id: string; name: string };
+
+  const allRootFolders: TreeFolderItem[] = [
+    ...standardFolders.map(s => ({ type: 'standard' as const, id: s.id, name: s.name, tab: s.tab })),
+    ...topLevelCustomFolders.map(c => ({ type: 'custom' as const, id: c.id, name: c.name }))
+  ];
+
+  const sortedRootFolders: TreeFolderItem[] = folderSortOrder === 'default'
+    ? allRootFolders
+    : [...allRootFolders].sort((a, b) => {
+        if (folderSortOrder === 'asc') {
+          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        } else {
+          return b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' });
+        }
+      });
+
+  const getSortedSubfoldersOf = (parentId: string) => {
+    const subs = getSubfoldersOf(parentId);
+    if (folderSortOrder === 'asc') {
+      return [...subs].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    }
+    if (folderSortOrder === 'desc') {
+      return [...subs].sort((a, b) => b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' }));
+    }
+    return subs;
+  };
+
   const getFolderItemCount = (folderId: string): { files: number; subfolders: number } => {
     const subs = getSubfoldersOf(folderId).length;
     let files = 0;
@@ -1732,29 +1801,67 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
       {/* En dessous : arborescence des dossiers & sous-dossiers */}
       <div className="ml-2.5 pl-3 border-l-2 border-[#382d22] space-y-2 pt-0.5">
-        {/* Dossiers standards */}
-        {standardFolders.map(item => {
-          const isActive = !activeCustomFolderId && activeTab === item.tab;
-          const subfolders = getSubfoldersOf(item.id);
-          const counts = getFolderItemCount(item.id);
+        {/* Dossiers standards et personnalisés ordonnés selon le tri */}
+        {sortedRootFolders.map(folderItem => {
+          const isActive = folderItem.type === 'standard'
+            ? (!activeCustomFolderId && activeTab === folderItem.tab)
+            : (activeCustomFolderId === folderItem.id);
+          const subfolders = getSortedSubfoldersOf(folderItem.id);
+          const counts = getFolderItemCount(folderItem.id);
+          const isCollapsed = !!collapsedFolderIds[folderItem.id];
+          const hasSubfolders = subfolders.length > 0;
           return (
-            <div key={item.id} className="space-y-1">
+            <div key={folderItem.id} className="space-y-1">
               <div className="relative group flex items-center">
                 <div
                   className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
                     isActive ? 'bg-emerald-500' : 'bg-[#382d22] group-hover:bg-emerald-500/60'
                   }`}
                 />
-                <button
-                  type="button"
-                  onClick={() => handleOpenStandardTab(item.tab)}
-                  className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-left cursor-pointer transition-all ${
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (folderItem.type === 'standard') {
+                      handleOpenStandardTab(folderItem.tab);
+                    } else {
+                      handleOpenCustomFolder(folderItem.id);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      if (folderItem.type === 'standard') {
+                        handleOpenStandardTab(folderItem.tab);
+                      } else {
+                        handleOpenCustomFolder(folderItem.id);
+                      }
+                    }
+                  }}
+                  className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl text-left cursor-pointer transition-all ${
                     isActive
                       ? 'bg-emerald-950/40 border border-neutral-600/70 text-white font-bold shadow-xs'
                       : 'bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 text-[#ded3c5]'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {hasSubfolders ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFolderCollapse(folderItem.id);
+                        }}
+                        className="p-0.5 -ml-0.5 rounded text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                        title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
+                        aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
+                      >
+                        {isCollapsed ? (
+                          <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                        )}
+                      </button>
+                    ) : null}
                     {isActive ? (
                       <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                     ) : (
@@ -1762,7 +1869,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     )}
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs sm:text-sm truncate">
-                        {item.name}
+                        {folderItem.name}
                       </span>
                       <span className="text-[10px] text-[#8c8173] font-normal leading-tight truncate">
                         {counts.subfolders} dossier{counts.subfolders > 1 ? 's' : ''} • {counts.files} {counts.files > 1 ? 'médias' : 'média'}
@@ -1772,7 +1879,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   {isActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-1" />
                   )}
-                </button>
+                </div>
 
                 {/* Bouton trois petits points */}
                 <div className="relative dropdown-menu-trigger ml-1">
@@ -1780,130 +1887,24 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOpenDropdownId(prev => prev === `side_${item.id}` ? null : `side_${item.id}`);
+                      setOpenDropdownId(prev => prev === `side_${folderItem.id}` ? null : `side_${folderItem.id}`);
                     }}
                     className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
-                    title={`Options ${item.name}`}
+                    title={`Options ${folderItem.name}`}
                   >
                     <MoreVertical className="w-3.5 h-3.5" />
                   </button>
                   {renderFolderDropdownMenu(
-                    `side_${item.id}`,
-                    item.name,
-                    item.id
+                    `side_${folderItem.id}`,
+                    folderItem.name,
+                    folderItem.id
                   )}
                 </div>
               </div>
 
-              {/* Sous-dossiers au niveau inférieur : PAS DE PETITS POINTS */}
-              {subfolders.length > 0 && (
-                <div className="ml-3 pl-3 border-l-2 border-[#2e241c] space-y-1 pt-0.5">
-                  {subfolders.map(sub => {
-                    const isSubActive = activeCustomFolderId === sub.id;
-                    const subCounts = getFolderItemCount(sub.id);
-                    return (
-                      <div key={sub.id} className="relative group flex items-center">
-                        <div
-                          className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
-                            isSubActive ? 'bg-emerald-500' : 'bg-[#2e241c] group-hover:bg-emerald-500/60'
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCustomFolder(sub.id)}
-                          className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-left cursor-pointer transition-all ${
-                            isSubActive
-                              ? 'bg-emerald-950/50 border border-neutral-600/70 text-white font-semibold'
-                              : 'bg-[#15120f] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 text-[#c7bcad]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[11px] sm:text-xs truncate">{sub.name}</span>
-                              <span className="text-[9px] text-[#8c8173] font-normal leading-tight truncate">
-                                {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
-                              </span>
-                            </div>
-                          </div>
-                          {isSubActive && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-1" />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Dossiers personnalisés de niveau 1 */}
-        {topLevelCustomFolders.map(folder => {
-          const isActive = activeCustomFolderId === folder.id;
-          const subfolders = getSubfoldersOf(folder.id);
-          const counts = getFolderItemCount(folder.id);
-          return (
-            <div key={folder.id} className="space-y-1">
-              <div className="relative group flex items-center">
-                <div
-                  className={`absolute -left-3 top-1/2 -translate-y-1/2 w-3 h-0.5 transition-colors ${
-                    isActive ? 'bg-emerald-500' : 'bg-[#382d22] group-hover:bg-emerald-500/60'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleOpenCustomFolder(folder.id)}
-                  className={`flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-left cursor-pointer transition-all ${
-                    isActive
-                      ? 'bg-emerald-950/40 border border-neutral-600/70 text-white font-bold shadow-xs'
-                      : 'bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 text-[#ded3c5]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isActive ? (
-                      <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
-                    ) : (
-                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
-                    )}
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs sm:text-sm truncate">
-                        {folder.name}
-                      </span>
-                      <span className="text-[10px] text-[#8c8173] font-normal leading-tight truncate">
-                        {counts.subfolders} dossier{counts.subfolders > 1 ? 's' : ''} • {counts.files} {counts.files > 1 ? 'médias' : 'média'}
-                      </span>
-                    </div>
-                  </div>
-                  {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-1" />
-                  )}
-                </button>
-
-                <div className="relative dropdown-menu-trigger ml-1">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenDropdownId(prev => prev === `side_${folder.id}` ? null : `side_${folder.id}`);
-                    }}
-                    className="p-1.5 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
-                    title={`Options ${folder.name}`}
-                  >
-                    <MoreVertical className="w-3.5 h-3.5" />
-                  </button>
-                  {renderFolderDropdownMenu(
-                    `side_${folder.id}`,
-                    folder.name,
-                    folder.id
-                  )}
-                </div>
-              </div>
-
-              {/* Sous-dossiers indentés : PAS DE PETITS POINTS */}
-              {subfolders.length > 0 && (
-                <div className="ml-3 pl-3 border-l-2 border-[#2e241c] space-y-1 pt-0.5">
+              {/* Sous-dossiers au niveau inférieur */}
+              {hasSubfolders && !isCollapsed && (
+                <div className="ml-3 pl-3 border-l-2 border-[#2e241c] space-y-1 pt-0.5 animate-in fade-in duration-150">
                   {subfolders.map(sub => {
                     const isSubActive = activeCustomFolderId === sub.id;
                     const subCounts = getFolderItemCount(sub.id);
@@ -1975,13 +1976,63 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {activeTab === 'hub' && isBiblioPageOpen && !activeCustomFolderId && (
         <div className="space-y-4 animate-in fade-in duration-200">
           <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
-            {/* En haut : Farruca avec trois petits points à droite au bout de la ligne */}
+            {/* En haut : Farruca avec bouton unique de tri alphabétique et trois petits points à droite */}
             <div className="flex items-center justify-between gap-3 relative pb-2 border-b border-[#2b2118]/80">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => toggleFolderCollapse('farruca_root')}
+                  className="p-1 -ml-1 rounded-md text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                  title={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
+                  aria-label={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
+                >
+                  {collapsedFolderIds['farruca_root'] ? (
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                  )}
+                </button>
                 <FolderOpen className="w-6 h-6 text-emerald-400 shrink-0" />
                 <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] truncate">
                   {palo.name}
                 </span>
+
+                {/* Bouton unique de tri alphabétique / contre-alphabétique placé près du nom du dossier */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSetFolderSortOrder(
+                      folderSortOrder === 'default' ? 'asc' : folderSortOrder === 'asc' ? 'desc' : 'default'
+                    );
+                  }}
+                  className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    folderSortOrder !== 'default'
+                      ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300 shadow-xs'
+                      : 'bg-[#181410] border-[#33281d] text-[#8c8173] hover:text-[#ded3c5] hover:bg-[#231e18]'
+                  }`}
+                  title={
+                    folderSortOrder === 'asc'
+                      ? "Classé A → Z (cliquer pour trier Z → A)"
+                      : folderSortOrder === 'desc'
+                      ? "Classé Z → A (cliquer pour ordre initial)"
+                      : "Classer les dossiers par ordre alphabétique (A → Z, Z → A)"
+                  }
+                  aria-label="Classer les dossiers par ordre alphabétique ou contre-alphabétique"
+                >
+                  {folderSortOrder === 'desc' ? (
+                    <ArrowUpZA className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                  ) : folderSortOrder === 'asc' ? (
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                  ) : (
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
+                  {folderSortOrder !== 'default' && (
+                    <span className="text-[10px] font-bold text-emerald-400 leading-none">
+                      {folderSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                    </span>
+                  )}
+                </button>
+
                 <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 hidden xs:inline font-medium">
                   Arborescence
                 </span>
@@ -2004,27 +2055,65 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
             </div>
 
-            {/* En dessous : arborescence des dossiers & sous-dossiers */}
-            <div className="ml-3 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-1">
-              {/* 1. Dossiers standards (Grands Maîtres, Cours, Letras, Compas) */}
-                {standardFolders.map(item => {
-                  const counts = getFolderItemCount(item.id);
-                  const subfolders = getSubfoldersOf(item.id);
+            {/* En dessous : arborescence des dossiers & sous-dossiers classés */}
+            {!collapsedFolderIds['farruca_root'] && (
+              <div className="ml-3 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-1 animate-in fade-in duration-150">
+                {sortedRootFolders.map(folderItem => {
+                  const counts = getFolderItemCount(folderItem.id);
+                  const subfolders = getSortedSubfoldersOf(folderItem.id);
+                  const isCollapsed = !!collapsedFolderIds[folderItem.id];
+                  const hasSubfolders = subfolders.length > 0;
 
                   return (
-                    <div key={item.id} className="space-y-2">
+                    <div key={folderItem.id} className="space-y-2">
                       <div className="relative group flex items-center">
                         <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22] group-hover:bg-emerald-500/60 transition-colors" />
-                        <button
-                          type="button"
-                          onClick={() => handleOpenStandardTab(item.tab)}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            if (folderItem.type === 'standard') {
+                              handleOpenStandardTab(folderItem.tab);
+                            } else {
+                              handleOpenCustomFolder(folderItem.id);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              if (folderItem.type === 'standard') {
+                                handleOpenStandardTab(folderItem.tab);
+                              } else {
+                                handleOpenCustomFolder(folderItem.id);
+                              }
+                            }
+                          }}
                           className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 transition-all text-left cursor-pointer group shadow-xs"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            {hasSubfolders ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFolderCollapse(folderItem.id);
+                                }}
+                                className="p-1 -ml-1 rounded-md text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
+                                aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
+                              >
+                                {isCollapsed ? (
+                                  <ChevronRight className="w-4 h-4 text-emerald-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-emerald-400" />
+                                )}
+                              </button>
+                            ) : (
+                              <span className="w-5 h-5 shrink-0 -ml-0.5" />
+                            )}
                             <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
-                                {item.name}
+                                {folderItem.name}
                               </span>
                               <span className="text-[11px] text-[#8c8173] font-normal leading-tight mt-0.5">
                                 {counts.subfolders} dossier{counts.subfolders > 1 ? 's' : ''} • {counts.files} {counts.files > 1 ? 'médias' : 'média'}
@@ -2032,7 +2121,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                             </div>
                           </div>
                           <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
+                        </div>
 
                         {/* Trois petits points pour chaque dossier */}
                         <div className="relative dropdown-menu-trigger ml-1.5">
@@ -2040,130 +2129,93 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setOpenDropdownId(prev => prev === `tree_${item.id}` ? null : `tree_${item.id}`);
+                              setOpenDropdownId(prev => prev === `tree_${folderItem.id}` ? null : `tree_${folderItem.id}`);
                             }}
                             className="p-2 rounded-xl text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
-                            title={`Options ${item.name}`}
+                            title={`Options ${folderItem.name}`}
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                           {renderFolderDropdownMenu(
-                            `tree_${item.id}`,
-                            item.name,
-                            item.id
+                            `tree_${folderItem.id}`,
+                            folderItem.name,
+                            folderItem.id
                           )}
                         </div>
                       </div>
 
-                      {/* Sous-dossiers au niveau inférieur : PAS DE PETITS POINTS */}
-                      {subfolders.length > 0 && (
-                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1">
+                      {/* Sous-dossiers au niveau inférieur */}
+                      {hasSubfolders && !isCollapsed && (
+                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1 animate-in fade-in duration-150">
                           {subfolders.map(sub => {
                             const subCounts = getFolderItemCount(sub.id);
+                            const subSubfolders = getSortedSubfoldersOf(sub.id);
+                            const isSubCollapsed = !!collapsedFolderIds[sub.id];
+                            const hasSubSubfolders = subSubfolders.length > 0;
                             return (
-                              <div key={sub.id} className="relative group flex items-center">
-                                <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCustomFolder(sub.id)}
-                                  className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 transition-all text-left cursor-pointer group shadow-xs"
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
-                                        {sub.name}
-                                      </span>
-                                      <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
-                                        {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
-                                      </span>
+                              <div key={sub.id} className="space-y-1.5">
+                                <div className="relative group flex items-center">
+                                  <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleOpenCustomFolder(sub.id)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCustomFolder(sub.id); }}
+                                    className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 transition-all text-left cursor-pointer group shadow-xs"
+                                  >
+                                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                      {hasSubSubfolders ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleFolderCollapse(sub.id);
+                                          }}
+                                          className="p-0.5 -ml-0.5 rounded text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                          title={isSubCollapsed ? `Déplier ${sub.name}` : `Replier ${sub.name}`}
+                                        >
+                                          {isSubCollapsed ? (
+                                            <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                                          ) : (
+                                            <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                                          )}
+                                        </button>
+                                      ) : null}
+                                      <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                          {sub.name}
+                                        </span>
+                                        <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
+                                          {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
+                                        </span>
+                                      </div>
                                     </div>
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all shrink-0" />
                                   </div>
-                                  <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all shrink-0" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                                </div>
 
-                {/* 2. Dossiers personnalisés de niveau 1 (ajoutés à la suite) */}
-                {topLevelCustomFolders.map(folder => {
-                  const counts = getFolderItemCount(folder.id);
-                  const subfolders = getSubfoldersOf(folder.id);
-
-                  return (
-                    <div key={folder.id} className="space-y-2">
-                      <div className="relative group flex items-center">
-                        <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22] group-hover:bg-emerald-500/60 transition-colors" />
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCustomFolder(folder.id)}
-                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 transition-all text-left cursor-pointer group shadow-xs"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
-                                {folder.name}
-                              </span>
-                              <span className="text-[11px] text-[#8c8173] font-normal leading-tight mt-0.5">
-                                {counts.subfolders} dossier{counts.subfolders > 1 ? 's' : ''} • {counts.files} {counts.files > 1 ? 'médias' : 'média'}
-                              </span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
-
-                        <div className="relative dropdown-menu-trigger ml-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenDropdownId(prev => prev === `tree_${folder.id}` ? null : `tree_${folder.id}`);
-                            }}
-                            className="p-2 rounded-xl text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
-                            title={`Options ${folder.name}`}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                          {renderFolderDropdownMenu(
-                            `tree_${folder.id}`,
-                            folder.name,
-                            folder.id
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Sous-dossiers indentés au niveau inférieur : PAS DE PETITS POINTS */}
-                      {subfolders.length > 0 && (
-                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1">
-                          {subfolders.map(sub => {
-                            const subCounts = getFolderItemCount(sub.id);
-                            return (
-                              <div key={sub.id} className="relative group flex items-center">
-                                <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCustomFolder(sub.id)}
-                                  className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 transition-all text-left cursor-pointer group shadow-xs"
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
-                                        {sub.name}
-                                      </span>
-                                      <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
-                                        {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
-                                      </span>
-                                    </div>
+                                {/* Sous-sous-dossiers éventuels */}
+                                {hasSubSubfolders && !isSubCollapsed && (
+                                  <div className="ml-4 pl-4 border-l-2 border-[#2b2118] space-y-1.5 pt-1 animate-in fade-in duration-150">
+                                    {subSubfolders.map(subSub => (
+                                      <div key={subSub.id} className="relative group flex items-center">
+                                        <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-4 h-0.5 bg-[#2b2118]" />
+                                        <div
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => handleOpenCustomFolder(subSub.id)}
+                                          className="flex-1 min-w-0 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#14120f] hover:bg-[#1b1713] border border-neutral-700/30 text-left cursor-pointer"
+                                        >
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <Folder className="w-3 h-3 text-emerald-400 shrink-0" />
+                                            <span className="text-xs text-[#ded3c5] truncate">{subSub.name}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                  <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all shrink-0" />
-                                </button>
+                                )}
                               </div>
                             );
                           })}
@@ -2173,6 +2225,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   );
                 })}
               </div>
+            )}
           </div>
         </div>
       )}
@@ -2779,7 +2832,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </h3>
               <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
                 {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
-                {getSubfoldersOf('maitres').length > 0 && ` • ${getSubfoldersOf('maitres').length} sous-dossier${getSubfoldersOf('maitres').length > 1 ? 's' : ''}`}
               </span>
             </div>
 
@@ -2822,46 +2874,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Sous-dossiers au niveau inférieur */}
-          {getSubfoldersOf('maitres').length > 0 && (
-            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
-              <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Sous-dossiers ({getSubfoldersOf('maitres').length})</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {getSubfoldersOf('maitres').map(sub => (
-                  <div
-                    key={sub.id}
-                    onClick={() => handleOpenCustomFolder(sub.id)}
-                    className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
-                      <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
-                        {sub.name}
-                      </span>
-                    </div>
-                    <div className="relative dropdown-menu-trigger">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
-                        }}
-                        className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
-                        title="Options"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
-                      {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Rendu dynamique des médias selon le mode choisi */}
           {mediaViewMode === 'list' ? (
