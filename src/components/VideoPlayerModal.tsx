@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical } from 'lucide-react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX } from 'lucide-react';
 import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
 import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
@@ -97,6 +97,71 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const isFromMontage = sectionName.toLowerCase().includes('montage');
 
+  // Volume control state (persisted in localStorage)
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('flamenco_player_volume');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) return parsed;
+      }
+    } catch {}
+    return 100;
+  });
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const prevVolumeBeforeMute = useRef<number>(100);
+
+  const applyVolume = (vol: number, muted: boolean) => {
+    const effectiveVol = muted ? 0 : vol;
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.volume = effectiveVol / 100;
+      htmlVideoRef.current.muted = muted || effectiveVol === 0;
+    }
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      if (muted || effectiveVol === 0) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'mute', args: [] }),
+          '*'
+        );
+      } else {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+          '*'
+        );
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'setVolume', args: [effectiveVol] }),
+          '*'
+        );
+      }
+    }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setVolume(newVol);
+    const willMute = newVol === 0;
+    setIsMuted(willMute);
+    applyVolume(newVol, willMute);
+    try {
+      localStorage.setItem('flamenco_player_volume', String(newVol));
+    } catch {}
+  };
+
+  const toggleMute = () => {
+    if (isMuted) {
+      const restored = prevVolumeBeforeMute.current > 0 ? prevVolumeBeforeMute.current : 80;
+      setIsMuted(false);
+      setVolume(restored);
+      applyVolume(restored, false);
+      try {
+        localStorage.setItem('flamenco_player_volume', String(restored));
+      } catch {}
+    } else {
+      prevVolumeBeforeMute.current = volume > 0 ? volume : 80;
+      setIsMuted(true);
+      applyVolume(volume, true);
+    }
+  };
+
   // Close menu on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -142,6 +207,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         JSON.stringify({ event: 'listening' }),
         '*'
       );
+      applyVolume(volume, isMuted);
     }
     tryPlayVideo();
   };
@@ -197,6 +263,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           const data = JSON.parse(event.data);
           if (data.event === 'onReady') {
             tryPlayVideo();
+            applyVolume(volume, isMuted);
           } else if (data.event === 'onStateChange') {
             if (data.info === 1) setIsPlaying(true);
             else if (data.info === 2 || data.info === 0) setIsPlaying(false);
@@ -476,6 +543,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       if (playbackSpeed !== 1) {
         htmlVideoRef.current.playbackRate = playbackSpeed;
       }
+      htmlVideoRef.current.volume = isMuted ? 0 : volume / 100;
+      htmlVideoRef.current.muted = isMuted || volume === 0;
     }
   };
 
@@ -720,6 +789,41 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 </>
               )}
             </button>
+
+            {/* Régulateur de niveau sonore (directement à droite du bouton lecture) */}
+            <div 
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#2d2620] border border-[#3b3228] text-[#d4c9ba] transition-colors shadow-sm"
+              title={`Niveau sonore : ${isMuted ? 0 : volume}%`}
+            >
+              <button
+                type="button"
+                onClick={toggleMute}
+                className="text-[#e5a93b] hover:text-[#f5b84c] p-0.5 rounded transition-colors cursor-pointer flex items-center justify-center active:scale-95"
+                title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
+                aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-3.5 h-3.5 text-red-400" />
+                ) : volume < 50 ? (
+                  <Volume1 className="w-3.5 h-3.5" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
+                className="w-16 sm:w-20 h-1.5 bg-[#3a3126] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+                aria-label="Régulateur de volume sonore"
+              />
+              <span className="font-mono text-[10px] text-[#a69c8f] min-w-[26px] text-right select-none">
+                {isMuted ? '0%' : `${volume}%`}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-[#8c8173]">
