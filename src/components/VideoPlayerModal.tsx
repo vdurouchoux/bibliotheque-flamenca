@@ -900,39 +900,59 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </span>
         </div>
 
-        {/* Slow-motion / Ralenti & Playback Speed Bar */}
-        <div className="px-3 sm:px-4 py-2 bg-[#13100d] border-b border-[#29221a] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[#e5a93b] font-semibold text-xs">
-              <Gauge className="w-3.5 h-3.5" />
-              <span>Ralenti :</span>
-            </span>
-            <div className="inline-flex items-center bg-[#1e1914] p-0.5 rounded-lg border border-[#382d21]">
-              {[
-                { label: '0.25x', value: 0.25 },
-                { label: '0.5x', value: 0.5 },
-                { label: '0.75x', value: 0.75 },
-                { label: '1x (Normal)', value: 1 },
-                { label: '1.25x', value: 1.25 }
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => changePlaybackSpeed(opt.value)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                    playbackSpeed === opt.value
-                      ? 'bg-[#e5a93b] text-[#121110] shadow-sm font-bold'
-                      : 'text-[#9e9284] hover:text-[#f4efe6] hover:bg-[#282119]'
-                  }`}
-                  title={`Vitesse de lecture à ${opt.label}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+        {/* Régulateur de vitesse de lecture pleine largeur (remplace Ralenti) */}
+        <div className="px-3 sm:px-4 py-2 bg-[#13100d] border-b border-[#29221a] flex items-center gap-2 sm:gap-2.5 text-xs w-full">
+          <div className="flex items-center gap-1.5 shrink-0 text-[#e5a93b]">
+            <Gauge className="w-4 h-4 text-[#e5a93b]" />
+            <span className="font-semibold text-xs text-[#e5a93b] hidden xs:inline">Vitesse :</span>
           </div>
-          <span className="text-[11px] text-[#7a6f62] italic hidden sm:inline">
-            Pratique pour décomposer le zapateado, les compás et les falsetas
-          </span>
+
+          <input
+            type="range"
+            min="0.25"
+            max="2"
+            step="0.05"
+            list="speed-ticks"
+            value={playbackSpeed}
+            onDoubleClick={() => changePlaybackSpeed(1)}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              // Aimant automatique sur 1x entre 0.94 et 1.06
+              const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
+              changePlaybackSpeed(finalVal);
+            }}
+            className="flex-1 w-full h-2 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+            aria-label="Régulateur de vitesse de lecture pleine largeur"
+            title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
+          />
+          <datalist id="speed-ticks">
+            <option value="1"></option>
+          </datalist>
+
+          {/* Bouton remise à 1x rapide */}
+          <button
+            type="button"
+            onClick={() => changePlaybackSpeed(1)}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer select-none shrink-0 ${
+              playbackSpeed !== 1
+                ? 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] shadow-sm active:scale-95 animate-pulse'
+                : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
+            }`}
+            title="Remettre immédiatement la vitesse normale (1x)"
+            aria-label="Remettre à 1x"
+          >
+            <RotateCcw className={`w-3 h-3 ${playbackSpeed !== 1 ? 'text-[#121110]' : 'text-[#a89b8c]'}`} />
+            <span>1x</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => changePlaybackSpeed(1)}
+            className="font-mono text-xs text-[#e5a93b] hover:text-[#fcd34d] font-semibold min-w-[38px] text-right select-none shrink-0 cursor-pointer"
+            title="Cliquer pour réinitialiser à 1x"
+          >
+            {Number(playbackSpeed.toFixed(2))}x
+          </button>
         </div>
 
         {/* Other versions search */}
