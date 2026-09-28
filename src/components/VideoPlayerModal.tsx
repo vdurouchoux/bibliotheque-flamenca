@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX, Search } from 'lucide-react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX, Search, Repeat } from 'lucide-react';
 import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
 import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
@@ -70,12 +70,17 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   // Editable landmarks state
   const [landmarks, setLandmarks] = useState<VideoLandmark[]>(() => resolveInitialLandmarks(video));
-  const [isEditingLandmarks, setIsEditingLandmarks] = useState<boolean>(false);
-  const [newLmTime, setNewLmTime] = useState<string>('');
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [newLmTitle, setNewLmTitle] = useState<string>('');
+  const [newLmStartTime, setNewLmStartTime] = useState<string>('');
+  const [newLmEndTime, setNewLmEndTime] = useState<string>('');
   const [editingLmIndex, setEditingLmIndex] = useState<number | null>(null);
-  const [editLmTime, setEditLmTime] = useState<string>('');
   const [editLmTitle, setEditLmTitle] = useState<string>('');
+  const [editLmStartTime, setEditLmStartTime] = useState<string>('');
+  const [editLmEndTime, setEditLmEndTime] = useState<string>('');
+  const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
+  const [selectedLandmarkIndex, setSelectedLandmarkIndex] = useState<number | null>(0);
+  const [isLooping, setIsLooping] = useState<boolean>(false);
 
   const parsedInfo = extractYouTubeInfo(currentVideo.url, 0);
   const videoId = parsedInfo.videoId;
@@ -333,8 +338,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       setPlayerKey(k => k + 1);
 
       setLandmarks(resolveInitialLandmarks(video));
-      setIsEditingLandmarks(false);
+      setShowAddForm(false);
       setEditingLmIndex(null);
+      setActiveDropdownIndex(null);
+      setSelectedLandmarkIndex(0);
+      setIsLooping(false);
 
       // Load existing notes
       setNotes(getVideoNotes(video.id));
@@ -415,6 +423,56 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     return `${m}:${s}`;
   };
 
+  useEffect(() => {
+    if (activeDropdownIndex === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.landmark-dropdown-area')) {
+        setActiveDropdownIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeDropdownIndex]);
+
+  // Repère sélectionné ou actif pour la lecture en boucle
+  const currentLandmarkIndex = selectedLandmarkIndex !== null && landmarks[selectedLandmarkIndex]
+    ? selectedLandmarkIndex
+    : (landmarks.length > 0 ? 0 : null);
+
+  const activeLoopLandmark = currentLandmarkIndex !== null ? landmarks[currentLandmarkIndex] : null;
+
+  const canLoop = Boolean(
+    activeLoopLandmark &&
+    typeof activeLoopLandmark.endTimeSeconds === 'number' &&
+    activeLoopLandmark.endTimeSeconds > activeLoopLandmark.timeSeconds
+  );
+
+  const handleToggleLoop = () => {
+    if (!canLoop || !activeLoopLandmark) return;
+    const nextState = !isLooping;
+    setIsLooping(nextState);
+    if (nextState) {
+      if (currentPosition < activeLoopLandmark.timeSeconds || (activeLoopLandmark.endTimeSeconds && currentPosition >= activeLoopLandmark.endTimeSeconds)) {
+        handleJumpToTime(activeLoopLandmark.timeSeconds);
+      }
+    }
+  };
+
+  // Surveillance continue du repère pour boucler instantanément au temps de fin
+  useEffect(() => {
+    if (!isLooping || !activeLoopLandmark || !activeLoopLandmark.endTimeSeconds) return;
+    const interval = setInterval(() => {
+      const curTime = htmlVideoRef.current 
+        ? htmlVideoRef.current.currentTime 
+        : currentTimeRef.current;
+      if (curTime >= activeLoopLandmark.endTimeSeconds!) {
+        handleJumpToTime(activeLoopLandmark.timeSeconds);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isLooping, activeLoopLandmark]);
+
   const handleSaveLandmarks = (updated: VideoLandmark[]) => {
     // Sort by timestamp
     const sorted = [...updated].sort((a, b) => a.timeSeconds - b.timeSeconds);
@@ -425,35 +483,47 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const handleAddLandmark = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newLmTitle.trim()) return;
-    const secs = newLmTime ? parseTimeToSeconds(newLmTime) : currentPosition;
-    const formattedTime = formatSecondsToMinutes(secs);
-    const label = `${formattedTime} - ${newLmTitle.trim()}`;
+    const startSec = newLmStartTime.trim() ? parseTimeToSeconds(newLmStartTime) : currentPosition;
+    const endSec = newLmEndTime.trim() ? parseTimeToSeconds(newLmEndTime) : undefined;
+    const formattedStart = formatSecondsToMinutes(startSec);
+    const cleanTitle = newLmTitle.trim();
+    const label = `${formattedStart} - ${cleanTitle}`;
+    
     const newLm: VideoLandmark = {
-      timeSeconds: secs,
+      timeSeconds: startSec,
+      endTimeSeconds: endSec !== undefined && endSec > 0 ? endSec : undefined,
       label: label
     };
     const updated = [...landmarks, newLm];
     handleSaveLandmarks(updated);
     setNewLmTitle('');
-    setNewLmTime('');
+    setNewLmStartTime('');
+    setNewLmEndTime('');
+    setShowAddForm(false);
   };
 
   const handleStartEditLandmark = (index: number) => {
     setEditingLmIndex(index);
     const lm = landmarks[index];
-    setEditLmTime(formatSecondsToMinutes(lm.timeSeconds));
+    setEditLmStartTime(formatSecondsToMinutes(lm.timeSeconds));
+    setEditLmEndTime(lm.endTimeSeconds ? formatSecondsToMinutes(lm.endTimeSeconds) : '');
     const titleOnly = lm.label.includes(' - ') ? lm.label.split(' - ').slice(1).join(' - ') : lm.label;
     setEditLmTitle(titleOnly);
   };
 
   const handleSaveEditLandmark = (index: number) => {
-    const secs = parseTimeToSeconds(editLmTime);
-    const formattedTime = formatSecondsToMinutes(secs);
-    const label = `${formattedTime} - ${editLmTitle.trim() || 'Repère'}`;
+    if (!editLmTitle.trim()) return;
+    const startSec = parseTimeToSeconds(editLmStartTime);
+    const endSec = editLmEndTime.trim() ? parseTimeToSeconds(editLmEndTime) : undefined;
+    const formattedStart = formatSecondsToMinutes(startSec);
+    const cleanTitle = editLmTitle.trim() || 'Repère';
+    const label = `${formattedStart} - ${cleanTitle}`;
+
     const updated = [...landmarks];
     updated[index] = {
       ...updated[index],
-      timeSeconds: secs,
+      timeSeconds: startSec,
+      endTimeSeconds: endSec !== undefined && endSec > 0 ? endSec : undefined,
       label: label
     };
     handleSaveLandmarks(updated);
@@ -479,8 +549,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     if (window.confirm('Rétablir les repères d’origine de cette vidéo ?')) {
       resetVideoCustomLandmarks(video.id, video.url);
       setLandmarks(video.landmarks || []);
-      setIsEditingLandmarks(false);
+      setShowAddForm(false);
       setEditingLmIndex(null);
+      setActiveDropdownIndex(null);
     }
   };
 
@@ -717,7 +788,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
                 <div className="my-1 border-t border-[#332a20]" />
 
-                {/* Option 3 : Lire sur YouTube à la position du repère */}
+                {/* Option 3 : Lire sur YouTube à la position actuelle */}
                 {video.url ? (
                   <a
                     href={currentPosition > 0 ? `${video.url}${video.url.includes('?') ? '&' : '?'}t=${currentPosition}s` : video.url}
@@ -728,7 +799,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   >
                     <ExternalLink className="w-4 h-4 text-[#e5a93b] shrink-0" />
                     <div className="flex flex-col">
-                      <span>Lire sur YouTube à la position du repère</span>
+                      <span>
+                        Lire sur YouTube à la position actuelle ({Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')})
+                      </span>
                       <span className="text-[10px] text-[#8c8173] font-mono">
                         {currentPosition > 0 ? `Minutage : ${Math.floor(currentPosition / 60)}:${(currentPosition % 60).toString().padStart(2, '0')}` : 'Depuis le début'}
                       </span>
@@ -878,11 +951,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <span>+30s</span>
           </button>
 
-          {/* Bouton Copier le temps compact */}
+          {/* Bouton Copier le temps diminué / compact */}
           <button
             type="button"
             onClick={handleCopyTime}
-            className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer shadow-sm select-none shrink-0 ${
+            className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer shadow-sm select-none shrink-0 ${
               timeCopied
                 ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 ring-1 ring-emerald-400/40'
                 : !isPlaying
@@ -894,7 +967,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 ? "Temps copié dans le presse-papier !"
                 : !isPlaying
                 ? "Vidéo en pause : Cliquer pour copier ce temps"
-                : "Position actuelle"
+                : "Position actuelle (cliquer pour copier)"
             }
           >
             {timeCopied ? (
@@ -903,362 +976,453 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 <span className="font-mono text-emerald-300 font-bold text-[11px]">
                   {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
                 </span>
-                <span className="text-[9px] bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded font-extrabold uppercase tracking-wide">
-                  Copié !
-                </span>
               </>
-            ) : !isPlaying ? (
+            ) : (
               <>
                 <Copy className="w-3 h-3 text-[#e5a93b] shrink-0" />
                 <span className="font-mono text-[#fcd34d] font-bold text-[11px]">
                   {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
                 </span>
-                <span className="text-[9px] bg-[#e5a93b] text-[#121110] px-1 py-0.5 rounded font-extrabold uppercase tracking-wide">
-                  Copier
-                </span>
-              </>
-            ) : (
-              <>
-                <Clock className="w-3 h-3 text-[#e5a93b] shrink-0" />
-                <span className="font-mono text-[#e5a93b] font-medium text-[11px]">
-                  {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
-                </span>
               </>
             )}
           </button>
 
-          {/* Bouton Lecture / Pause : Pause serré à droite lors de la lecture avec sa taille conservée */}
+          {/* Bouton Lecture / Pause ramené sur la gauche (sans ml-auto pour éviter d'être tronqué à droite) */}
           <button
             onClick={togglePlayPause}
-            className={`flex flex-col items-center justify-center rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-md shrink-0 active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-md shrink-0 active:scale-95 px-3 h-8.5 min-w-[80px] ${
               isPlaying
-                ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726] w-20 sm:w-26 h-13 sm:h-14 ml-auto'
-                : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b] w-14 h-13 sm:w-16 sm:h-14'
+                ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
+                : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
             }`}
             title={isPlaying ? "Mettre en pause la vidéo" : "Lancer la vidéo"}
           >
             {isPlaying ? (
               <>
-                <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-[#f4efe6]" />
-                <span className="text-[10px] sm:text-[11px] font-bold leading-none mt-0.5 text-[#f4efe6]">Pause</span>
+                <Pause className="w-4 h-4 fill-current text-[#f4efe6]" />
+                <span className="text-[11px] font-bold text-[#f4efe6]">Pause</span>
               </>
             ) : (
               <>
-                <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5" />
-                <span className="text-[10px] sm:text-[11px] font-bold leading-none mt-0.5">Lecture</span>
+                <Play className="w-4 h-4 fill-current ml-0.5" />
+                <span className="text-[11px] font-bold">Lecture</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Bouton / Régulateur de volume au-dessus de Ralenti et sur toute la largeur de la page */}
-        <div className="px-3 sm:px-4 py-2 bg-[#15120e] border-b border-[#2d261e] flex items-center gap-2.5 text-xs w-full">
-          <button
-            type="button"
-            onClick={toggleMute}
-            className="text-[#e5a93b] hover:text-[#f5b84c] p-1 rounded-lg hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center active:scale-95 shrink-0"
-            title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
-            aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
-          >
-            {isMuted || volume === 0 ? (
-              <VolumeX className="w-4 h-4 text-red-400" />
-            ) : volume < 50 ? (
-              <Volume1 className="w-4 h-4" />
-            ) : (
-              <Volume2 className="w-4 h-4" />
-            )}
-          </button>
-
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            value={isMuted ? 0 : volume}
-            onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-            className="flex-1 w-full h-2 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
-            aria-label="Régulateur de volume sonore pleine largeur"
-          />
-
-          <span className="font-mono text-xs text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
-            {isMuted ? '0%' : `${volume}%`}
-          </span>
+        {/* Ligne 1 : Régulateur de Volume étendu aux 3/4 de la largeur de la page */}
+        <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full">
+          <div className="w-3/4 flex items-center gap-2 sm:gap-2.5 pr-2">
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="text-[#e5a93b] hover:text-[#f5b84c] p-0.5 rounded hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center shrink-0"
+              title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
+              aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-3.5 h-3.5 text-red-400" />
+              ) : volume < 50 ? (
+                <Volume1 className="w-3.5 h-3.5" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5" />
+              )}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={isMuted ? 0 : volume}
+              onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
+              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+              aria-label="Volume"
+            />
+            <span className="font-mono text-[11px] text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
+              {isMuted ? '0%' : `${volume}%`}
+            </span>
+          </div>
         </div>
 
-        {/* Régulateur de vitesse de lecture pleine largeur (remplace Ralenti) */}
-        <div className="px-3 sm:px-4 py-2 bg-[#13100d] border-b border-[#29221a] flex items-center gap-2 sm:gap-2.5 text-xs w-full">
-          <div className="flex items-center gap-1.5 shrink-0 text-[#e5a93b]">
-            <Gauge className="w-4 h-4 text-[#e5a93b]" />
-            <span className="font-semibold text-xs text-[#e5a93b] hidden xs:inline">Vitesse :</span>
+        {/* Ligne 2 : Régulateur de Vitesse aux 3/4 + Bouton Boucle dans le 1/4 restant sous Lecture/Pause */}
+        <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center justify-between text-xs w-full">
+          <div className="w-3/4 flex items-center gap-2 sm:gap-2.5 pr-2">
+            <div className="flex items-center shrink-0 text-[#e5a93b]" title="Vitesse de lecture">
+              <Gauge className="w-3.5 h-3.5 text-[#e5a93b]" />
+            </div>
+
+            <input
+              type="range"
+              min="0.25"
+              max="2"
+              step="0.05"
+              list="speed-ticks"
+              value={playbackSpeed}
+              onDoubleClick={() => changePlaybackSpeed(1)}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
+                changePlaybackSpeed(finalVal);
+              }}
+              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+              aria-label="Vitesse"
+              title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
+            />
+            <datalist id="speed-ticks">
+              <option value="1"></option>
+            </datalist>
+
+            <button
+              type="button"
+              onClick={() => changePlaybackSpeed(1)}
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer select-none shrink-0 ${
+                playbackSpeed !== 1
+                  ? 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] active:scale-95'
+                  : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
+              }`}
+              title="Remettre à 1x"
+            >
+              <RotateCcw className="w-2.5 h-2.5 mr-0.5" />
+              <span>1x</span>
+            </button>
+            <span className="font-mono text-[11px] text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
+              {Number(playbackSpeed.toFixed(2))}x
+            </span>
           </div>
 
-          <input
-            type="range"
-            min="0.25"
-            max="2"
-            step="0.05"
-            list="speed-ticks"
-            value={playbackSpeed}
-            onDoubleClick={() => changePlaybackSpeed(1)}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              // Aimant automatique sur 1x entre 0.94 et 1.06
-              const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
-              changePlaybackSpeed(finalVal);
-            }}
-            className="flex-1 w-full h-2 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
-            aria-label="Régulateur de vitesse de lecture pleine largeur"
-            title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
-          />
-          <datalist id="speed-ticks">
-            <option value="1"></option>
-          </datalist>
-
-          {/* Bouton remise à 1x rapide */}
-          <button
-            type="button"
-            onClick={() => changePlaybackSpeed(1)}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer select-none shrink-0 ${
-              playbackSpeed !== 1
-                ? 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] shadow-sm active:scale-95 animate-pulse'
-                : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
-            }`}
-            title="Remettre immédiatement la vitesse normale (1x)"
-            aria-label="Remettre à 1x"
-          >
-            <RotateCcw className={`w-3 h-3 ${playbackSpeed !== 1 ? 'text-[#121110]' : 'text-[#a89b8c]'}`} />
-            <span>1x</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => changePlaybackSpeed(1)}
-            className="font-mono text-xs text-[#e5a93b] hover:text-[#fcd34d] font-semibold min-w-[38px] text-right select-none shrink-0 cursor-pointer"
-            title="Cliquer pour réinitialiser à 1x"
-          >
-            {Number(playbackSpeed.toFixed(2))}x
-          </button>
+          {/* Bouton Boucle repère : Aligné à droite sous le bouton Lecture/Pause */}
+          <div className="w-1/4 flex justify-end shrink-0 pl-1">
+            <button
+              type="button"
+              onClick={handleToggleLoop}
+              disabled={!canLoop}
+              className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 min-w-[70px] sm:min-w-[80px] ${
+                isLooping
+                  ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b] shadow-md font-bold'
+                  : canLoop
+                  ? 'bg-[#251f18] hover:bg-[#34291f] text-white border-[#554332] hover:border-white/60 font-bold'
+                  : 'bg-[#1a1612] text-[#6b6052] border-[#29221b] opacity-50 cursor-not-allowed'
+              }`}
+              title={
+                !canLoop
+                  ? (activeLoopLandmark ? `Le repère R${currentLandmarkIndex! + 1} n'a pas de temps de fin (boucle indisponible)` : "Aucun repère sélectionné")
+                  : isLooping
+                  ? `Boucle R${currentLandmarkIndex! + 1} active (${formatSecondsToMinutes(activeLoopLandmark!.timeSeconds)} - ${formatSecondsToMinutes(activeLoopLandmark!.endTimeSeconds!)}) - Cliquer pour désactiver`
+                  : `Lire en boucle le repère R${currentLandmarkIndex! + 1} (${formatSecondsToMinutes(activeLoopLandmark!.timeSeconds)} - ${formatSecondsToMinutes(activeLoopLandmark!.endTimeSeconds!)})`
+              }
+            >
+              <Repeat className={`w-3.5 h-3.5 ${isLooping ? 'text-[#121110]' : canLoop ? 'text-white' : 'text-[#6b6052]'}`} />
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold">
+                {currentLandmarkIndex !== null ? `R${currentLandmarkIndex + 1}` : 'R-'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Video Info & Practice Tools */}
-        <div className="p-4 sm:p-6 space-y-4">
-          {/* Interactive Landmarks (Repères clés chronométrés & Modifiables) */}
-          <div className="p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
+        <div className="p-3 sm:p-4 space-y-3">
+          {/* Interactive Landmarks (Liste des repères) */}
+          <div className="p-3 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
             {/* Header of landmarks section */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-[#f4efe6] flex items-center gap-1.5">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-[#f4efe6]">
                 <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
-                <span>Repères & Découpage de la danse :</span>
-                <span className="text-[11px] font-normal text-[#8c8173] ml-1">
-                  ({landmarks.length} repère{landmarks.length > 1 ? 's' : ''})
+                <span>Liste des repères</span>
+                <span className="text-[11px] font-normal text-[#8c8173] ml-0.5">
+                  ({landmarks.length})
                 </span>
-              </span>
-
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {/* Copy landmarks button */}
-                {landmarks.length > 0 && (
-                  <button
-                    onClick={handleCopyLandmarksText}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                      copiedLandmarksText
-                        ? 'bg-green-600/20 text-green-300 border-green-500/50'
-                        : 'bg-[#221c17] text-[#c9bcaa] hover:text-[#f4efe6] border-[#382e22]'
-                    }`}
-                    title="Copier la liste des repères pour sauvegarde ou pour me les transmettre"
-                  >
-                    {copiedLandmarksText ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[#e5a93b]" />}
-                    <span>{copiedLandmarksText ? 'Repères copiés !' : 'Copier mes repères'}</span>
-                  </button>
-                )}
-
-                {/* Toggle edit button */}
-                <button
-                  onClick={() => setIsEditingLandmarks(!isEditingLandmarks)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                    isEditingLandmarks
-                      ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b] font-bold'
-                      : 'bg-[#221c17] text-[#a69c8f] hover:text-[#f4efe6] border-[#382e22]'
-                  }`}
-                  title="Modifier ou ajouter des repères et minutages"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>{isEditingLandmarks ? 'Terminer' : 'Modifier'}</span>
-                </button>
               </div>
+
+              {/* Bouton Ajouter un repère */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(prev => !prev);
+                  setNewLmStartTime(formatSecondsToMinutes(currentPosition));
+                  setNewLmEndTime('');
+                  setNewLmTitle('');
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2a2219] hover:bg-[#382d20] text-[#e5a93b] border border-[#4a3926] hover:border-[#e5a93b]/60 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Ajouter un repère</span>
+              </button>
             </div>
 
-            {/* Quick-Jump Buttons (Normal Mode) */}
-            {!isEditingLandmarks && landmarks.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-                {landmarks.map((lm, idx) => {
-                  const minutes = Math.floor(lm.timeSeconds / 60);
-                  const secs = (lm.timeSeconds % 60).toString().padStart(2, '0');
-                  const isCurrent = Math.abs(currentPosition - lm.timeSeconds) < 4;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleJumpToTime(lm.timeSeconds)}
-                      className={`text-left p-2 rounded-lg border text-xs transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                        isCurrent
-                          ? 'bg-[#e5a93b]/20 border-[#e5a93b] text-[#f4efe6] shadow-sm'
-                          : 'bg-[#201a14] border-[#332b21] text-[#c7bcaf] hover:border-[#e5a93b]/50 hover:text-[#f4efe6]'
-                      }`}
-                      title={`Aller à ${minutes}:${secs}`}
-                    >
-                      <span className="truncate">{lm.label}</span>
-                      <Play className="w-3 h-3 text-[#e5a93b] shrink-0 fill-current opacity-80" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {!isEditingLandmarks && landmarks.length === 0 && (
-              <p className="text-xs text-[#8c8173] italic py-1">
-                Aucun repère défini pour cette vidéo. Cliquez sur "Ajouter et modifier des repères" pour en créer.
-              </p>
-            )}
-
-            {/* Editing Interface (Edit Mode) */}
-            {isEditingLandmarks && (
-              <div className="pt-2 space-y-3 border-t border-[#2d251d]">
-                <div className="flex items-center justify-between text-[11px] text-[#8c8173]">
-                  <span>Modifiez les temps (format 1:24 ou secondes) et les intitulés des passages :</span>
-                  {getVideoCustomLandmarks(video.id, video.url) !== null && (
-                    <button
-                      onClick={handleResetLandmarks}
-                      className="text-[#e5a93b] hover:underline cursor-pointer flex items-center gap-1"
-                      title="Rétablir les repères initiaux"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Rétablir défaut</span>
-                    </button>
-                  )}
+            {/* Formulaire d'ajout d'un repère (Début + Fin optionnelle) */}
+            {showAddForm && (
+              <form onSubmit={handleAddLandmark} className="p-3 rounded-xl bg-[#201913] border border-[#e5a93b]/60 space-y-2.5 animate-in fade-in duration-150">
+                <div className="text-xs font-bold text-[#e5a93b] flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nouveau repère</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="text-[#8c8173] hover:text-[#f4efe6] p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {/* List of current landmarks with direct inline edit */}
                 <div className="space-y-2">
-                  {landmarks.map((lm, idx) => {
-                    const isEditingThis = editingLmIndex === idx;
+                  <div>
+                    <label className="block text-[10px] text-[#a69c8f] mb-0.5">Nom du repère *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newLmTitle}
+                      onChange={e => setNewLmTitle(e.target.value)}
+                      placeholder="ex: Primera Letra, Llamada du milieu, Marcaje..."
+                      className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
+                      autoFocus
+                    />
+                  </div>
 
-                    if (isEditingThis) {
-                      return (
-                        <div key={idx} className="p-2.5 rounded-lg bg-[#241c14] border border-[#e5a93b] flex flex-wrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={editLmTime}
-                            onChange={e => setEditLmTime(e.target.value)}
-                            placeholder="ex: 1:30"
-                            className="w-20 px-2 py-1 bg-[#171410] border border-[#3d3326] rounded text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
-                          />
-                          <input
-                            type="text"
-                            value={editLmTitle}
-                            onChange={e => setEditLmTitle(e.target.value)}
-                            placeholder="Nom du passage (ex: Primera Letra)"
-                            className="flex-1 min-w-[140px] px-2 py-1 bg-[#171410] border border-[#3d3326] rounded text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
-                          />
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleSaveEditLandmark(idx)}
-                              className="px-2.5 py-1 rounded bg-[#e5a93b] text-[#121110] text-xs font-bold hover:bg-[#f5b84c] cursor-pointer"
-                            >
-                              OK
-                            </button>
-                            <button
-                              onClick={() => setEditingLmIndex(null)}
-                              className="px-2 py-1 rounded bg-[#201a14] text-[#8c8173] hover:text-[#f4efe6] text-xs cursor-pointer"
-                            >
-                              Annuler
-                            </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-[#a69c8f] mb-0.5">Temps de début *</label>
+                      <input
+                        type="text"
+                        value={newLmStartTime}
+                        onChange={e => setNewLmStartTime(e.target.value)}
+                        placeholder={formatSecondsToMinutes(currentPosition)}
+                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-[#a69c8f] mb-0.5">Temps de fin (optionnel)</label>
+                      <input
+                        type="text"
+                        value={newLmEndTime}
+                        onChange={e => setNewLmEndTime(e.target.value)}
+                        placeholder="ex: 2:05 (laisser vide si aucun)"
+                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="px-2.5 py-1 rounded-lg bg-[#28211a] hover:bg-[#332b22] text-[#a69c8f] hover:text-[#f4efe6] text-xs cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!newLmTitle.trim()}
+                    className="px-3 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] disabled:opacity-50 text-[#121110] font-bold text-xs cursor-pointer shadow-sm"
+                  >
+                    Valider le repère
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Liste des repères avec menu 3 petits points */}
+            {landmarks.length > 0 ? (
+              <div className="space-y-1.5 pt-0.5">
+                {landmarks.map((lm, idx) => {
+                  const isEditingThis = editingLmIndex === idx;
+                  const isCurrent = Math.abs(currentPosition - lm.timeSeconds) < 4;
+                  const startMin = Math.floor(lm.timeSeconds / 60);
+                  const startSec = (lm.timeSeconds % 60).toString().padStart(2, '0');
+                  const timeDisplay = lm.endTimeSeconds
+                    ? `${startMin}:${startSec} - ${Math.floor(lm.endTimeSeconds / 60)}:${(lm.endTimeSeconds % 60).toString().padStart(2, '0')}`
+                    : `${startMin}:${startSec}`;
+                  const displayTitle = lm.label.includes(' - ') ? lm.label.split(' - ').slice(1).join(' - ') : lm.label;
+
+                  if (isEditingThis) {
+                    return (
+                      <div key={idx} className="p-3 rounded-xl bg-[#201913] border-2 border-[#e5a93b] space-y-2.5 animate-in fade-in duration-100">
+                        <div className="text-xs font-bold text-[#e5a93b] flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Modifier le repère</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingLmIndex(null)}
+                            className="text-[#8c8173] hover:text-[#f4efe6]"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-[10px] text-[#a69c8f] mb-0.5">Nom du repère *</label>
+                            <input
+                              type="text"
+                              value={editLmTitle}
+                              onChange={e => setEditLmTitle(e.target.value)}
+                              placeholder="Nom du repère"
+                              className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
+                              autoFocus
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-[#a69c8f] mb-0.5">Temps de début *</label>
+                              <input
+                                type="text"
+                                value={editLmStartTime}
+                                onChange={e => setEditLmStartTime(e.target.value)}
+                                placeholder="ex: 1:24"
+                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] text-[#a69c8f] mb-0.5">Temps de fin (optionnel)</label>
+                              <input
+                                type="text"
+                                value={editLmEndTime}
+                                onChange={e => setEditLmEndTime(e.target.value)}
+                                placeholder="ex: 2:05 (laisser vide si aucun)"
+                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                              />
+                            </div>
                           </div>
                         </div>
-                      );
-                    }
 
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-2 rounded-lg bg-[#1f1913] border border-[#332a20] text-xs"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="px-1.5 py-0.5 rounded bg-[#2a2219] font-mono text-[11px] text-[#e5a93b] border border-[#3d3124] shrink-0">
-                            {formatSecondsToMinutes(lm.timeSeconds)}
-                          </span>
-                          <span className="text-[#d4c9ba] truncate">
-                            {lm.label.includes(' - ') ? lm.label.split(' - ').slice(1).join(' - ') : lm.label}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <div className="flex items-center justify-end gap-2 pt-0.5">
                           <button
-                            onClick={() => handleJumpToTime(lm.timeSeconds)}
-                            className="p-1 rounded text-[#8c8173] hover:text-[#e5a93b] cursor-pointer"
-                            title="Tester la position"
+                            type="button"
+                            onClick={() => setEditingLmIndex(null)}
+                            className="px-2.5 py-1 rounded-lg bg-[#28211a] hover:bg-[#332b22] text-[#a69c8f] hover:text-[#f4efe6] text-xs cursor-pointer"
                           >
-                            <Play className="w-3 h-3 fill-current" />
+                            Annuler
                           </button>
                           <button
-                            onClick={() => handleStartEditLandmark(idx)}
-                            className="p-1 rounded text-[#8c8173] hover:text-[#f4efe6] cursor-pointer"
-                            title="Modifier ce repère"
+                            type="button"
+                            onClick={() => handleSaveEditLandmark(idx)}
+                            disabled={!editLmTitle.trim()}
+                            className="px-3 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] disabled:opacity-50 text-[#121110] font-bold text-xs cursor-pointer shadow-sm"
                           >
-                            <Edit3 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLandmark(idx)}
-                            className="p-1 rounded text-[#8c8173] hover:text-red-400 cursor-pointer"
-                            title="Supprimer ce repère"
-                          >
-                            <Trash2 className="w-3 h-3" />
+                            Enregistrer
                           </button>
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                  }
 
-                {/* Add new landmark form */}
-                <form onSubmit={handleAddLandmark} className="p-2.5 rounded-lg bg-[#1a1510] border border-[#382d21] space-y-2">
-                  <div className="text-[11px] font-bold text-[#e5a93b] flex items-center gap-1">
-                    <Plus className="w-3 h-3" />
-                    <span>Ajouter un nouveau repère à cette vidéo :</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1 bg-[#14110e] px-2 py-1 rounded border border-[#302820]">
-                      <Clock className="w-3 h-3 text-[#e5a93b]" />
-                      <input
-                        type="text"
-                        value={newLmTime}
-                        onChange={e => setNewLmTime(e.target.value)}
-                        placeholder={formatSecondsToMinutes(currentPosition)}
-                        className="w-16 bg-transparent text-xs text-[#f4efe6] font-mono focus:outline-none"
-                        title="Entrez le minutage (ex: 1:45 ou 105)"
-                      />
-                    </div>
-
-                    <input
-                      type="text"
-                      value={newLmTitle}
-                      onChange={e => setNewLmTitle(e.target.value)}
-                      placeholder="Titre (ex: Llamada du milieu, Marcaje 2, Subida...)"
-                      className="flex-1 min-w-[160px] px-2.5 py-1 bg-[#14110e] border border-[#302820] rounded text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={!newLmTitle.trim()}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded bg-[#e5a93b] hover:bg-[#f5b84c] disabled:opacity-50 disabled:cursor-not-allowed text-[#121110] font-bold text-xs cursor-pointer transition-colors"
+                  return (
+                    <div
+                      key={idx}
+                      className={`group relative flex items-center justify-between p-2 sm:p-2.5 rounded-xl border text-xs transition-all ${
+                        isCurrent
+                          ? 'bg-[#e5a93b]/15 border-[#e5a93b] text-[#f4efe6] shadow-sm'
+                          : 'bg-[#1b1612] border-[#2f271f] hover:border-[#4a3926] text-[#d4c9ba]'
+                      }`}
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>Ajouter</span>
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-[#8c8173]">
-                    💡 Astuce : laissez le temps vide pour utiliser automatiquement la position courante du lecteur ({formatSecondsToMinutes(currentPosition)}).
-                  </p>
-                </form>
+                      {/* Clic sur le repère pour lancer la lecture */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleJumpToTime(lm.timeSeconds);
+                          setSelectedLandmarkIndex(idx);
+                          // Si ce repère n'a pas de temps de fin, désactiver la boucle
+                          if (!lm.endTimeSeconds || lm.endTimeSeconds <= lm.timeSeconds) {
+                            setIsLooping(false);
+                          }
+                        }}
+                        className="flex-1 flex items-center gap-2 overflow-hidden text-left cursor-pointer min-w-0 pr-2"
+                        title={`Aller à ${timeDisplay}`}
+                      >
+                        {/* Numéro du repère (R1, R2, ...) */}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold shrink-0 border ${
+                          selectedLandmarkIndex === idx
+                            ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b]'
+                            : isCurrent
+                            ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/50'
+                            : 'bg-[#241c14] text-[#d6b074] border-[#3f3122]'
+                        }`}>
+                          R{idx + 1}
+                        </span>
+
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                          isCurrent ? 'bg-[#e5a93b] text-[#121110]' : 'bg-[#251e18] text-[#e5a93b] group-hover:bg-[#e5a93b] group-hover:text-[#121110] transition-colors'
+                        }`}>
+                          <Play className="w-2.5 h-2.5 fill-current ml-0.2" />
+                        </div>
+
+                        <span className={`px-1.5 py-0.5 rounded font-mono text-[11px] font-bold shrink-0 ${
+                          isCurrent
+                            ? 'bg-[#e5a93b] text-[#121110]'
+                            : 'bg-[#261f18] text-[#e5a93b] border border-[#3e3223]'
+                        }`}>
+                          {timeDisplay}
+                        </span>
+
+                        <span className="truncate font-medium text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors">
+                          {displayTitle}
+                        </span>
+                      </button>
+
+                      {/* Menu déroulant avec 3 petits points */}
+                      <div className="relative shrink-0 landmark-dropdown-area">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdownIndex(activeDropdownIndex === idx ? null : idx);
+                          }}
+                          className="p-1 rounded-lg text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#282119] transition-colors cursor-pointer"
+                          title="Options du repère (Modifier, Supprimer)"
+                          aria-label="Options du repère"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+
+                        {/* Menu contextuel Modifier / Supprimer */}
+                        {activeDropdownIndex === idx && (
+                          <div 
+                            className="absolute right-0 top-7 z-40 w-32 bg-[#1b1713] border border-[#3d3326] rounded-xl shadow-xl py-1 text-xs animate-in fade-in zoom-in-95 duration-100"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleStartEditLandmark(idx);
+                                setActiveDropdownIndex(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-left text-[#f4efe6] hover:bg-[#2a221a] hover:text-[#e5a93b] flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-[#e5a93b]" />
+                              <span>Modifier</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDeleteLandmark(idx);
+                                setActiveDropdownIndex(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-950/40 flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                              <span>Supprimer</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              !showAddForm && (
+                <p className="text-xs text-[#8c8173] italic py-1">
+                  Aucun repère défini pour cette vidéo. Cliquez sur "Ajouter un repère" ci-dessus pour en créer un.
+                </p>
+              )
             )}
           </div>
 

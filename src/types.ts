@@ -2,6 +2,7 @@ export type Level = 1 | 2 | 3;
 
 export interface VideoLandmark {
   timeSeconds: number;
+  endTimeSeconds?: number;
   label: string;
   type?: 'marcaje' | 'llamada' | 'zapateado' | 'subida' | 'cierre' | 'silencio' | 'remate' | 'intro' | 'letra' | 'falseta';
 }
