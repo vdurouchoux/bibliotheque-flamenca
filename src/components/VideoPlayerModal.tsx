@@ -96,6 +96,32 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isFromMontage = sectionName.toLowerCase().includes('montage');
+  const [timeCopied, setTimeCopied] = useState<boolean>(false);
+
+  const handleCopyTime = async () => {
+    const mins = Math.floor(currentPosition / 60);
+    const secs = (currentPosition % 60).toString().padStart(2, '0');
+    const formatted = `${mins}:${secs}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(formatted);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = formatted;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setTimeCopied(true);
+      setTimeout(() => setTimeCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy time to clipboard:', err);
+    }
+  };
 
   // Volume control state (persisted in localStorage)
   const [volume, setVolume] = useState<number>(() => {
@@ -595,7 +621,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </span>
           </div>
 
-          {/* Droite : Menu 3 petits points avec Partager et Lire sur YouTube à la position du repère */}
+          {/* Droite : Menu 3 petits points avec Partager et Lire sur YouTube */}
           <div className="relative shrink-0" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(prev => !prev)}
@@ -738,11 +764,12 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         </div>
 
         {/* Playback Controls Bar */}
-        <div className="px-3 sm:px-4 py-2.5 bg-[#171410] border-b border-[#2d261e] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center justify-between gap-2 text-xs">
+          {/* Gauche : Boutons d'avance / recul rapide */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <button
               onClick={() => handleRewind(10)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-xs"
               title="Reculer de 10s"
             >
               <Rewind className="w-3.5 h-3.5 text-[#e5a93b]" />
@@ -751,7 +778,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
             <button
               onClick={() => handleSkipForward(10)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-xs"
               title="Avancer de 10s"
             >
               <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
@@ -760,17 +787,63 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
             <button
               onClick={() => handleSkipForward(30)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer text-xs"
               title="Avancer de 30s"
             >
               <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
               <span>+30s</span>
             </button>
+          </div>
 
-            {/* Bouton Pause / Play déplacé directement à droite de >> +30s */}
+          {/* Droite : Bouton Copier compact + Bouton Lecture/Pause carré toujours bien visible */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Bouton Copier le temps compact */}
+            <button
+              type="button"
+              onClick={handleCopyTime}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-sm select-none shrink-0 ${
+                timeCopied
+                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                  : !isPlaying
+                  ? 'bg-[#332414] hover:bg-[#3f2c18] text-[#fcd34d] border border-[#e5a93b] shadow-sm'
+                  : 'bg-[#1e1913] hover:bg-[#282119] text-[#d4c9ba] border border-[#3b3024]'
+              }`}
+              title={
+                timeCopied
+                  ? "Temps copié !"
+                  : !isPlaying
+                  ? "Vidéo en pause : Cliquer pour copier ce temps"
+                  : "Position actuelle"
+              }
+            >
+              {timeCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-mono text-emerald-300 font-bold text-xs">
+                    {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
+                  </span>
+                </>
+              ) : !isPlaying ? (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                  <span className="font-mono text-[#fcd34d] font-bold text-xs">
+                    {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                  <span className="font-mono text-[#e5a93b] font-medium text-xs">
+                    {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* Bouton Pause / Play carré toujours visible à l'extrême droite */}
             <button
               onClick={togglePlayPause}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
+              className={`flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-sm shrink-0 ${
                 isPlaying
                   ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
                   : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
@@ -779,60 +852,51 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             >
               {isPlaying ? (
                 <>
-                  <Pause className="w-3.5 h-3.5 fill-current" />
-                  <span>Pause</span>
+                  <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                  <span className="text-[9px] sm:text-[10px] font-semibold leading-none mt-0.5">Pause</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Lecture</span>
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current ml-0.5" />
+                  <span className="text-[9px] sm:text-[10px] font-semibold leading-none mt-0.5">Lecture</span>
                 </>
               )}
             </button>
-
-            {/* Régulateur de niveau sonore (directement à droite du bouton lecture) */}
-            <div 
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#2d2620] border border-[#3b3228] text-[#d4c9ba] transition-colors shadow-sm"
-              title={`Niveau sonore : ${isMuted ? 0 : volume}%`}
-            >
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="text-[#e5a93b] hover:text-[#f5b84c] p-0.5 rounded transition-colors cursor-pointer flex items-center justify-center active:scale-95"
-                title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
-                aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="w-3.5 h-3.5 text-red-400" />
-                ) : volume < 50 ? (
-                  <Volume1 className="w-3.5 h-3.5" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5" />
-                )}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={isMuted ? 0 : volume}
-                onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-                className="w-16 sm:w-20 h-1.5 bg-[#3a3126] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
-                aria-label="Régulateur de volume sonore"
-              />
-              <span className="font-mono text-[10px] text-[#a69c8f] min-w-[26px] text-right select-none">
-                {isMuted ? '0%' : `${volume}%`}
-              </span>
-            </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-[#8c8173]">
-            {currentPosition > 0 && (
-              <span className="text-[#e5a93b] font-mono bg-[#241e17] px-2 py-0.5 rounded border border-[#3d3326]">
-                Position : {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
-              </span>
+        {/* Bouton / Régulateur de volume au-dessus de Ralenti et sur toute la largeur de la page */}
+        <div className="px-3 sm:px-4 py-2 bg-[#15120e] border-b border-[#2d261e] flex items-center gap-2.5 text-xs w-full">
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="text-[#e5a93b] hover:text-[#f5b84c] p-1 rounded-lg hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center active:scale-95 shrink-0"
+            title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
+            aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-4 h-4 text-red-400" />
+            ) : volume < 50 ? (
+              <Volume1 className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
             )}
-          </div>
+          </button>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={isMuted ? 0 : volume}
+            onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
+            className="flex-1 w-full h-2 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+            aria-label="Régulateur de volume sonore pleine largeur"
+          />
+
+          <span className="font-mono text-xs text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
+            {isMuted ? '0%' : `${volume}%`}
+          </span>
         </div>
 
         {/* Slow-motion / Ralenti & Playback Speed Bar */}
