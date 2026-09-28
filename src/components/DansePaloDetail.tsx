@@ -5,7 +5,7 @@ import {
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
   LayoutGrid, List, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
   AlertTriangle, Laptop, Smartphone, Folder, FolderOpen, MoreVertical, FolderPlus, Check,
-  ArrowDownAZ, ArrowUpZA
+  ArrowDownAZ, ArrowUpAZ, ArrowUpDown
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
@@ -18,7 +18,7 @@ import { checkVideoDeviceAvailability, getCurrentDeviceType } from '../utils/dev
 import { 
   getBookmarks, toggleBookmark, getCustomVideos, 
   getChoreographyChecklist, toggleChoreographyStep,
-  getDeletedVideoIds, getReplacedVideos, deleteAnyVideo, resetAllDeletedVideos,
+  getDeletedVideoIds, getReplacedVideos, deleteAnyVideo, replaceAnyVideo, resetAllDeletedVideos,
   getVideoCustomLandmarks, extractYouTubeInfo,
   getDanseMontages, saveDanseMontage, resetDanseMontage, getDefaultFarrucaBlocks,
   getDanseMontageKeys, saveDanseMontageKeys, deleteDanseMontage,
@@ -36,6 +36,36 @@ import { AddDanseFolderModal } from './AddDanseFolderModal';
 import { RenameDanseFolderModal } from './RenameDanseFolderModal';
 import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
 import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
+
+const YOUTUBE_EXACT_TITLES: Record<string, string> = {
+  "pziQ1VcL740": "Ivan Vargas & Kasandra \"La China\" - Farruca, flamenco dancers",
+  "77GxEVzmGBM": "El Güito - Baile por Farruca",
+  "TIeijUUHUp4": "Sara Baras - Farruca (1999)",
+  "fBefsNiLrhg": "Antonio Gades - Farruca (1969)",
+  "DzHPNiEV4LE": "Los Farruco (Farruquito) - Farruca (P-5/6)",
+  "rZ4S7lSkCRM": "Rina Orellana - Complete Farruca choreography (online course)",
+  "qposVIHEY2E": "BG Flamenco - Salida y Marcaje para FARRUCA",
+  "31pvJlUXa78": "Rafael de Utrera - Letra por Farruca (Una farruca en Galicia)",
+  "trABVQebNLY": "José Menese - Farruca (Cayó al suelo una paloma)",
+  "DZv_-vdPWuE": "Antonio Mairena - Farruca \"amargamente\""
+};
+
+const getExactVideoTitle = (video: VideoItem): string => {
+  const ytInfo = extractYouTubeInfo(video.url);
+  if (ytInfo.videoId && YOUTUBE_EXACT_TITLES[ytInfo.videoId]) {
+    return YOUTUBE_EXACT_TITLES[ytInfo.videoId];
+  }
+  const raw = video.title.trim();
+  const canteMatch = raw.match(/^(.*?)(?:\s*al cante:\s*|\s*interpretad[oa] por\s*)(.*)$/i);
+  if (canteMatch) {
+    const mainTitle = canteMatch[1].replace(/[-–—]\s*$/, '').trim();
+    const artist = canteMatch[2].trim();
+    if (artist && mainTitle) {
+      return `${artist} - ${mainTitle}`;
+    }
+  }
+  return raw;
+};
 
 interface DansePaloDetailProps {
   palo: DansePaloData;
@@ -176,6 +206,32 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     try {
       localStorage.setItem('flamenco_danse_media_view_mode', mode);
     } catch {}
+  };
+
+  // Barre de recherche textuelle pour filtrer les médias
+  const [mediaSearchQuery, setMediaSearchQuery] = useState<string>('');
+
+  // Ordre de tri des médias (par défaut ou alphabétique A-Z / Z-A)
+  const [mediaSortOrder, setMediaSortOrder] = useState<'default' | 'alpha-asc' | 'alpha-desc'>(() => {
+    try {
+      const saved = localStorage.getItem('flamenco_media_sort_order');
+      if (saved === 'alpha-asc' || saved === 'alpha-desc' || saved === 'default') {
+        return saved;
+      }
+    } catch {}
+    return 'default';
+  });
+
+  const handleSetMediaSortOrder = (newOrder: 'default' | 'alpha-asc' | 'alpha-desc') => {
+    setMediaSortOrder(newOrder);
+    try {
+      localStorage.setItem('flamenco_media_sort_order', newOrder);
+    } catch {}
+  };
+
+  const toggleMediaSortOrder = () => {
+    const nextOrder = mediaSortOrder === 'default' ? 'alpha-asc' : mediaSortOrder === 'alpha-asc' ? 'alpha-desc' : 'default';
+    handleSetMediaSortOrder(nextOrder);
   };
 
   // État des dossiers personnalisés et de l'arborescence
@@ -1077,6 +1133,153 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     return customList;
   };
 
+  // Filtrage textuel et tri alphabétique des médias (en prenant en compte les noms d'artistes en premier)
+  const filterAndSortVideos = (videos: VideoItem[]): VideoItem[] => {
+    let result = [...videos];
+
+    // 1. Filtrage textuel selon la recherche
+    if (mediaSearchQuery.trim()) {
+      const q = mediaSearchQuery.toLowerCase().trim();
+      result = result.filter(v => {
+        const exactTitle = getExactVideoTitle(v).toLowerCase();
+        const rawTitle = (v.title || '').toLowerCase();
+        const desc = (v.description || '').toLowerCase();
+        return exactTitle.includes(q) || rawTitle.includes(q) || desc.includes(q);
+      });
+    }
+
+    // 2. Tri alphabétique (sur le titre formatté avec le nom d'artiste en tête)
+    if (mediaSortOrder === 'alpha-asc') {
+      result.sort((a, b) => {
+        const titleA = getExactVideoTitle(a).trim();
+        const titleB = getExactVideoTitle(b).trim();
+        return titleA.localeCompare(titleB, 'fr', { sensitivity: 'base', numeric: true });
+      });
+    } else if (mediaSortOrder === 'alpha-desc') {
+      result.sort((a, b) => {
+        const titleA = getExactVideoTitle(a).trim();
+        const titleB = getExactVideoTitle(b).trim();
+        return titleB.localeCompare(titleA, 'fr', { sensitivity: 'base', numeric: true });
+      });
+    }
+
+    return result;
+  };
+
+  // Composant barre de recherche textuelle et tri au-dessus de la liste des médias
+  const renderMediaSearchBar = (placeholder: string = "Rechercher un média par titre ou nom d'artiste...", count?: number) => {
+    return (
+      <div className="space-y-2 mb-3.5">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 text-[#8c8173] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={mediaSearchQuery}
+              onChange={(e) => setMediaSearchQuery(e.target.value)}
+              placeholder={placeholder}
+              className="w-full pl-10 pr-9 py-2 sm:py-2.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-[#e5a93b] rounded-xl text-xs sm:text-sm text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
+            />
+            {mediaSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setMediaSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#251f18] transition-colors cursor-pointer"
+                title="Effacer la recherche"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Bouton de tri alphabétique */}
+          <button
+            type="button"
+            onClick={toggleMediaSortOrder}
+            className={`flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 select-none shadow-xs ${
+              mediaSortOrder === 'alpha-asc'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                : mediaSortOrder === 'alpha-desc'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                : 'bg-[#14110e] hover:bg-[#1f1914] text-[#a69c8f] hover:text-[#f4efe6] border-[#2c2219] hover:border-[#e5a93b]/50'
+            }`}
+            title={
+              mediaSortOrder === 'alpha-asc'
+                ? "Trié par ordre alphabétique A → Z (cliquer pour trier de Z → A)"
+                : mediaSortOrder === 'alpha-desc'
+                ? "Trié par ordre alphabétique inversé Z → A (cliquer pour revenir à l'ordre initial)"
+                : "Trier les médias par ordre alphabétique A-Z"
+            }
+          >
+            {mediaSortOrder === 'alpha-asc' ? (
+              <>
+                <ArrowDownAZ className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">Ordre A-Z</span>
+                <span className="sm:hidden">A-Z</span>
+              </>
+            ) : mediaSortOrder === 'alpha-desc' ? (
+              <>
+                <ArrowUpAZ className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">Ordre Z-A</span>
+                <span className="sm:hidden">Z-A</span>
+              </>
+            ) : (
+              <>
+                <ArrowUpDown className="w-4 h-4 text-[#8c8173]" />
+                <span className="hidden sm:inline">Trier A-Z</span>
+                <span className="sm:hidden">A-Z</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Détails du filtrage et du tri */}
+        {(mediaSearchQuery.trim() || mediaSortOrder !== 'default') && (
+          <div className="flex items-center justify-between px-1 text-[11px] text-[#a69c8f] flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {count !== undefined && (
+                <span>
+                  {count} {count > 1 ? 'médias affichés' : count === 1 ? 'média affiché' : 'aucun média'}
+                  {mediaSearchQuery.trim() && <span> pour « <strong className="text-[#f4efe6]">{mediaSearchQuery}</strong> »</span>}
+                </span>
+              )}
+              {mediaSortOrder === 'alpha-asc' && (
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <ArrowDownAZ className="w-3 h-3" /> Tri alphabétique (A → Z)
+                </span>
+              )}
+              {mediaSortOrder === 'alpha-desc' && (
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <ArrowUpAZ className="w-3 h-3" /> Tri alphabétique (Z → A)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              {mediaSortOrder !== 'default' && (
+                <button
+                  type="button"
+                  onClick={() => handleSetMediaSortOrder('default')}
+                  className="text-[#8c8173] hover:text-[#d5cabb] hover:underline cursor-pointer"
+                >
+                  Ordre initial
+                </button>
+              )}
+              {mediaSearchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setMediaSearchQuery('')}
+                  className="text-[#e5a93b] hover:underline cursor-pointer font-medium"
+                >
+                  Effacer recherche
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const extractVideoId = (url: string) => {
     if (!url) return '';
     const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
@@ -1345,15 +1548,18 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const renderVideoListMinimal = (video: VideoItem, sectionTitle: string, sectionKey: string, index: number) => {
     const isBookmarked = !!bookmarks[video.id];
     const availability = checkVideoDeviceAvailability(video);
+    const menuId = `video_list_${sectionKey}_${video.id}_${index}`;
+    const isMenuOpen = openDropdownId === menuId;
+    const displayTitle = getExactVideoTitle(video);
 
     return (
       <div
         key={video.id}
         onClick={() => {
           setPreviewVideoId(null);
-          onPlayVideo(video, sectionTitle);
+          onPlayVideo({ ...video, title: displayTitle }, sectionTitle);
         }}
-        className="group flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#161310] hover:bg-[#201a14] border border-[#272018] hover:border-[#e5a93b]/70 transition-all cursor-pointer select-none shadow-xs"
+        className="group relative flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#161310] hover:bg-[#201a14] border border-[#272018] hover:border-[#e5a93b]/70 transition-all cursor-pointer select-none shadow-xs"
         title="Cliquer sur le nom pour visionner et travailler ce média"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1363,11 +1569,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate">
-                {video.title}
+                {displayTitle}
               </span>
               {video.isCustom && (
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#2a1c38] text-[#c99eff] border border-[#432b5e] shrink-0 font-medium">
                   Ajouté
+                </span>
+              )}
+              {isBookmarked && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 inline-flex items-center gap-1 shrink-0" title="Dans mes études">
+                  <Bookmark className="w-2.5 h-2.5 fill-current" />
+                  <span>Étudié</span>
                 </span>
               )}
               {!availability.isAvailableOnCurrentDevice && (
@@ -1380,106 +1592,233 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           </div>
         </div>
 
-        {/* Actions discrètes à droite */}
-        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+        {/* Menu déroulant trois petits points en bout de ligne */}
+        <div className="relative dropdown-menu-trigger shrink-0" onClick={e => e.stopPropagation()}>
           <button
             type="button"
             onClick={e => {
               e.stopPropagation();
-              const opts = getVideoShareData({
-                video,
-                paloName: `${palo.name} (Danse)`,
-                paloId: palo.id,
-                sectionName: sectionTitle,
-                discipline: 'danse'
-              });
-              setShareModalOptions(opts);
+              setOpenDropdownId(prev => (prev === menuId ? null : menuId));
             }}
-            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-[#e5a93b] hover:bg-[#2a221b] transition-colors cursor-pointer"
-            title="Partager ce média"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              toggleBookmark({
-                videoId: video.id,
-                paloId: palo.id,
-                paloName: `${palo.name} (Danse)`,
-                section: sectionTitle,
-                title: video.title,
-                url: video.url,
-                level: video.level,
-                status: 'learning',
-                discipline: 'danse'
-              });
-            }}
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              isBookmarked
-                ? 'text-[#e5a93b] bg-[#e5a93b]/15'
-                : 'text-[#7a6f61] hover:text-[#f4efe6] hover:bg-[#2a221b]'
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+              isMenuOpen
+                ? 'bg-[#2a221b] text-[#e5a93b] border-[#e5a93b]/60 shadow-xs'
+                : 'text-[#7a6f61] hover:text-[#e5a93b] hover:bg-[#2a221b] border-transparent'
             }`}
-            title={isBookmarked ? 'Dans mes études' : 'Ajouter à mes études'}
+            title="Options du média"
+            aria-label="Options du média"
           >
-            <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+            <MoreVertical className="w-4 h-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              setVideoToReplace({ video, sectionKey });
-            }}
-            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-[#e5a93b] hover:bg-[#2a221b] transition-colors cursor-pointer"
-            title="Remplacer le lien ou titre"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          {isMenuOpen && (
+            <div
+              className="dropdown-menu-container absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl bg-[#1c1814] border border-[#3e3226] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Renommer ou remplacer en première position */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  setVideoToReplace({ video, sectionKey });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
+                <span className="font-semibold text-[#f4efe6] group-hover:text-[#e5a93b]">Renommer ou remplacer</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              setVideoToDelete({ id: video.id, title: video.title, sectionKey });
-            }}
-            className="p-1.5 rounded-lg text-[#7a6f61] hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
-            title="Supprimer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+              {/* Études / Favori */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  toggleBookmark({
+                    videoId: video.id,
+                    paloId: palo.id,
+                    paloName: `${palo.name} (Danse)`,
+                    section: sectionTitle,
+                    title: video.title,
+                    url: video.url,
+                    level: video.level,
+                    status: 'learning',
+                    discipline: 'danse'
+                  });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'text-[#e5a93b] fill-current' : 'text-[#7a6f61]'} group-hover:scale-110 transition-transform`} />
+                <span>{isBookmarked ? 'Retirer de mes études' : 'Ajouter à mes études'}</span>
+              </button>
+
+              {/* Partager */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  const opts = getVideoShareData({
+                    video,
+                    paloName: `${palo.name} (Danse)`,
+                    paloId: palo.id,
+                    sectionName: sectionTitle,
+                    discipline: 'danse'
+                  });
+                  setShareModalOptions(opts);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
+                <span>Partager ce média</span>
+              </button>
+
+              <div className="h-px bg-[#2e251e] my-1" />
+
+              {/* Supprimer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  setVideoToDelete({ id: video.id, title: video.title, sectionKey });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer group"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                <span>Supprimer ce média</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   // VUE 2 : GRILLE D'ICÔNES (vignette/icône média avec le nom centré en dessous)
-  const renderVideoGridIcons = (video: VideoItem, sectionTitle: string, sectionKey: string) => {
+  const renderVideoGridIcons = (video: VideoItem, sectionTitle: string, sectionKey: string, index: number = 0) => {
     const isBookmarked = !!bookmarks[video.id];
     const ytInfo = extractYouTubeInfo(video.url);
     const videoId = ytInfo.videoId;
     const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
     const availability = checkVideoDeviceAvailability(video);
+    const menuId = `video_grid_${sectionKey}_${video.id}_${index}`;
+    const isMenuOpen = openDropdownId === menuId;
+    const displayTitle = getExactVideoTitle(video);
 
     return (
       <div
         key={video.id}
         onClick={() => {
           setPreviewVideoId(null);
-          onPlayVideo(video, sectionTitle);
+          onPlayVideo({ ...video, title: displayTitle }, sectionTitle);
         }}
         className="group relative flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-[#161310] hover:bg-[#221c16] border border-[#2b2219] hover:border-[#e5a93b]/70 transition-all cursor-pointer shadow-sm text-center select-none"
         title="Cliquer pour visionner et travailler ce média"
       >
+        {/* Menu trois petits points en haut à droite de chaque icône */}
+        <div className="absolute top-2 right-2 z-30 dropdown-menu-trigger" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setOpenDropdownId(prev => (prev === menuId ? null : menuId));
+            }}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer shadow-md ${
+              isMenuOpen
+                ? 'bg-[#1c1814] text-[#e5a93b] border-[#e5a93b] ring-1 ring-[#e5a93b]/50'
+                : 'bg-black/75 hover:bg-black text-[#dcd1c4] hover:text-[#e5a93b] border-white/15 hover:border-[#e5a93b]/50 backdrop-blur-xs'
+            }`}
+            title="Options du média"
+            aria-label="Options du média"
+          >
+            <MoreVertical className="w-3.5 h-3.5" />
+          </button>
+
+          {isMenuOpen && (
+            <div
+              className="dropdown-menu-container absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl bg-[#1c1814] border border-[#3e3226] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans text-left select-none"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Renommer ou remplacer en première position */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  setVideoToReplace({ video, sectionKey });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
+                <span className="font-semibold text-[#f4efe6] group-hover:text-[#e5a93b]">Renommer ou remplacer</span>
+              </button>
+
+              {/* Études / Favori */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  toggleBookmark({
+                    videoId: video.id,
+                    paloId: palo.id,
+                    paloName: `${palo.name} (Danse)`,
+                    section: sectionTitle,
+                    title: video.title,
+                    url: video.url,
+                    level: video.level,
+                    status: 'learning',
+                    discipline: 'danse'
+                  });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'text-[#e5a93b] fill-current' : 'text-[#7a6f61]'} group-hover:scale-110 transition-transform`} />
+                <span>{isBookmarked ? 'Retirer de mes études' : 'Ajouter à mes études'}</span>
+              </button>
+
+              {/* Partager */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  const opts = getVideoShareData({
+                    video,
+                    paloName: `${palo.name} (Danse)`,
+                    paloId: palo.id,
+                    sectionName: sectionTitle,
+                    discipline: 'danse'
+                  });
+                  setShareModalOptions(opts);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
+                <span>Partager ce média</span>
+              </button>
+
+              <div className="h-px bg-[#2e251e] my-1" />
+
+              {/* Supprimer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDropdownId(null);
+                  setVideoToDelete({ id: video.id, title: video.title, sectionKey });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer group"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                <span>Supprimer ce média</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           {/* Vignette / Icône média */}
           <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#100d0b] border border-[#292017] group-hover:border-[#e5a93b]/40 transition-colors shadow-inner flex items-center justify-center">
             {thumbUrl ? (
               <img
                 src={thumbUrl}
-                alt={video.title}
+                alt={displayTitle}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
               />
@@ -1498,6 +1837,14 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <span>Média</span>
             </div>
 
+            {/* Badge étudié */}
+            {isBookmarked && (
+              <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#e5a93b]/90 text-[#121110] text-[9px] font-bold flex items-center gap-1 shadow-sm">
+                <Bookmark className="w-2.5 h-2.5 fill-current" />
+                <span>Étudié</span>
+              </div>
+            )}
+
             {!availability.isAvailableOnCurrentDevice && (
               <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-600 text-[9px] font-bold text-amber-300 flex items-center gap-1">
                 <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
@@ -1508,78 +1855,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
           {/* Titre centré sous l'icône */}
           <h5 className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors line-clamp-2 leading-snug px-1 text-center font-serif">
-            {video.title}
+            {displayTitle}
           </h5>
-        </div>
-
-        {/* Barre d'actions discrète */}
-        <div className="mt-2.5 pt-2 border-t border-[#261f18] flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              toggleBookmark({
-                videoId: video.id,
-                paloId: palo.id,
-                paloName: `${palo.name} (Danse)`,
-                section: sectionTitle,
-                title: video.title,
-                url: video.url,
-                level: video.level,
-                status: 'learning',
-                discipline: 'danse'
-              });
-            }}
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              isBookmarked ? 'text-[#e5a93b] bg-[#e5a93b]/15' : 'text-[#73685a] hover:text-[#f4efe6] hover:bg-[#251f18]'
-            }`}
-            title={isBookmarked ? 'Dans mes favoris' : 'Favori'}
-          >
-            <Bookmark className={`w-3 h-3 ${isBookmarked ? 'fill-current' : ''}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              const opts = getVideoShareData({
-                video,
-                paloName: `${palo.name} (Danse)`,
-                paloId: palo.id,
-                sectionName: sectionTitle,
-                discipline: 'danse'
-              });
-              setShareModalOptions(opts);
-            }}
-            className="p-1.5 rounded-lg text-[#73685a] hover:text-[#e5a93b] hover:bg-[#251f18] transition-colors cursor-pointer"
-            title="Partager"
-          >
-            <Share2 className="w-3 h-3" />
-          </button>
-
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              setVideoToReplace({ video, sectionKey });
-            }}
-            className="p-1.5 rounded-lg text-[#73685a] hover:text-[#e5a93b] hover:bg-[#251f18] transition-colors cursor-pointer"
-            title="Remplacer"
-          >
-            <RefreshCw className="w-3 h-3" />
-          </button>
-
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              setVideoToDelete({ id: video.id, title: video.title, sectionKey });
-            }}
-            className="p-1.5 rounded-lg text-[#73685a] hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
-            title="Supprimer"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
         </div>
       </div>
     );
@@ -2331,6 +2608,40 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                         <LayoutGrid className="w-3.5 h-3.5" />
                         <span>Vue icônes</span>
                       </button>
+                      <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
+                      <button
+                        type="button"
+                        onClick={toggleMediaSortOrder}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          mediaSortOrder !== 'default'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+                        }`}
+                        title={
+                          mediaSortOrder === 'alpha-asc'
+                            ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
+                            : mediaSortOrder === 'alpha-desc'
+                            ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                            : "Trier par ordre alphabétique A-Z"
+                        }
+                      >
+                        {mediaSortOrder === 'alpha-asc' ? (
+                          <>
+                            <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>A-Z</span>
+                          </>
+                        ) : mediaSortOrder === 'alpha-desc' ? (
+                          <>
+                            <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Z-A</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpDown className="w-3.5 h-3.5" />
+                            <span>A-Z</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2377,19 +2688,35 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
                 {/* Vidéos dans ce dossier */}
                 {folderVideos.length > 0 ? (
-                  mediaViewMode === 'list' ? (
-                    <div className="space-y-1.5">
-                      {folderVideos.map((v, i) => renderVideoListMinimal(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
-                    </div>
-                  ) : mediaViewMode === 'icons' ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {folderVideos.map(v => renderVideoGridIcons(v, currentFolder.name, `folder_${currentFolder.id}`))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {folderVideos.map(v => renderVideoCard(v, currentFolder.name, `folder_${currentFolder.id}`))}
-                    </div>
-                  )
+                  <>
+                    {renderMediaSearchBar(`Rechercher dans ${currentFolder.name} (par titre ou artiste)...`, filterAndSortVideos(folderVideos).length)}
+
+                    {filterAndSortVideos(folderVideos).length === 0 ? (
+                      <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
+                        <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
+                        <p className="text-sm font-medium text-[#d5cabb]">Aucun média ne correspond à « {mediaSearchQuery} »</p>
+                        <button
+                          type="button"
+                          onClick={() => setMediaSearchQuery('')}
+                          className="mt-2 text-xs text-[#e5a93b] hover:underline cursor-pointer"
+                        >
+                          Effacer la recherche
+                        </button>
+                      </div>
+                    ) : mediaViewMode === 'list' ? (
+                      <div className="space-y-1.5">
+                        {filterAndSortVideos(folderVideos).map((v, i) => renderVideoListMinimal(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
+                      </div>
+                    ) : mediaViewMode === 'icons' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {filterAndSortVideos(folderVideos).map((v, i) => renderVideoGridIcons(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {filterAndSortVideos(folderVideos).map(v => renderVideoCard(v, currentFolder.name, `folder_${currentFolder.id}`))}
+                      </div>
+                    )}
+                  </>
                 ) : null}
               </div>
             );
@@ -2871,22 +3198,71 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   <LayoutGrid className="w-3.5 h-3.5" />
                   <span>Vue icônes</span>
                 </button>
+                <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
+                <button
+                  type="button"
+                  onClick={toggleMediaSortOrder}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    mediaSortOrder !== 'default'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+                  }`}
+                  title={
+                    mediaSortOrder === 'alpha-asc'
+                      ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
+                      : mediaSortOrder === 'alpha-desc'
+                      ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                      : "Trier par ordre alphabétique A-Z"
+                  }
+                >
+                  {mediaSortOrder === 'alpha-asc' ? (
+                    <>
+                      <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>A-Z</span>
+                    </>
+                  ) : mediaSortOrder === 'alpha-desc' ? (
+                    <>
+                      <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Z-A</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpDown className="w-3.5 h-3.5" />
+                      <span>A-Z</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
 
+          {/* Barre de recherche textuelle des médias */}
+          {renderMediaSearchBar("Rechercher un média par titre ou nom d'artiste (ex. Ivan Vargas, El Güito, Sara Baras...)", filterAndSortVideos(getMaitresVideos()).length)}
+
           {/* Rendu dynamique des médias selon le mode choisi */}
-          {mediaViewMode === 'list' ? (
+          {filterAndSortVideos(getMaitresVideos()).length === 0 ? (
+            <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
+              <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
+              <p className="text-sm font-medium text-[#d5cabb]">Aucun média ne correspond à « {mediaSearchQuery} »</p>
+              <button
+                type="button"
+                onClick={() => setMediaSearchQuery('')}
+                className="mt-2 text-xs text-[#e5a93b] hover:underline cursor-pointer"
+              >
+                Effacer la recherche
+              </button>
+            </div>
+          ) : mediaViewMode === 'list' ? (
             <div className="space-y-1.5">
-              {getMaitresVideos().map((v, i) => renderVideoListMinimal(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres', i))}
+              {filterAndSortVideos(getMaitresVideos()).map((v, i) => renderVideoListMinimal(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres', i))}
             </div>
           ) : mediaViewMode === 'icons' ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {getMaitresVideos().map(v => renderVideoGridIcons(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres'))}
+              {filterAndSortVideos(getMaitresVideos()).map((v, i) => renderVideoGridIcons(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres', i))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {getMaitresVideos().map(v => renderVideoCard(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres'))}
+              {filterAndSortVideos(getMaitresVideos()).map(v => renderVideoCard(v, standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître', 'maitres'))}
             </div>
           )}
         </div>
@@ -3473,6 +3849,40 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   <LayoutGrid className="w-3.5 h-3.5" />
                   <span>Vue icônes</span>
                 </button>
+                <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
+                <button
+                  type="button"
+                  onClick={toggleMediaSortOrder}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    mediaSortOrder !== 'default'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+                  }`}
+                  title={
+                    mediaSortOrder === 'alpha-asc'
+                      ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
+                      : mediaSortOrder === 'alpha-desc'
+                      ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                      : "Trier par ordre alphabétique A-Z"
+                  }
+                >
+                  {mediaSortOrder === 'alpha-asc' ? (
+                    <>
+                      <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>A-Z</span>
+                    </>
+                  ) : mediaSortOrder === 'alpha-desc' ? (
+                    <>
+                      <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Z-A</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpDown className="w-3.5 h-3.5" />
+                      <span>A-Z</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -3527,19 +3937,35 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
           {/* Affichage des vidéos de cours selon le mode choisi */}
           {getCoursVideos().length > 0 ? (
-            mediaViewMode === 'list' ? (
-              <div className="space-y-1.5">
-                {getCoursVideos().map((v, i) => renderVideoListMinimal(v, 'Mes Cours & Stages', 'cours', i))}
-              </div>
-            ) : mediaViewMode === 'icons' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {getCoursVideos().map(v => renderVideoGridIcons(v, 'Mes Cours & Stages', 'cours'))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {getCoursVideos().map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
-              </div>
-            )
+            <>
+              {renderMediaSearchBar("Rechercher dans vos cours (par titre ou artiste)...", filterAndSortVideos(getCoursVideos()).length)}
+
+              {filterAndSortVideos(getCoursVideos()).length === 0 ? (
+                <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
+                  <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
+                  <p className="text-sm font-medium text-[#d5cabb]">Aucun cours ne correspond à « {mediaSearchQuery} »</p>
+                  <button
+                    type="button"
+                    onClick={() => setMediaSearchQuery('')}
+                    className="mt-2 text-xs text-[#e5a93b] hover:underline cursor-pointer"
+                  >
+                    Effacer la recherche
+                  </button>
+                </div>
+              ) : mediaViewMode === 'list' ? (
+                <div className="space-y-1.5">
+                  {filterAndSortVideos(getCoursVideos()).map((v, i) => renderVideoListMinimal(v, 'Mes Cours & Stages', 'cours', i))}
+                </div>
+              ) : mediaViewMode === 'icons' ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {filterAndSortVideos(getCoursVideos()).map((v, i) => renderVideoGridIcons(v, 'Mes Cours & Stages', 'cours', i))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {filterAndSortVideos(getCoursVideos()).map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-[#171411] border border-[#302820] rounded-2xl p-6 sm:p-8 shadow-lg text-center max-w-2xl mx-auto space-y-4">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#e5a93b]/15 border border-[#e5a93b]/30 flex items-center justify-center text-[#e5a93b]">

@@ -47,7 +47,7 @@ export const FARRUCA_LETRAS: LetraItem[] = [
     danceCompasTips: "Sur la Salida ('tran tran'), effectuez des paseos lents et sculpturaux sur les temps 1 et 3. Pendant la copla, les pieds s'effacent complètement : marquez le cante avec des cambres sobres et le regard fier. L'estribillo ('arriba el limón') offre le moment propice pour un giro lent ou une llamada de relance vers l'escobilla.",
     video: {
       id: "vid-letra-farruca-utrera",
-      title: "Rafael de Utrera – Letra por Farruca (Una farruca en Galicia)",
+      title: "Rafael de Utrera - Letra por Farruca (Una farruca en Galicia)",
       url: "https://www.youtube.com/watch?v=31pvJlUXa78",
       level: 1,
       description: "Enregistrement studio authentique : Rafael de Utrera chante exactement cette letra (Salida en tran-tran, copla d'origine et estribillo du citronnier) accompagné à la guitare par Mariano Mangas."
@@ -95,7 +95,7 @@ export const FARRUCA_LETRAS: LetraItem[] = [
     danceCompasTips: "Cette letra appelle une dramaturgie sobre et sculpturale. Le danseur ou la danseuse reste très ancré dans le sol, le dos droit et les mouvements de bras anguleux. À la fin de la strophe ('sin poder alzar las alas'), marquez un remate net et suspendez le silence.",
     video: {
       id: "vid-letra-farruca-menese",
-      title: "José Menese – Farruca (Cayó al suelo una paloma)",
+      title: "José Menese - Farruca (Cayó al suelo una paloma)",
       url: "https://www.youtube.com/watch?v=trABVQebNLY",
       level: 2,
       description: "Audio original et intégral de José Menese interprétant précisément 'Cayó al suelo una paloma' : pureté du cante jondo, gravité du compás binaire et émotion dramatique."
@@ -141,7 +141,7 @@ export const FARRUCA_LETRAS: LetraItem[] = [
     danceCompasTips: "Antonio Mairena imprime une régularité de tempo exemplaire. C'est le support idéal pour travailler l'écoute fine du cante : apprenez à repérer la fin de chaque phrase pour amorcer vos desplantes ou préparer vos fermetures (cierres) en parfaite osmose avec le guitariste.",
     video: {
       id: "vid-letra-farruca-mairena",
-      title: "Antonio Mairena – Farruca 'amargamente' (Guitare: Melchor de Marchena)",
+      title: "Antonio Mairena - Farruca \"amargamente\"",
       url: "https://www.youtube.com/watch?v=DZv_-vdPWuE",
       level: 2,
       description: "Archive historique de référence : le patriarche Antonio Mairena chante exactement la copla 'amargamente lloraba' et l'estribillo populaire avec le son légendaire de Melchor de Marchena."

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronDown, ChevronUp, ChevronsUpDown, ArrowRight, Lightbulb, UploadCloud, CheckCircle2, Sparkles, Compass, List, LayoutGrid, Play, Video as VideoIcon, Film, Folder, FolderOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronsUpDown, ArrowRight, Lightbulb, UploadCloud, CheckCircle2, Sparkles, Compass, List, LayoutGrid, Play, Video as VideoIcon, Film, Folder, FolderOpen, ArrowDownAZ, ArrowUpAZ, ArrowUpDown } from 'lucide-react';
 import { VideoItem } from '../types';
 import { extractYouTubeInfo } from '../utils/storage';
 
@@ -41,6 +41,23 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
   // Mode d'affichage des médias dans les dossiers de l'arbre
   const [treeMaitresViewMode, setTreeMaitresViewMode] = useState<'list' | 'icons'>('list');
   const [treeCoursViewMode, setTreeCoursViewMode] = useState<'list' | 'icons'>('list');
+  const [treeSortOrder, setTreeSortOrder] = useState<'default' | 'alpha-asc' | 'alpha-desc'>('default');
+
+  const toggleTreeSort = () => {
+    setTreeSortOrder(prev => prev === 'default' ? 'alpha-asc' : prev === 'alpha-asc' ? 'alpha-desc' : 'default');
+  };
+
+  const sortTreeVideos = (videos?: VideoItem[]): VideoItem[] => {
+    if (!videos || videos.length === 0) return [];
+    if (treeSortOrder === 'default') return videos;
+    return [...videos].sort((a, b) => {
+      const titleA = (a.title || '').trim();
+      const titleB = (b.title || '').trim();
+      return treeSortOrder === 'alpha-asc'
+        ? titleA.localeCompare(titleB, 'fr', { sensitivity: 'base', numeric: true })
+        : titleB.localeCompare(titleA, 'fr', { sensitivity: 'base', numeric: true });
+    });
+  };
 
   // État d'ouverture des dossiers (par défaut tous repliés, sauf si explicitement demandé)
   const [openFolders, setOpenFolders] = useState<{ [key: string]: boolean }>({
@@ -343,6 +360,40 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                               <LayoutGrid className="w-3 h-3" />
                               <span>Icônes</span>
                             </button>
+                            <div className="w-px h-3 bg-[#2b2118] mx-0.5" />
+                            <button
+                              type="button"
+                              onClick={toggleTreeSort}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeSortOrder !== 'default'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title={
+                                treeSortOrder === 'alpha-asc'
+                                  ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
+                                  : treeSortOrder === 'alpha-desc'
+                                  ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                                  : "Trier par ordre alphabétique A-Z"
+                              }
+                            >
+                              {treeSortOrder === 'alpha-asc' ? (
+                                <>
+                                  <ArrowDownAZ className="w-3 h-3" />
+                                  <span>A-Z</span>
+                                </>
+                              ) : treeSortOrder === 'alpha-desc' ? (
+                                <>
+                                  <ArrowUpAZ className="w-3 h-3" />
+                                  <span>Z-A</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpDown className="w-3 h-3" />
+                                  <span>A-Z</span>
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       )}
@@ -350,7 +401,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       {/* VUE 1 : LISTE MINIMALISTE (SEULEMENT LES NOMS) */}
                       {maitresVideos && maitresVideos.length > 0 && treeMaitresViewMode === 'list' && (
                         <div className="space-y-1">
-                          {maitresVideos.map((video) => (
+                          {sortTreeVideos(maitresVideos).map((video) => (
                             <div
                               key={video.id}
                               onClick={() => {
@@ -382,7 +433,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       {/* VUE 2 : GRILLE D'ICÔNES (VIGNETTES AVEC NOM EN DESSOUS) */}
                       {maitresVideos && maitresVideos.length > 0 && treeMaitresViewMode === 'icons' && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {maitresVideos.map((video) => {
+                          {sortTreeVideos(maitresVideos).map((video) => {
                             const ytInfo = extractYouTubeInfo(video.url);
                             const thumbUrl = ytInfo.videoId ? `https://img.youtube.com/vi/${ytInfo.videoId}/mqdefault.jpg` : null;
 
@@ -558,6 +609,40 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                               <LayoutGrid className="w-3 h-3" />
                               <span>Icônes</span>
                             </button>
+                            <div className="w-px h-3 bg-[#2b2118] mx-0.5" />
+                            <button
+                              type="button"
+                              onClick={toggleTreeSort}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                                treeSortOrder !== 'default'
+                                  ? 'bg-[#86efac] text-[#0b1710] font-bold shadow-xs'
+                                  : 'text-[#8c8173] hover:text-[#f4efe6]'
+                              }`}
+                              title={
+                                treeSortOrder === 'alpha-asc'
+                                  ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
+                                  : treeSortOrder === 'alpha-desc'
+                                  ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                                  : "Trier par ordre alphabétique A-Z"
+                              }
+                            >
+                              {treeSortOrder === 'alpha-asc' ? (
+                                <>
+                                  <ArrowDownAZ className="w-3 h-3" />
+                                  <span>A-Z</span>
+                                </>
+                              ) : treeSortOrder === 'alpha-desc' ? (
+                                <>
+                                  <ArrowUpAZ className="w-3 h-3" />
+                                  <span>Z-A</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpDown className="w-3 h-3" />
+                                  <span>A-Z</span>
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       )}
@@ -565,7 +650,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       {/* VUE 1 : LISTE MINIMALISTE DES COURS (SEULEMENT LES NOMS) */}
                       {coursVideos && coursVideos.length > 0 && treeCoursViewMode === 'list' && (
                         <div className="space-y-1">
-                          {coursVideos.map((video) => (
+                          {sortTreeVideos(coursVideos).map((video) => (
                             <div
                               key={video.id}
                               onClick={() => {
@@ -597,7 +682,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       {/* VUE 2 : GRILLE D'ICÔNES DES COURS (VIGNETTES AVEC NOM EN DESSOUS) */}
                       {coursVideos && coursVideos.length > 0 && treeCoursViewMode === 'icons' && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {coursVideos.map((video) => {
+                          {sortTreeVideos(coursVideos).map((video) => {
                             const ytInfo = extractYouTubeInfo(video.url);
                             const thumbUrl = ytInfo.videoId ? `https://img.youtube.com/vi/${ytInfo.videoId}/mqdefault.jpg` : null;
 

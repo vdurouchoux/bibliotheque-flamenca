@@ -117,7 +117,7 @@ export const FARRUCA_BAILE: DansePaloData = {
   maitres: [
     {
       id: "far-m-ivan-vargas",
-      title: "Iván Vargas – Farruca intégrale de concert (Grenade)",
+      title: "Ivan Vargas & Kasandra \"La China\" - Farruca, flamenco dancers",
       url: "https://www.youtube.com/watch?v=pziQ1VcL740",
       level: 3,
       startSeconds: 0,
@@ -134,7 +134,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-guito",
-      title: "El Güito – La Farruca de référence absolue (Danse intégrale)",
+      title: "El Güito - Baile por Farruca",
       url: "https://www.youtube.com/watch?v=77GxEVzmGBM",
       level: 3,
       startSeconds: 0,
@@ -147,7 +147,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-baras",
-      title: "Sara Baras – Farruca virtuose (Pantalón y Chaleco)",
+      title: "Sara Baras - Farruca (1999)",
       url: "https://www.youtube.com/watch?v=TIeijUUHUp4",
       level: 3,
       startSeconds: 0,
@@ -156,7 +156,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-gades",
-      title: "Antonio Gades – L'Élégance tragique & la perfection des lignes",
+      title: "Antonio Gades - Farruca (1969)",
       url: "https://www.youtube.com/watch?v=fBefsNiLrhg",
       level: 3,
       startSeconds: 0,
@@ -165,7 +165,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-farruquito",
-      title: "Farruquito – Farruca gitane & puissance tellurique",
+      title: "Los Farruco (Farruquito) - Farruca (P-5/6)",
       url: "https://www.youtube.com/watch?v=DzHPNiEV4LE",
       level: 3,
       startSeconds: 0,
@@ -174,7 +174,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-pedagogie-rina",
-      title: "Farruca complète d'étude – Chorégraphie pas à pas (Rina Orellana)",
+      title: "Rina Orellana - Complete Farruca choreography (online course)",
       url: "https://www.youtube.com/watch?v=rZ4S7lSkCRM",
       level: 2,
       startSeconds: 0,
@@ -183,7 +183,7 @@ export const FARRUCA_BAILE: DansePaloData = {
     },
     {
       id: "far-m-pedagogie-bg",
-      title: "Farruca Baile : Salida, Marcajes & Remate (BG Flamenco)",
+      title: "BG Flamenco - Salida y Marcaje para FARRUCA",
       url: "https://www.youtube.com/watch?v=qposVIHEY2E",
       level: 1,
       startSeconds: 0,
