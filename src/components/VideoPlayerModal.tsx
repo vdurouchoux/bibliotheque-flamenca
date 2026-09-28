@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX } from 'lucide-react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX, Search } from 'lucide-react';
 import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
 import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
@@ -376,12 +376,6 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     ? `${video.title} ${paloName.replace('(Danse)', '').trim()} flamenco baile`
     : `${video.title} ${paloName} flamenco guitarra`;
 
-  const searchButtonLabel = isCanteOrLetra
-    ? "🔍 Rechercher d'autres interprètes (Cantaores)"
-    : isDance
-    ? "🔍 Rechercher d'autres versions (Danse)"
-    : "🔍 Rechercher d'autres versions (Guitare)";
-
   const handleJumpToTime = (seconds: number) => {
     const sec = Math.max(0, seconds);
     currentTimeRef.current = sec;
@@ -551,15 +545,77 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
-  const isHtml5Video = !videoId && Boolean(
-    currentVideo.url && (
-      currentVideo.url.startsWith('blob:') ||
-      currentVideo.url.startsWith('data:video') ||
-      currentVideo.url.startsWith('/') ||
-      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(currentVideo.url) ||
-      (!currentVideo.url.includes('youtube.com') && !currentVideo.url.includes('youtu.be'))
-    )
-  );
+  // Détection du type de vidéo et génération de l'URL d'intégration directe (YouTube, Drive, Vimeo, Dailymotion, HTML5)
+  const getEmbedInfo = (url: string) => {
+    if (!url) return { type: 'none', embedSrc: '', isDirect: false };
+
+    // 1. YouTube
+    if (videoId) {
+      const origin = typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
+      return {
+        type: 'youtube',
+        embedSrc: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${initialStartSecondsRef.current}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${origin}`,
+        isDirect: false
+      };
+    }
+
+    // 2. Google Drive preview embed
+    const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      return {
+        type: 'drive',
+        embedSrc: `https://drive.google.com/file/d/${driveMatch[1]}/preview`,
+        isDirect: false
+      };
+    }
+
+    // 3. Vimeo embed
+    const vimeoMatch = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+    if (vimeoMatch) {
+      return {
+        type: 'vimeo',
+        embedSrc: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`,
+        isDirect: false
+      };
+    }
+
+    // 4. Dailymotion embed
+    const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+    if (dmMatch) {
+      return {
+        type: 'dailymotion',
+        embedSrc: `https://www.dailymotion.com/embed/video/${dmMatch[1]}?autoplay=1`,
+        isDirect: false
+      };
+    }
+
+    // 5. Fichiers vidéo directs (MP4, WebM, OGG, MOV, blob, base64)
+    const isDirect = Boolean(
+      url.startsWith('blob:') ||
+      url.startsWith('data:video') ||
+      url.startsWith('/') ||
+      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url)
+    );
+
+    if (isDirect) {
+      return {
+        type: 'html5',
+        embedSrc: url,
+        isDirect: true
+      };
+    }
+
+    // 6. Autre lien web : on tente l'intégration dans l'iframe
+    return {
+      type: 'generic_iframe',
+      embedSrc: url,
+      isDirect: false
+    };
+  };
+
+  const embedInfo = getEmbedInfo(currentVideo.url);
+  const isHtml5Video = embedInfo.isDirect;
+  const iframeSrc = embedInfo.embedSrc;
 
   const handleLoadedMetadata = () => {
     if (htmlVideoRef.current) {
@@ -584,17 +640,12 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
-  // The iframe src remains completely stable during playback so it never reloads the video automatically
-  const iframeSrc = videoId
-    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${initialStartSecondsRef.current}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`
-    : '';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2">
-          {/* Gauche : Bouton Retour, Nom du fichier actif et détails */}
+          {/* Gauche : Bouton Retour et Titre de la vidéo */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
             {/* Bouton retour (remplace la croix pour fermer le lecteur) */}
             <button
@@ -606,27 +657,23 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <span className="text-xs">Retour</span>
             </button>
 
-            {/* Nom du fichier de la page */}
-            <div
-              className="px-2 py-1 rounded bg-[#14110e] border border-[#e5a93b]/70 text-[#e5a93b] font-mono text-[10px] sm:text-xs font-bold tracking-tight shadow-sm flex items-center gap-1 shrink-0 whitespace-nowrap"
-              title="Fichier de ce composant : VideoPlayerModal.tsx"
-            >
-              <span className="text-[10px] sm:text-xs opacity-90 select-none">📄</span>
-              <span>VideoPlayerModal.tsx</span>
+            {/* Titre de la vidéo */}
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <h1 className="text-xs sm:text-sm font-bold text-[#f4efe6] font-serif truncate" title={video.title}>
+                {video.title}
+              </h1>
+              <span className="text-[11px] sm:text-xs text-[#a69c8f] truncate font-medium hidden md:inline shrink-0">
+                • {paloName}
+              </span>
             </div>
-
-            {/* Titre du palo et de la section */}
-            <span className="text-[11px] sm:text-xs text-[#a69c8f] truncate font-medium hidden md:inline ml-1">
-              {paloName} • {sectionName}
-            </span>
           </div>
 
-          {/* Droite : Menu 3 petits points avec Partager et Lire sur YouTube */}
+          {/* Droite : Menu 3 petits points avec Enregistrer, Partager, YouTube... */}
           <div className="relative shrink-0" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(prev => !prev)}
               className="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center"
-              title="Options (Partager, YouTube...)"
+              title="Options (Enregistrer, Partager, YouTube...)"
               aria-label="Options"
               aria-expanded={isMenuOpen}
             >
@@ -635,7 +682,28 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
             {isMenuOpen && (
               <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-[#1e1a16] border border-[#4a3c2b] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                {/* Option 1 : Partager */}
+                {/* Option 1 : Enregistrer / Ajouter à mes études */}
+                <button
+                  onClick={() => {
+                    handleBookmarkToggle();
+                    setIsMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    isSaved ? 'text-[#e5a93b]' : 'text-[#f4efe6] hover:text-[#e5a93b]'
+                  }`}
+                >
+                  <Bookmark className={`w-4 h-4 text-[#e5a93b] shrink-0 ${isSaved ? 'fill-current' : ''}`} />
+                  <div className="flex flex-col">
+                    <span>{isSaved ? 'Enregistré dans mes études' : 'Ajouter à mes études'}</span>
+                    <span className="text-[10px] text-[#8c8173] font-normal">
+                      {isSaved ? 'Cliquer pour retirer de vos études' : 'Enregistrer pour vos sessions de pratique'}
+                    </span>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-[#332a20]" />
+
+                {/* Option 2 : Partager */}
                 <button
                   onClick={handleShareVideo}
                   className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
@@ -649,7 +717,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
                 <div className="my-1 border-t border-[#332a20]" />
 
-                {/* Option 2 : Lire sur YouTube à la position du repère */}
+                {/* Option 3 : Lire sur YouTube à la position du repère */}
                 {video.url ? (
                   <a
                     href={currentPosition > 0 ? `${video.url}${video.url.includes('?') ? '&' : '?'}t=${currentPosition}s` : video.url}
@@ -667,6 +735,23 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     </div>
                   </a>
                 ) : null}
+
+                <div className="my-1 border-t border-[#332a20]" />
+
+                {/* Option 4 : Rechercher des vidéos similaires */}
+                <a
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(searchKeywords)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Search className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                  <div className="flex flex-col">
+                    <span>Rechercher des vidéos similaires</span>
+                    <span className="text-[10px] text-[#8c8173] font-normal">Sur YouTube</span>
+                  </div>
+                </a>
               </div>
             )}
           </div>
@@ -720,17 +805,6 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 </button>
               </div>
             </div>
-          ) : videoId ? (
-            <iframe
-              ref={iframeRef}
-              key={playerKey}
-              onLoad={handleIframeLoad}
-              src={iframeSrc}
-              title={currentVideo.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
-            />
           ) : isHtml5Video ? (
             <video
               ref={htmlVideoRef}
@@ -742,8 +816,19 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               onPause={() => setIsPlaying(false)}
               onTimeUpdate={handleNativeTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
-              src={currentVideo.url}
+              src={embedInfo.embedSrc || currentVideo.url}
               className="absolute inset-0 w-full h-full object-contain bg-black"
+            />
+          ) : iframeSrc ? (
+            <iframe
+              ref={iframeRef}
+              key={playerKey}
+              onLoad={handleIframeLoad}
+              src={iframeSrc}
+              title={currentVideo.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full border-0"
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-[#a69c8f]">
@@ -955,59 +1040,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </button>
         </div>
 
-        {/* Other versions search */}
-        <div className="px-4 py-2 bg-[#14120e] border-b border-[#252019] flex items-center justify-end gap-2 text-xs">
-          <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(searchKeywords)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-[#e5a93b] hover:underline font-medium"
-          >
-            <span>{searchButtonLabel}</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-
         {/* Video Info & Practice Tools */}
         <div className="p-4 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-            <div className="space-y-1.5 flex-1">
-              <h2 className="text-lg sm:text-xl font-bold text-[#f4efe6] font-serif">
-                {video.title}
-              </h2>
-              {video.description && (
-                <p className="text-sm text-[#b8ada0]">
-                  {video.description}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Share button */}
-              <button
-                onClick={handleShareVideo}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#221c17] hover:bg-[#2c241d] text-[#e5a93b] border border-[#3e3223] hover:border-[#e5a93b]/60 transition-all cursor-pointer shadow-sm"
-                title="Partager cette vidéo et son minutage avec des étudiants"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>Partager</span>
-              </button>
-
-              {/* Bookmark button */}
-              <button
-                onClick={handleBookmarkToggle}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                  isSaved
-                    ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/60'
-                    : 'bg-[#25201b] text-[#a69c8f] border-[#383129] hover:text-[#f4efe6]'
-                }`}
-              >
-                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                <span>{isSaved ? 'Enregistré' : 'Ajouter à mes études'}</span>
-              </button>
-            </div>
-          </div>
-
           {/* Interactive Landmarks (Repères clés chronométrés & Modifiables) */}
           <div className="p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
             {/* Header of landmarks section */}

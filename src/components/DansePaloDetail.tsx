@@ -1166,118 +1166,126 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     return result;
   };
 
-  // Composant barre de recherche textuelle et tri au-dessus de la liste des médias
-  const renderMediaSearchBar = (placeholder: string = "Rechercher un média par titre ou nom d'artiste...", count?: number) => {
+  // Composant sélecteur de mode d'affichage (Vue liste / Vue icônes) avec classement alphabétique directement intégré
+  const renderViewModeControl = () => {
     return (
-      <div className="space-y-2 mb-3.5">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 flex items-center">
-            <Search className="w-4 h-4 text-[#8c8173] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={mediaSearchQuery}
-              onChange={(e) => setMediaSearchQuery(e.target.value)}
-              placeholder={placeholder}
-              className="w-full pl-10 pr-9 py-2 sm:py-2.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-[#e5a93b] rounded-xl text-xs sm:text-sm text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
-            />
-            {mediaSearchQuery && (
-              <button
-                type="button"
-                onClick={() => setMediaSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-[#8c8173] hover:text-[#f4efe6] hover:bg-[#251f18] transition-colors cursor-pointer"
-                title="Effacer la recherche"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Bouton de tri alphabétique */}
-          <button
-            type="button"
-            onClick={toggleMediaSortOrder}
-            className={`flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 select-none shadow-xs ${
-              mediaSortOrder === 'alpha-asc'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
-                : mediaSortOrder === 'alpha-desc'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
-                : 'bg-[#14110e] hover:bg-[#1f1914] text-[#a69c8f] hover:text-[#f4efe6] border-[#2c2219] hover:border-[#e5a93b]/50'
-            }`}
-            title={
-              mediaSortOrder === 'alpha-asc'
-                ? "Trié par ordre alphabétique A → Z (cliquer pour trier de Z → A)"
-                : mediaSortOrder === 'alpha-desc'
-                ? "Trié par ordre alphabétique inversé Z → A (cliquer pour revenir à l'ordre initial)"
-                : "Trier les médias par ordre alphabétique A-Z"
+      <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5 shadow-xs shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            if (mediaViewMode === 'list') {
+              toggleMediaSortOrder();
+            } else {
+              handleSetMediaViewMode('list');
             }
-          >
-            {mediaSortOrder === 'alpha-asc' ? (
-              <>
-                <ArrowDownAZ className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">Ordre A-Z</span>
-                <span className="sm:hidden">A-Z</span>
-              </>
-            ) : mediaSortOrder === 'alpha-desc' ? (
-              <>
-                <ArrowUpAZ className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">Ordre Z-A</span>
-                <span className="sm:hidden">Z-A</span>
-              </>
-            ) : (
-              <>
-                <ArrowUpDown className="w-4 h-4 text-[#8c8173]" />
-                <span className="hidden sm:inline">Trier A-Z</span>
-                <span className="sm:hidden">A-Z</span>
-              </>
-            )}
-          </button>
-        </div>
+          }}
+          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
+            mediaViewMode === 'list'
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+          }`}
+          title={
+            mediaViewMode === 'list'
+              ? mediaSortOrder === 'alpha-asc'
+                ? "Vue liste • Tri alphabétique A → Z actif (cliquer pour trier Z → A)"
+                : mediaSortOrder === 'alpha-desc'
+                ? "Vue liste • Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                : "Vue liste • Cliquer pour classer par ordre alphabétique A-Z"
+              : "Afficher en vue liste"
+          }
+        >
+          <List className="w-3.5 h-3.5 shrink-0" />
+          <span>Vue liste</span>
+          {mediaViewMode === 'list' && (
+            <span
+              className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                mediaSortOrder !== 'default'
+                  ? 'bg-emerald-400/25 text-emerald-300 border border-emerald-400/40'
+                  : 'bg-[#251f18] text-[#a69c8f] hover:text-[#f4efe6] border border-[#382d22]'
+              }`}
+              title="Classement alphabétique A-Z"
+            >
+              {mediaSortOrder === 'alpha-asc' ? (
+                <>
+                  <ArrowDownAZ className="w-3 h-3 text-emerald-400" />
+                  <span>A-Z</span>
+                </>
+              ) : mediaSortOrder === 'alpha-desc' ? (
+                <>
+                  <ArrowUpAZ className="w-3 h-3 text-emerald-400" />
+                  <span>Z-A</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUpDown className="w-3 h-3" />
+                  <span>A-Z</span>
+                </>
+              )}
+            </span>
+          )}
+        </button>
 
-        {/* Détails du filtrage et du tri */}
-        {(mediaSearchQuery.trim() || mediaSortOrder !== 'default') && (
-          <div className="flex items-center justify-between px-1 text-[11px] text-[#a69c8f] flex-wrap gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              {count !== undefined && (
-                <span>
-                  {count} {count > 1 ? 'médias affichés' : count === 1 ? 'média affiché' : 'aucun média'}
-                  {mediaSearchQuery.trim() && <span> pour « <strong className="text-[#f4efe6]">{mediaSearchQuery}</strong> »</span>}
-                </span>
+        <button
+          type="button"
+          onClick={() => {
+            if (mediaViewMode === 'icons') {
+              toggleMediaSortOrder();
+            } else {
+              handleSetMediaViewMode('icons');
+            }
+          }}
+          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
+            mediaViewMode === 'icons'
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
+          }`}
+          title={
+            mediaViewMode === 'icons'
+              ? mediaSortOrder === 'alpha-asc'
+                ? "Vue icônes • Tri alphabétique A → Z actif (cliquer pour trier Z → A)"
+                : mediaSortOrder === 'alpha-desc'
+                ? "Vue icônes • Tri alphabétique Z → A actif (cliquer pour ordre initial)"
+                : "Vue icônes • Cliquer pour classer par ordre alphabétique A-Z"
+              : "Afficher en vue icônes"
+          }
+        >
+          <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+          <span>Vue icônes</span>
+          {mediaViewMode === 'icons' && (
+            <span
+              className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                mediaSortOrder !== 'default'
+                  ? 'bg-emerald-400/25 text-emerald-300 border border-emerald-400/40'
+                  : 'bg-[#251f18] text-[#a69c8f] hover:text-[#f4efe6] border border-[#382d22]'
+              }`}
+              title="Classement alphabétique A-Z"
+            >
+              {mediaSortOrder === 'alpha-asc' ? (
+                <>
+                  <ArrowDownAZ className="w-3 h-3 text-emerald-400" />
+                  <span>A-Z</span>
+                </>
+              ) : mediaSortOrder === 'alpha-desc' ? (
+                <>
+                  <ArrowUpAZ className="w-3 h-3 text-emerald-400" />
+                  <span>Z-A</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUpDown className="w-3 h-3" />
+                  <span>A-Z</span>
+                </>
               )}
-              {mediaSortOrder === 'alpha-asc' && (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <ArrowDownAZ className="w-3 h-3" /> Tri alphabétique (A → Z)
-                </span>
-              )}
-              {mediaSortOrder === 'alpha-desc' && (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <ArrowUpAZ className="w-3 h-3" /> Tri alphabétique (Z → A)
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2.5">
-              {mediaSortOrder !== 'default' && (
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaSortOrder('default')}
-                  className="text-[#8c8173] hover:text-[#d5cabb] hover:underline cursor-pointer"
-                >
-                  Ordre initial
-                </button>
-              )}
-              {mediaSearchQuery.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setMediaSearchQuery('')}
-                  className="text-[#e5a93b] hover:underline cursor-pointer font-medium"
-                >
-                  Effacer recherche
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+            </span>
+          )}
+        </button>
       </div>
     );
+  };
+
+  // Statut de filtrage (supprimé pour éviter de surcharger l'affichage)
+  const renderMediaSearchBar = (_placeholder?: string, _count?: number) => {
+    return null;
   };
 
   const extractVideoId = (url: string) => {
@@ -2297,7 +2305,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   aria-label="Classer les dossiers par ordre alphabétique ou contre-alphabétique"
                 >
                   {folderSortOrder === 'desc' ? (
-                    <ArrowUpZA className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   ) : folderSortOrder === 'asc' ? (
                     <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   ) : (
@@ -2560,88 +2568,55 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 </div>
 
                 {/* Dessous : Le dossier */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif">
-                      {currentFolder.name}
-                    </h3>
-                    <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
-                      {folderVideos.length} {folderVideos.length > 1 ? 'fichiers' : 'fichier'}
-                      {subfolders.length > 0 && ` • ${subfolders.length} sous-dossier${subfolders.length > 1 ? 's' : ''}`}
-                    </span>
-                  </div>
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    {/* Dossier + nombre de fichiers + Barre de recherche à droite du dossier */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap">
+                          {currentFolder.name}
+                        </h3>
+                        <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
+                          {folderVideos.length} {folderVideos.length > 1 ? 'fichiers' : 'fichier'}
+                          {subfolders.length > 0 && ` • ${subfolders.length} sous-dossier${subfolders.length > 1 ? 's' : ''}`}
+                        </span>
+                      </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <button
-                      onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter une vidéo</span>
-                    </button>
-
-                    <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSetMediaViewMode('list')}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mediaViewMode === 'list'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title="Vue liste"
-                      >
-                        <List className="w-3.5 h-3.5" />
-                        <span>Vue liste</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetMediaViewMode('icons')}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mediaViewMode === 'icons'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title="Vue icônes"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                        <span>Vue icônes</span>
-                      </button>
-                      <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
-                      <button
-                        type="button"
-                        onClick={toggleMediaSortOrder}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mediaSortOrder !== 'default'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                            : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title={
-                          mediaSortOrder === 'alpha-asc'
-                            ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
-                            : mediaSortOrder === 'alpha-desc'
-                            ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
-                            : "Trier par ordre alphabétique A-Z"
-                        }
-                      >
-                        {mediaSortOrder === 'alpha-asc' ? (
-                          <>
-                            <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>A-Z</span>
-                          </>
-                        ) : mediaSortOrder === 'alpha-desc' ? (
-                          <>
-                            <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Z-A</span>
-                          </>
-                        ) : (
-                          <>
-                            <ArrowUpDown className="w-3.5 h-3.5" />
-                            <span>A-Z</span>
-                          </>
+                      {/* Barre de recherche à droite du dossier / nombre de fichiers (au-dessus de vue liste / vue icônes sur mobile) */}
+                      <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
+                        <Search className="w-3.5 h-3.5 text-[#8c8173] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={mediaSearchQuery}
+                          onChange={(e) => setMediaSearchQuery(e.target.value)}
+                          placeholder="Rechercher un média par titre..."
+                          className="w-full pl-8.5 pr-8 py-1.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-[#e5a93b] rounded-xl text-xs text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
+                        />
+                        {mediaSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setMediaSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8c8173] hover:text-[#f4efe6] transition-colors cursor-pointer"
+                            title="Effacer la recherche"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Actions : Ajouter une vidéo & Vue liste / Vue icônes avec classement alphabétique intégré */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                      <button
+                        onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ajouter une vidéo</span>
                       </button>
+
+                      {renderViewModeControl()}
                     </div>
                   </div>
                 </div>
@@ -3151,87 +3126,54 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           </div>
 
           {/* Dessous : Grand Maître */}
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
-              <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif">
-                {standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître'}
-              </h3>
-              <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22]">
-                {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
-              </span>
-            </div>
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              {/* Dossier + nombre de fichiers + Barre de recherche à droite du dossier */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif whitespace-nowrap">
+                    {standardFolders.find(s => s.id === 'maitres')?.name || 'Grand Maître'}
+                  </h3>
+                  <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
+                    {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
+                  </span>
+                </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-              <button
-                onClick={() => onOpenAddVideo('maitres')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ajouter une vidéo</span>
-              </button>
-
-              <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('list')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaViewMode === 'list'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title="Vue liste"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Vue liste</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('icons')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaViewMode === 'icons'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title="Vue icônes"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Vue icônes</span>
-                </button>
-                <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
-                <button
-                  type="button"
-                  onClick={toggleMediaSortOrder}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaSortOrder !== 'default'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title={
-                    mediaSortOrder === 'alpha-asc'
-                      ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
-                      : mediaSortOrder === 'alpha-desc'
-                      ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
-                      : "Trier par ordre alphabétique A-Z"
-                  }
-                >
-                  {mediaSortOrder === 'alpha-asc' ? (
-                    <>
-                      <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>A-Z</span>
-                    </>
-                  ) : mediaSortOrder === 'alpha-desc' ? (
-                    <>
-                      <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Z-A</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                      <span>A-Z</span>
-                    </>
+                {/* Barre de recherche "Rechercher un média par titre" avec la loupe à droite de 9 fichiers (au-dessus de vue liste / vue icônes sur mobile) */}
+                <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
+                  <Search className="w-3.5 h-3.5 text-[#8c8173] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={mediaSearchQuery}
+                    onChange={(e) => setMediaSearchQuery(e.target.value)}
+                    placeholder="Rechercher un média par titre..."
+                    className="w-full pl-8.5 pr-8 py-1.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-[#e5a93b] rounded-xl text-xs text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
+                  />
+                  {mediaSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMediaSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8c8173] hover:text-[#f4efe6] transition-colors cursor-pointer"
+                      title="Effacer la recherche"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   )}
+                </div>
+              </div>
+
+              {/* Actions : Ajouter une vidéo & Vue liste / Vue icônes avec classement alphabétique intégré */}
+              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                <button
+                  onClick={() => onOpenAddVideo('maitres')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter une vidéo</span>
                 </button>
+
+                {renderViewModeControl()}
               </div>
             </div>
           </div>
@@ -3798,93 +3740,59 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           </div>
           <div className="space-y-5">
             {/* Header Card & Actions */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-[#e5a93b]/15 text-[#e5a93b]">
-                  <GraduationCap className="w-5 h-5" />
-                </span>
-                <h3 className="text-base sm:text-lg font-bold text-[#f4efe6]">
-                  Mes Cours & Stages
-                </h3>
-              </div>
-              <p className="text-xs text-[#a69c8f]">
-                Vos vidéos de répétitions, retours de stages, cours réguliers et entraînements personnels pour la Farruca.
-              </p>
-            </div>
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="p-2 rounded-xl bg-[#e5a93b]/15 text-[#e5a93b] shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] whitespace-nowrap">
+                    Mes Cours & Stages
+                  </h3>
+                  <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
+                    {getCoursVideos().length} {getCoursVideos().length > 1 ? 'fichiers' : 'fichier'}
+                  </span>
+                </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-              <button
-                onClick={() => onOpenAddVideo('cours')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ajouter une vidéo</span>
-              </button>
-
-              <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('list')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaViewMode === 'list'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title="Vue liste"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Vue liste</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetMediaViewMode('icons')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaViewMode === 'icons'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title="Vue icônes"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Vue icônes</span>
-                </button>
-                <div className="w-px h-3.5 bg-[#2b2219] mx-0.5" />
-                <button
-                  type="button"
-                  onClick={toggleMediaSortOrder}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaSortOrder !== 'default'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
-                  }`}
-                  title={
-                    mediaSortOrder === 'alpha-asc'
-                      ? "Tri alphabétique A → Z actif (cliquer pour Z → A)"
-                      : mediaSortOrder === 'alpha-desc'
-                      ? "Tri alphabétique Z → A actif (cliquer pour ordre initial)"
-                      : "Trier par ordre alphabétique A-Z"
-                  }
-                >
-                  {mediaSortOrder === 'alpha-asc' ? (
-                    <>
-                      <ArrowDownAZ className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>A-Z</span>
-                    </>
-                  ) : mediaSortOrder === 'alpha-desc' ? (
-                    <>
-                      <ArrowUpAZ className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Z-A</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                      <span>A-Z</span>
-                    </>
+                {/* Barre de recherche "Rechercher un média par titre" avec la loupe à droite des fichiers (au-dessus de vue liste / vue icônes sur mobile) */}
+                <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
+                  <Search className="w-3.5 h-3.5 text-[#8c8173] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={mediaSearchQuery}
+                    onChange={(e) => setMediaSearchQuery(e.target.value)}
+                    placeholder="Rechercher un média par titre..."
+                    className="w-full pl-8.5 pr-8 py-1.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-[#e5a93b] rounded-xl text-xs text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
+                  />
+                  {mediaSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMediaSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8c8173] hover:text-[#f4efe6] transition-colors cursor-pointer"
+                      title="Effacer la recherche"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                <button
+                  onClick={() => onOpenAddVideo('cours')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter une vidéo</span>
                 </button>
+
+                {renderViewModeControl()}
               </div>
             </div>
+            <p className="text-xs text-[#a69c8f]">
+              Vos vidéos de répétitions, retours de stages, cours réguliers et entraînements personnels pour la Farruca.
+            </p>
           </div>
 
           {/* Sous-dossiers au niveau inférieur dans Cours & Stages */}

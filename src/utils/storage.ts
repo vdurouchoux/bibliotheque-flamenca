@@ -1464,3 +1464,214 @@ export function setFarrucaTreeViewMode(mode: 'list' | 'icons'): void {
     }
   } catch {}
 }
+
+export interface LocalMediaItem {
+  id: string;
+  title: string;
+  url: string;
+  sourceType: 'custom' | 'replaced' | 'block_link';
+  paloKey: string;
+  paloName: string;
+  sectionKey: string;
+  sectionName: string;
+  blockId?: string;
+  montageKey?: string;
+  sourceDevice: 'pc' | 'mobile' | 'unknown';
+  landmarksCount: number;
+  hasNotes: boolean;
+  level?: Level;
+  description?: string;
+}
+
+export function getAllLocalMedia(): LocalMediaItem[] {
+  const items: LocalMediaItem[] = [];
+  const seenIds = new Set<string>();
+
+  const resolvePaloName = (key: string): string => {
+    if (key.toLowerCase().includes('farruca')) return 'Farruca (Danse)';
+    if (key.toLowerCase().includes('solea')) return 'Soleá';
+    if (key.toLowerCase().includes('alegrias')) return 'Alegrías';
+    if (key.toLowerCase().includes('bulerias')) return 'Bulerías';
+    if (key.toLowerCase().includes('tangos')) return 'Tangos';
+    if (key.toLowerCase().includes('seguiriya')) return 'Seguiriya';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  };
+
+  const resolveSectionName = (sec: string): string => {
+    const s = sec.toLowerCase();
+    if (s === 'cours') return 'Mes Cours & Stages';
+    if (s === 'marcajes') return 'Marcajes';
+    if (s === 'zapateado') return 'Zapateado';
+    if (s === 'llamadas') return 'Llamadas';
+    if (s === 'maitres') return 'Grands Maîtres';
+    if (s === 'structure') return 'Structure & Remates';
+    if (s === 'montages') return 'Montages chorégraphiques';
+    return sec;
+  };
+
+  // 1. Vidéos ajoutées (custom videos)
+  try {
+    const customStore = getCustomVideos();
+    Object.entries(customStore).forEach(([paloKey, sections]) => {
+      Object.entries(sections).forEach(([sectionKey, list]) => {
+        if (Array.isArray(list)) {
+          list.forEach(v => {
+            if (v.isLocalFile || isLocalVideoUrl(v.url)) {
+              if (!seenIds.has(v.id)) {
+                seenIds.add(v.id);
+                const lm = getVideoCustomLandmarks(v.id, v.url);
+                const notes = getVideoNotes(v.id);
+                items.push({
+                  id: v.id,
+                  title: v.title || 'Vidéo sans titre',
+                  url: v.url || '',
+                  sourceType: 'custom',
+                  paloKey,
+                  paloName: resolvePaloName(paloKey),
+                  sectionKey,
+                  sectionName: resolveSectionName(sectionKey),
+                  sourceDevice: (v.sourceDevice || detectDeviceFromUrl(v.url) || 'unknown') as 'pc' | 'mobile' | 'unknown',
+                  landmarksCount: (lm && lm.length > 0) ? lm.length : (v.landmarks?.length || 0),
+                  hasNotes: Boolean(notes && notes.trim()),
+                  level: v.level,
+                  description: v.description
+                });
+              }
+            }
+          });
+        }
+      });
+    });
+  } catch (e) {
+    console.error('Error scanning custom videos for local media', e);
+  }
+
+  // 2. Vidéos remplacées (replaced videos)
+  try {
+    const replacedStore = getReplacedVideos();
+    Object.entries(replacedStore).forEach(([oldId, v]) => {
+      if (v.isLocalFile || isLocalVideoUrl(v.url)) {
+        if (!seenIds.has(v.id)) {
+          seenIds.add(v.id);
+          const lm = getVideoCustomLandmarks(v.id, v.url);
+          const notes = getVideoNotes(v.id);
+          items.push({
+            id: v.id,
+            title: v.title || 'Vidéo remplacée',
+            url: v.url || '',
+            sourceType: 'replaced',
+            paloKey: 'farruca-danse',
+            paloName: 'Farruca (Danse)',
+            sectionKey: 'maitres',
+            sectionName: 'Remplacement de vidéo',
+            sourceDevice: (v.sourceDevice || detectDeviceFromUrl(v.url) || 'unknown') as 'pc' | 'mobile' | 'unknown',
+            landmarksCount: (lm && lm.length > 0) ? lm.length : (v.landmarks?.length || 0),
+            hasNotes: Boolean(notes && notes.trim()),
+            level: v.level,
+            description: v.description
+          });
+        }
+      }
+    });
+  } catch (e) {
+    console.error('Error scanning replaced videos for local media', e);
+  }
+
+  // 3. Liens de blocs de montage (block links)
+  try {
+    const raw = localStorage.getItem(STORAGE_DANSE_BLOCK_LINKS_KEY);
+    const blockStore: Record<string, Record<string, Record<string, BlockVideoLink>>> = raw ? JSON.parse(raw) : {};
+    Object.entries(blockStore).forEach(([paloId, montages]) => {
+      Object.entries(montages).forEach(([montageKey, blocks]) => {
+        Object.entries(blocks).forEach(([blockId, link]) => {
+          if (link && link.videoUrl && isLocalVideoUrl(link.videoUrl)) {
+            const compositeId = `blocklink-${paloId}-${montageKey}-${blockId}`;
+            if (!seenIds.has(compositeId)) {
+              seenIds.add(compositeId);
+              items.push({
+                id: compositeId,
+                title: link.videoTitle || `Bloc ${blockId}`,
+                url: link.videoUrl || '',
+                sourceType: 'block_link',
+                paloKey: paloId,
+                paloName: resolvePaloName(paloId),
+                sectionKey: montageKey,
+                sectionName: `Atelier montage (${montageKey})`,
+                blockId,
+                montageKey,
+                sourceDevice: (detectDeviceFromUrl(link.videoUrl) || 'unknown') as 'pc' | 'mobile' | 'unknown',
+                landmarksCount: 0,
+                hasNotes: false
+              });
+            }
+          }
+        });
+      });
+    });
+  } catch (e) {
+    console.error('Error scanning montage blocks for local media', e);
+  }
+
+  return items;
+}
+
+export function updateLocalMediaUrl(
+  item: LocalMediaItem,
+  newUrl: string,
+  newTitle?: string
+): boolean {
+  if (!newUrl.trim()) return false;
+  const cleanUrl = newUrl.trim();
+  const cleanTitle = (newTitle || item.title).trim();
+
+  try {
+    if (item.sourceType === 'custom') {
+      const store = getCustomVideos();
+      if (store[item.paloKey] && store[item.paloKey][item.sectionKey]) {
+        const idx = store[item.paloKey][item.sectionKey].findIndex(v => v.id === item.id);
+        if (idx >= 0) {
+          store[item.paloKey][item.sectionKey][idx] = {
+            ...store[item.paloKey][item.sectionKey][idx],
+            title: cleanTitle,
+            url: cleanUrl,
+            isLocalFile: isLocalVideoUrl(cleanUrl),
+            sourceDevice: isLocalVideoUrl(cleanUrl) ? (detectDeviceFromUrl(cleanUrl) || undefined) : undefined
+          };
+          localStorage.setItem(STORAGE_CUSTOM_VIDEOS_KEY, JSON.stringify(store));
+          scheduleCloudPush();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('flamenco_custom_videos_updated'));
+          }
+          return true;
+        }
+      }
+    } else if (item.sourceType === 'replaced') {
+      const replacedStore = getReplacedVideos();
+      if (replacedStore[item.id]) {
+        replacedStore[item.id] = {
+          ...replacedStore[item.id],
+          title: cleanTitle,
+          url: cleanUrl,
+          isLocalFile: isLocalVideoUrl(cleanUrl),
+          sourceDevice: isLocalVideoUrl(cleanUrl) ? (detectDeviceFromUrl(cleanUrl) || undefined) : undefined
+        };
+        localStorage.setItem(STORAGE_REPLACED_VIDEOS_KEY, JSON.stringify(replacedStore));
+        scheduleCloudPush();
+        return true;
+      }
+    } else if (item.sourceType === 'block_link' && item.montageKey && item.blockId) {
+      saveDanseBlockLink(item.paloKey, item.montageKey, item.blockId, {
+        videoId: item.id,
+        videoUrl: cleanUrl,
+        videoTitle: cleanTitle,
+        landmarkTime: 0,
+        landmarkLabel: ''
+      });
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('Failed to update local media to web', err);
+    return false;
+  }
+}
