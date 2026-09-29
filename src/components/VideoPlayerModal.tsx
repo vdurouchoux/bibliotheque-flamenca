@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX, Search, Repeat } from 'lucide-react';
+import { X, ExternalLink, Bookmark, FileText, ChevronRight, ChevronLeft, Play, Pause, RotateCcw, FastForward, Rewind, Music, Sparkles, Edit3, Plus, Trash2, Check, Clock, Gauge, Smartphone, Copy, QrCode, Share2, AlertTriangle, Laptop, RefreshCw, MoreVertical, Volume2, Volume1, VolumeX, Search, Repeat, ZoomIn, ZoomOut, Move, Maximize2, Minimize2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { VideoItem, Level, VideoLandmark } from '../types';
 import { FARRUCA_BAILE } from '../data/baile/farrucaBaile';
@@ -102,6 +102,180 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const isFromMontage = sectionName.toLowerCase().includes('montage');
   const [timeCopied, setTimeCopied] = useState<boolean>(false);
+
+  // Prevent mobile page viewport zoom while video modal is open
+  useEffect(() => {
+    const preventZoom = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+
+    return () => {
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
+  // Zoom & Pan state for the video in grand format (controls beneath never zoom)
+  const [videoZoom, setVideoZoom] = useState<number>(1);
+  const [videoPan, setVideoPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(1);
+  const touchStartInfoRef = useRef<{ time: number; x: number; y: number; isDrag: boolean } | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef<number>(0);
+
+  const handleResetZoom = () => {
+    setVideoZoom(1);
+    setVideoPan({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (videoZoom <= 1) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: videoPan.x,
+      panY: videoPan.y
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStartRef.current || videoZoom <= 1) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    const maxPanX = ((videoContainerRef.current?.clientWidth || 400) * (videoZoom - 1)) / 2;
+    const maxPanY = ((videoContainerRef.current?.clientHeight || 225) * (videoZoom - 1)) / 2;
+    setVideoPan({
+      x: Math.max(-maxPanX, Math.min(maxPanX, dragStartRef.current.panX + dx)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, dragStartRef.current.panY + dy))
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+  };
+
+  // Pinch-to-zoom and touch-pan directly on the video
+  useEffect(() => {
+    const container = videoContainerRef.current;
+    if (!container) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        pinchStartDistRef.current = dist;
+        pinchStartZoomRef.current = videoZoom;
+      } else if (e.touches.length === 1) {
+        touchStartInfoRef.current = {
+          time: Date.now(),
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          isDrag: false
+        };
+
+        if (videoZoom > 1) {
+          setIsDragging(true);
+          dragStartRef.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            panX: videoPan.x,
+            panY: videoPan.y
+          };
+        }
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchStartDistRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / pinchStartDistRef.current;
+        const newZoom = Math.min(3.5, Math.max(1, Math.round(pinchStartZoomRef.current * factor * 100) / 100));
+        setVideoZoom(newZoom);
+        if (newZoom === 1) {
+          setVideoPan({ x: 0, y: 0 });
+        }
+      } else if (e.touches.length === 1) {
+        if (touchStartInfoRef.current) {
+          const dx0 = Math.abs(e.touches[0].clientX - touchStartInfoRef.current.x);
+          const dy0 = Math.abs(e.touches[0].clientY - touchStartInfoRef.current.y);
+          if (dx0 > 6 || dy0 > 6) {
+            touchStartInfoRef.current.isDrag = true;
+          }
+        }
+
+        if (videoZoom > 1 && isDragging && dragStartRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          const dx = e.touches[0].clientX - dragStartRef.current.x;
+          const dy = e.touches[0].clientY - dragStartRef.current.y;
+          const maxPanX = ((container.clientWidth || 400) * (videoZoom - 1)) / 2;
+          const maxPanY = ((container.clientHeight || 225) * (videoZoom - 1)) / 2;
+          setVideoPan({
+            x: Math.max(-maxPanX, Math.min(maxPanX, dragStartRef.current.panX + dx)),
+            y: Math.max(-maxPanY, Math.min(maxPanY, dragStartRef.current.panY + dy))
+          });
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        pinchStartDistRef.current = null;
+      }
+      if (e.touches.length === 0) {
+        if (touchStartInfoRef.current && !touchStartInfoRef.current.isDrag && Date.now() - touchStartInfoRef.current.time < 300) {
+          const now = Date.now();
+          if (now - lastTapRef.current < 300) {
+            // Double tap: toggle zoom
+            if (videoZoom > 1) {
+              setVideoZoom(1);
+              setVideoPan({ x: 0, y: 0 });
+            } else {
+              setVideoZoom(1.75);
+            }
+            lastTapRef.current = 0;
+          } else {
+            lastTapRef.current = now;
+            togglePlayPause();
+          }
+        }
+        setIsDragging(false);
+        dragStartRef.current = null;
+        touchStartInfoRef.current = null;
+      }
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
+    container.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+      container.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [videoZoom, isDragging, videoPan, isPlaying]);
 
   const handleCopyTime = async () => {
     const mins = Math.floor(currentPosition / 60);
@@ -343,6 +517,20 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [currentPosition]);
 
+  // Periodic keep-alive ping for YouTube player time & duration updates
+  useEffect(() => {
+    if (!iframeRef.current) return;
+    const interval = setInterval(() => {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'listening' }),
+          '*'
+        );
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [playerKey]);
+
   // Stable tracking of active video ID & URL to prevent unnecessary resets
   const prevVideoIdRef = useRef(video.id);
   const prevUrlRef = useRef(video.url);
@@ -358,6 +546,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       currentTimeRef.current = start;
       setCurrentPosition(start);
       setPlaybackSpeed(1);
+      setVideoZoom(1);
+      setVideoPan({ x: 0, y: 0 });
       setIsPlaying(true);
       setPlayerKey(k => k + 1);
 
@@ -460,8 +650,47 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   }, [activeDropdownIndex]);
 
   // Repère sélectionné ou actif pour la lecture en boucle
-  const currentLandmarkIndex = selectedLandmarkIndex !== null && landmarks[selectedLandmarkIndex]
-    ? selectedLandmarkIndex
+  const curPlayTime = htmlVideoRef.current 
+    ? htmlVideoRef.current.currentTime 
+    : (currentTimeRef.current ?? currentPosition);
+
+  // Recherche du repère correspondant au temps de lecture actuel
+  const activeLandmarkIndex = (() => {
+    if (!landmarks.length) return null;
+
+    // Si la boucle est active, le repère sélectionné reste actif
+    if (isLooping && selectedLandmarkIndex !== null && landmarks[selectedLandmarkIndex]) {
+      return selectedLandmarkIndex;
+    }
+
+    for (let i = landmarks.length - 1; i >= 0; i--) {
+      const lm = landmarks[i];
+      if (curPlayTime >= lm.timeSeconds) {
+        if (typeof lm.endTimeSeconds === 'number' && lm.endTimeSeconds > lm.timeSeconds) {
+          if (curPlayTime <= lm.endTimeSeconds) {
+            return i;
+          }
+        } else {
+          const nextLm = i < landmarks.length - 1 ? landmarks[i + 1] : null;
+          if (!nextLm || curPlayTime < nextLm.timeSeconds) {
+            return i;
+          }
+        }
+      }
+    }
+
+    // Si la vidéo n'a pas encore atteint le 1er repère mais qu'un repère a été cliqué/sélectionné
+    if (selectedLandmarkIndex !== null && landmarks[selectedLandmarkIndex]) {
+      return selectedLandmarkIndex;
+    }
+
+    return null;
+  })();
+
+  const currentActiveIndex = activeLandmarkIndex !== null ? activeLandmarkIndex : selectedLandmarkIndex;
+
+  const currentLandmarkIndex = currentActiveIndex !== null && landmarks[currentActiveIndex]
+    ? currentActiveIndex
     : (landmarks.length > 0 ? 0 : null);
 
   const activeLoopLandmark = currentLandmarkIndex !== null ? landmarks[currentLandmarkIndex] : null;
@@ -752,8 +981,12 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-hidden">
-      <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-2 bg-black overflow-hidden select-none"
+    >
+      <div
+        className="bg-[#181512] w-full h-full max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in fade-in duration-200 border-0 sm:border sm:border-[#383129] sm:rounded-2xl"
+      >
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2 shrink-0">
           {/* Gauche : Bouton Retour et Titre de la vidéo */}
@@ -870,275 +1103,314 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </div>
         </div>
 
-        {/* Share notification toast */}
-        {shareToastMessage && (
-          <div className="px-4 py-2 bg-[#0d2217] border-b border-[#10b981]/50 text-[#10b981] text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#10b981] shrink-0" />
-              <span>{shareToastMessage}</span>
-            </div>
-            <button
-              onClick={() => setShareToastMessage(null)}
-              className="text-[#a69c8f] hover:text-[#f4efe6] p-1 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Video Player Frame */}
-        <div className="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center shrink-0">
-          {!availability.isAvailableOnCurrentDevice ? (
-            <div className="absolute inset-0 bg-[#171410] border-b border-[#30271e] flex flex-col items-center justify-center text-center p-6 text-[#f4efe6]">
-              <div className="w-14 h-14 rounded-2xl bg-amber-950/70 border border-amber-700/60 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
-                {availability.sourceDevice === 'pc' ? (
-                  <Laptop className="w-7 h-7" />
-                ) : (
-                  <Smartphone className="w-7 h-7" />
-                )}
+        {/* Corps défilable unifié (toute la page défile ensemble sans séparation entre contrôles et repères) */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Share notification toast */}
+          {shareToastMessage && (
+            <div className="px-4 py-2 bg-[#0d2217] border-b border-[#10b981]/50 text-[#10b981] text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#10b981] shrink-0" />
+                <span>{shareToastMessage}</span>
               </div>
-
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/80 border border-amber-700/70 text-amber-300 text-xs font-bold mb-2.5">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
-                <span>{availability.message}</span>
-              </div>
-
-              <p className="text-xs sm:text-sm text-[#d4c9ba] max-w-md leading-relaxed mb-4">
-                {availability.subMessage}
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowReplaceModal(true)}
-                  className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Remplacer par un lien YouTube / web</span>
-                </button>
-              </div>
-            </div>
-          ) : isHtml5Video ? (
-            <video
-              ref={htmlVideoRef}
-              controls
-              playsInline
-              autoPlay
-              preload="auto"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onTimeUpdate={handleNativeTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              src={embedInfo.embedSrc || currentVideo.url}
-              className="absolute inset-0 w-full h-full object-contain bg-black"
-            />
-          ) : iframeSrc ? (
-            <iframe
-              ref={iframeRef}
-              key={playerKey}
-              onLoad={handleIframeLoad}
-              src={iframeSrc}
-              title={currentVideo.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
-            />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-[#a69c8f]">
-              <p className="text-sm">Vidéo externe.</p>
-              {currentVideo.url && (
-                <a
-                  href={currentVideo.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#10b981] text-[#061a0e] font-bold text-xs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Ouvrir le lien</span>
-                </a>
-              )}
+              <button
+                onClick={() => setShareToastMessage(null)}
+                className="text-[#a69c8f] hover:text-[#f4efe6] p-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
-        </div>
 
-        {/* Playback Controls Bar */}
-        <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center gap-1.5 sm:gap-2 text-xs shrink-0">
-          {/* Boutons d'avance / recul rapide */}
-          <button
-            onClick={() => handleRewind(10)}
-            className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
-            title="Reculer de 10s"
+          {/* Video Player Frame in Grand Format with isolated Zoom and Pan */}
+          <div
+            ref={videoContainerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className="relative w-full flex-1 min-h-[48vh] sm:min-h-[58vh] max-h-[76vh] sm:max-h-[80vh] bg-black overflow-hidden flex items-center justify-center select-none"
+            style={{ touchAction: 'none' }}
           >
-            <Rewind className="w-3.5 h-3.5 text-[#10b981]" />
-            <span>-10s</span>
-          </button>
-
-          <button
-            onClick={() => handleSkipForward(10)}
-            className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
-            title="Avancer de 10s"
-          >
-            <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
-            <span>+10s</span>
-          </button>
-
-          <button
-            onClick={() => handleSkipForward(30)}
-            className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
-            title="Avancer de 30s"
-          >
-            <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
-            <span>+30s</span>
-          </button>
-
-          {/* Bouton Copier le temps diminué / compact */}
-          <button
-            type="button"
-            onClick={handleCopyTime}
-            className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer shadow-sm select-none shrink-0 ${
-              timeCopied
-                ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 ring-1 ring-emerald-400/40'
-                : !isPlaying
-                ? 'bg-gradient-to-r from-[#0d2818] to-[#133d24] hover:from-[#113520] hover:to-[#1a4d2e] text-[#6ee7b7] border border-[#10b981]'
-                : 'bg-[#1e1913] hover:bg-[#282119] text-[#d4c9ba] border border-[#3b3024]'
-            }`}
-            title={
-              timeCopied
-                ? "Temps copié dans le presse-papier !"
-                : !isPlaying
-                ? "Vidéo en pause : Cliquer pour copier ce temps"
-                : "Position actuelle (cliquer pour copier)"
-            }
-          >
-            {timeCopied ? (
-              <>
-                <Check className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="font-mono text-emerald-300 font-bold text-[11px]">
-                  {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
-                </span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3 h-3 text-[#10b981] shrink-0" />
-                <span className="font-mono text-[#6ee7b7] font-bold text-[11px]">
-                  {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
-                </span>
-              </>
-            )}
-          </button>
-
-          {/* Bouton Lecture / Pause ramené sur la gauche (sans ml-auto pour éviter d'être tronqué à droite) */}
-          <button
-            onClick={togglePlayPause}
-            className={`flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-md shrink-0 active:scale-95 px-3 h-8.5 min-w-[80px] ${
-              isPlaying
-                ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
-                : 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] border-[#10b981]'
-            }`}
-            title={isPlaying ? "Mettre en pause la vidéo" : "Lancer la vidéo"}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="w-4 h-4 fill-current text-[#f4efe6]" />
-                <span className="text-[11px] font-bold text-[#f4efe6]">Pause</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-current ml-0.5" />
-                <span className="text-[11px] font-bold">Lecture</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Ligne 1 : Régulateur de Volume */}
-        <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full shrink-0">
-          <div className="w-full flex items-center gap-2 sm:gap-2.5">
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="text-[#10b981] hover:text-[#34d399] p-0.5 rounded hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center shrink-0"
-              title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
-              aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
+            {/* Zoomable & Pannable Video Canvas */}
+            <div
+              className={`absolute inset-0 w-full h-full flex items-center justify-center origin-center transition-transform ${
+                isDragging ? 'duration-0' : 'duration-150 ease-out'
+              }`}
+              style={{
+                transform: `scale(${videoZoom}) translate(${videoPan.x / videoZoom}px, ${videoPan.y / videoZoom}px)`,
+                cursor: videoZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+              }}
             >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-3.5 h-3.5 text-red-400" />
-              ) : volume < 50 ? (
-                <Volume1 className="w-3.5 h-3.5" />
-              ) : (
-                <Volume2 className="w-3.5 h-3.5" />
-              )}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-              className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
-              aria-label="Volume"
-            />
-            <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
-              {isMuted ? '0%' : `${volume}%`}
-            </span>
-          </div>
-        </div>
+              {!availability.isAvailableOnCurrentDevice ? (
+                <div className="absolute inset-0 bg-[#171410] border-b border-[#30271e] flex flex-col items-center justify-center text-center p-6 text-[#f4efe6]">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-950/70 border border-amber-700/60 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
+                    {availability.sourceDevice === 'pc' ? (
+                      <Laptop className="w-7 h-7" />
+                    ) : (
+                      <Smartphone className="w-7 h-7" />
+                    )}
+                  </div>
 
-        {/* Ligne 2 : Régulateur de Vitesse */}
-        <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center text-xs w-full shrink-0">
-          <div className="w-full flex items-center gap-2 sm:gap-2.5">
-            <div className="flex items-center shrink-0 text-[#10b981]" title="Vitesse de lecture">
-              <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/80 border border-amber-700/70 text-amber-300 text-xs font-bold mb-2.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                    <span>{availability.message}</span>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-[#d4c9ba] max-w-md leading-relaxed mb-4">
+                    {availability.subMessage}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowReplaceModal(true)}
+                      className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Remplacer par un lien YouTube / web</span>
+                    </button>
+                  </div>
+                </div>
+              ) : isHtml5Video ? (
+                <video
+                  ref={htmlVideoRef}
+                  controls
+                  playsInline
+                  autoPlay
+                  preload="auto"
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onTimeUpdate={handleNativeTimeUpdate}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  src={embedInfo.embedSrc || currentVideo.url}
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                />
+              ) : iframeSrc ? (
+                <iframe
+                  ref={iframeRef}
+                  key={playerKey}
+                  onLoad={handleIframeLoad}
+                  src={iframeSrc}
+                  title={currentVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full border-0 pointer-events-auto"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-[#a69c8f]">
+                  <p className="text-sm">Vidéo externe.</p>
+                  {currentVideo.url && (
+                    <a
+                      href={currentVideo.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#10b981] text-[#061a0e] font-bold text-xs"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Ouvrir le lien</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
-            <input
-              type="range"
-              min="0.25"
-              max="2"
-              step="0.05"
-              list="speed-ticks"
-              value={playbackSpeed}
-              onDoubleClick={() => changePlaybackSpeed(1)}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
-                changePlaybackSpeed(finalVal);
-              }}
-              className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
-              aria-label="Vitesse"
-              title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
+            {/* Gesture overlay over video: captures finger pinch, drag pan & tap-to-play cleanly */}
+            <div
+              className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing bg-transparent"
+              style={{ touchAction: 'none' }}
+              title="Pincer pour zoomer, glisser pour recadrer, toucher pour lecture/pause"
             />
-            <datalist id="speed-ticks">
-              <option value="1"></option>
-            </datalist>
+
+            {/* Bouton de réinitialisation du zoom tactile */}
+            {videoZoom > 1 && (
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/85 hover:bg-black text-[#10b981] text-[11px] font-medium border border-[#10b981]/50 backdrop-blur-sm shadow-md transition-all cursor-pointer pointer-events-auto active:scale-95"
+                title="Cliquer pour réinitialiser le zoom (1x)"
+              >
+                <RotateCcw className="w-3 h-3 text-[#10b981]" />
+                <span>Zoom {videoZoom}x (toucher pour 1x)</span>
+              </button>
+            )}
+          </div>
+
+          {/* Playback Controls Bar */}
+          <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center gap-1.5 sm:gap-2 text-xs">
+            {/* Boutons d'avance / recul rapide */}
+            <button
+              onClick={() => handleRewind(10)}
+              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              title="Reculer de 10s"
+            >
+              <Rewind className="w-3.5 h-3.5 text-[#10b981]" />
+              <span>-10s</span>
+            </button>
 
             <button
-              type="button"
-              onClick={() => changePlaybackSpeed(1)}
-              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer select-none shrink-0 ${
-                playbackSpeed !== 1
-                  ? 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] active:scale-95'
-                  : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
-              }`}
-              title="Remettre à 1x"
+              onClick={() => handleSkipForward(10)}
+              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              title="Avancer de 10s"
             >
-              <RotateCcw className="w-2.5 h-2.5 mr-0.5" />
-              <span>1x</span>
+              <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
+              <span>+10s</span>
             </button>
-            <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
-              {Number(playbackSpeed.toFixed(2))}x
-            </span>
+
+            <button
+              onClick={() => handleSkipForward(30)}
+              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              title="Avancer de 30s"
+            >
+              <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
+              <span>+30s</span>
+            </button>
+
+            {/* Bouton Copier la position actuelle */}
+            <button
+              type="button"
+              onClick={handleCopyTime}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer shadow-sm select-none shrink-0 ${
+                timeCopied
+                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 ring-1 ring-emerald-400/40'
+                  : !isPlaying
+                  ? 'bg-gradient-to-r from-[#0d2818] to-[#133d24] hover:from-[#113520] hover:to-[#1a4d2e] text-[#6ee7b7] border border-[#10b981]'
+                  : 'bg-[#1e1913] hover:bg-[#282119] text-[#d4c9ba] border border-[#3b3024]'
+              }`}
+              title={
+                timeCopied
+                  ? "Position copiée dans le presse-papier !"
+                  : !isPlaying
+                  ? "Vidéo en pause : Cliquer pour copier cette position"
+                  : "Position actuelle (cliquer pour copier)"
+              }
+            >
+              {timeCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-bold text-emerald-300 text-[11px]">
+                    Copié !
+                  </span>
+                  <span className="font-mono text-emerald-400/90 font-bold text-[11px]">
+                    {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3 text-[#10b981] shrink-0" />
+                  <span className="font-mono text-[#6ee7b7] font-bold text-[11px]">
+                    {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* Bouton Lecture / Pause ramené sur la gauche */}
+            <button
+              onClick={togglePlayPause}
+              className={`flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-md shrink-0 active:scale-95 px-3 h-8.5 min-w-[80px] ${
+                isPlaying
+                  ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
+                  : 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] border-[#10b981]'
+              }`}
+              title={isPlaying ? "Mettre en pause la vidéo" : "Lancer la vidéo"}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-4 h-4 fill-current text-[#f4efe6]" />
+                  <span className="text-[11px] font-bold text-[#f4efe6]">Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-current ml-0.5" />
+                  <span className="text-[11px] font-bold">Lecture</span>
+                </>
+              )}
+            </button>
           </div>
-        </div>
 
-        {/* Ligne blanche fine et plus basse pour séparer les contrôles de la vidéo et la liste des repères */}
-        <div className="w-full px-3 sm:px-4 mt-3 mb-1 shrink-0">
-          <div className="w-full h-[1px] bg-white/40" aria-hidden="true" />
-        </div>
+          {/* Ligne 1 : Régulateur de Volume */}
+          <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full">
+            <div className="w-full flex items-center gap-2 sm:gap-2.5">
+              <button
+                type="button"
+                onClick={toggleMute}
+                className="text-[#10b981] hover:text-[#34d399] p-0.5 rounded hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center shrink-0"
+                title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
+                aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-3.5 h-3.5 text-red-400" />
+                ) : volume < 50 ? (
+                  <Volume1 className="w-3.5 h-3.5" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
+                className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                aria-label="Volume"
+              />
+              <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
+                {isMuted ? '0%' : `${volume}%`}
+              </span>
+            </div>
+          </div>
 
-        {/* Video Info & Practice Tools (Liste des repères, Notes, etc. - défilement indépendant) */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 overscroll-contain">
+          {/* Ligne 2 : Régulateur de Vitesse */}
+          <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center text-xs w-full">
+            <div className="w-full flex items-center gap-2 sm:gap-2.5">
+              <div className="flex items-center shrink-0 text-[#10b981]" title="Vitesse de lecture">
+                <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
+              </div>
+
+              <input
+                type="range"
+                min="0.25"
+                max="2"
+                step="0.05"
+                list="speed-ticks"
+                value={playbackSpeed}
+                onDoubleClick={() => changePlaybackSpeed(1)}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
+                  changePlaybackSpeed(finalVal);
+                }}
+                className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                aria-label="Vitesse"
+                title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
+              />
+              <datalist id="speed-ticks">
+                <option value="1"></option>
+              </datalist>
+
+              <button
+                type="button"
+                onClick={() => changePlaybackSpeed(1)}
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer select-none shrink-0 ${
+                  playbackSpeed !== 1
+                    ? 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] active:scale-95'
+                    : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
+                }`}
+                title="Remettre à 1x"
+              >
+                <RotateCcw className="w-2.5 h-2.5 mr-0.5" />
+                <span>1x</span>
+              </button>
+              <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
+                {Number(playbackSpeed.toFixed(2))}x
+              </span>
+            </div>
+          </div>
+
+          {/* Video Info & Practice Tools (Liste des repères, Notes, etc.) */}
+          <div className="p-3 sm:p-4 space-y-3">
           {/* Interactive Landmarks (Liste des repères) */}
           <div className="p-3 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
             {/* Header of landmarks section */}
@@ -1248,14 +1520,15 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <div className="space-y-1.5 pt-0.5">
                 {landmarks.map((lm, idx) => {
                   const isEditingThis = editingLmIndex === idx;
-                  const isCurrent = Math.abs(currentPosition - lm.timeSeconds) < 4;
+                  const isCurrent = currentActiveIndex === idx;
                   const curTime = htmlVideoRef.current 
                     ? htmlVideoRef.current.currentTime 
                     : (currentTimeRef.current ?? currentPosition);
                   const hasEndTime = typeof lm.endTimeSeconds === 'number' && lm.endTimeSeconds > lm.timeSeconds;
+                  const nextLmTime = idx < landmarks.length - 1 ? landmarks[idx + 1].timeSeconds : Infinity;
                   const isWithinLandmark = hasEndTime 
-                    ? (curTime >= lm.timeSeconds && curTime < lm.endTimeSeconds)
-                    : true;
+                    ? (curTime >= lm.timeSeconds && curTime <= lm.endTimeSeconds)
+                    : (curTime >= lm.timeSeconds && curTime < nextLmTime);
                   const startMin = Math.floor(lm.timeSeconds / 60);
                   const startSec = (lm.timeSeconds % 60).toString().padStart(2, '0');
                   const timeDisplay = lm.endTimeSeconds
@@ -1263,7 +1536,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     : `${startMin}:${startSec}`;
                   const displayTitle = lm.label.includes(' - ') ? lm.label.split(' - ').slice(1).join(' - ') : lm.label;
 
-                  const isThisLandmarkLooping = isLooping && selectedLandmarkIndex === idx;
+                  const isThisLandmarkLooping = isLooping && (selectedLandmarkIndex === idx || currentActiveIndex === idx);
 
                   if (isEditingThis) {
                     return (
@@ -1381,8 +1654,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          // Si ce repère est déjà sélectionné ET qu'on est encore dans l'intervalle du repère (avant le temps de fin) :
-                          if (selectedLandmarkIndex === idx && isWithinLandmark) {
+                          // Si ce repère est déjà actif ET qu'on est encore dans l'intervalle du repère :
+                          if (currentActiveIndex === idx && isWithinLandmark) {
                             if (isPlaying) {
                               // En cours de lecture : mettre sur pause
                               pauseVideo();
@@ -1403,7 +1676,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         }}
                         className="flex-1 flex items-center gap-2 overflow-hidden text-left cursor-pointer min-w-0 pr-2"
                         title={
-                          selectedLandmarkIndex === idx && isWithinLandmark
+                          currentActiveIndex === idx && isWithinLandmark
                             ? isPlaying
                               ? "Mettre en pause la vidéo"
                               : "Reprendre la lecture là où elle s'est arrêtée"
@@ -1415,7 +1688,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                             ? 'bg-[#10b981] text-[#061a0e]'
                             : 'bg-[#251e18] text-[#10b981] group-hover:bg-[#10b981] group-hover:text-[#061a0e] transition-colors'
                         }`}>
-                          {selectedLandmarkIndex === idx && isPlaying && isWithinLandmark ? (
+                          {currentActiveIndex === idx && isPlaying && isWithinLandmark ? (
                             <Pause className="w-2.5 h-2.5 fill-current" />
                           ) : (
                             <Play className="w-2.5 h-2.5 fill-current ml-0.2" />
@@ -1595,6 +1868,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <span>← {isFromMontage ? 'Revenir au montage' : 'Revenir à la liste des vidéos'}</span>
             </button>
           </div>
+        </div>
         </div>
       </div>
 
