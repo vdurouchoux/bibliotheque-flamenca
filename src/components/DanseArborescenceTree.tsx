@@ -190,65 +190,118 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
       <div className="relative pl-1 sm:pl-2 space-y-4 font-sans text-xs sm:text-sm">
         
         {/* ========================================================================= */}
-        {/* DOSSIER 1 (AU-DESSUS) : BIBLIOTHÈQUE FLAMENCA (AVEC SES SOUS-DOSSIERS ENFANTS) */}
+        {/* DEUX CARRÉS L'UN À CÔTÉ DE L'AUTRE : BIBLIOTHÈQUE FLAMENCA & ATELIER DE CRÉATION */}
         {/* ========================================================================= */}
-        <div className="relative">
-          <div className={`rounded-xl overflow-hidden shadow-lg transition-all ${
-            borderedFolders
-              ? 'border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.18)]'
-              : 'border border-[#382d22]'
-          } ${
-            translucent ? 'bg-black/10 hover:bg-black/20' : 'bg-[#141210]'
-          }`}>
-            <div
-              onClick={() => toggleFolder('biblio')}
-              className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer transition-colors select-none ${
-                translucent ? 'hover:bg-white/[0.04]' : 'hover:bg-[#1a1714]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {borderedFolders && (
-                  openFolders['biblio'] ? (
-                    <FolderOpen className="w-5 h-5 text-emerald-400 fill-emerald-400/25 shrink-0" />
-                  ) : (
-                    <Folder className="w-5 h-5 text-emerald-400 fill-emerald-400/25 shrink-0" />
-                  )
-                )}
-                <span className="font-serif text-sm sm:text-base font-bold text-[#86efac] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 select-none">
+          {/* CARRÉ GAUCHE : BIBLIOTHÈQUE FLAMENCA SUR DEUX LIGNES */}
+          <div
+            onClick={() => toggleFolder('biblio')}
+            className={`rounded-2xl transition-all p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center cursor-pointer relative shadow-lg group aspect-square ${
+              openFolders['biblio']
+                ? 'border-2 border-emerald-400 bg-emerald-950/40 shadow-[0_0_15px_rgba(16,185,129,0.22)]'
+                : 'border border-[#382d22] hover:border-emerald-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
+            }`}
+            title={openFolders['biblio'] ? 'Replier Bibliothèque Flamenca' : 'Déplier Bibliothèque Flamenca'}
+          >
+            <div className="mb-1.5 sm:mb-2 p-2 rounded-xl bg-emerald-950/50 text-emerald-400 group-hover:scale-105 transition-transform">
+              {openFolders['biblio'] ? (
+                <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 fill-emerald-400/20" />
+              ) : (
+                <Folder className="w-6 h-6 sm:w-8 sm:h-8 fill-emerald-400/20" />
+              )}
+            </div>
+
+            <h4 className="font-serif text-xs sm:text-base md:text-lg font-bold text-[#86efac] leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              Bibliothèque<br />Flamenca
+            </h4>
+
+            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#86efac]/20 text-[#bbf7d0] font-medium border border-[#86efac]/30 mt-1.5 hidden xs:inline">
+              Ressources & Références
+            </span>
+
+            <div className="flex items-center gap-1 mt-1.5 text-[#8c8173] group-hover:text-[#86efac] text-[10px] sm:text-[11px] font-medium transition-colors">
+              <span>{openFolders['biblio'] ? 'Replier' : 'Déplier'}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  openFolders['biblio'] ? 'rotate-180 text-[#86efac]' : ''
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* CARRÉ DROITE : ATELIER DE CRÉATION SUR DEUX LIGNES */}
+          <div
+            ref={studioHeaderRef}
+            onClick={() => toggleFolder('studio')}
+            className={`rounded-2xl transition-all p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center cursor-pointer relative shadow-lg group aspect-square ${
+              openFolders['studio']
+                ? 'border-2 border-blue-400 bg-blue-950/40 shadow-[0_0_15px_rgba(59,130,246,0.22)]'
+                : 'border border-[#382d22] hover:border-blue-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
+            }`}
+            title={openFolders['studio'] ? "Replier l'Atelier de création" : "Déplier l'Atelier de création"}
+          >
+            <div className="mb-1.5 sm:mb-2 p-2 rounded-xl bg-blue-950/50 text-blue-400 group-hover:scale-105 transition-transform">
+              {openFolders['studio'] ? (
+                <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 fill-blue-400/20" />
+              ) : (
+                <Folder className="w-6 h-6 sm:w-8 sm:h-8 fill-blue-400/20" />
+              )}
+            </div>
+
+            <h4 className="font-serif text-xs sm:text-base md:text-lg font-bold text-[#60a5fa] leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              Atelier<br />de création
+            </h4>
+
+            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#60a5fa]/20 text-[#93c5fd] font-medium border border-[#60a5fa]/30 mt-1.5 hidden xs:inline">
+              Danse & Chorégraphie
+            </span>
+
+            <div className="flex items-center gap-1 mt-1.5 text-[#8c8173] group-hover:text-[#60a5fa] text-[10px] sm:text-[11px] font-medium transition-colors">
+              <span>{openFolders['studio'] ? 'Replier' : 'Déplier'}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  openFolders['studio'] ? 'rotate-180 text-[#60a5fa]' : ''
+                }`}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* DÉPLIAGE BIBLIOTHÈQUE FLAMENCA (TEXTE EXPLICATIF ET SOUS-DOSSIERS)        */}
+        {/* ========================================================================= */}
+        {openFolders['biblio'] && (
+          <div className="rounded-2xl border-2 border-emerald-500/50 bg-[#12100d] p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+            {/* Barre d'en-tête du dépliage */}
+            <div className="flex items-center justify-between pb-2 border-b border-[#2b2118]">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
+                <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac]">
                   Bibliothèque Flamenca
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-[#86efac]/20 text-[#bbf7d0] font-medium border border-[#86efac]/30 hidden xs:inline">
                   Ressources & Références
                 </span>
               </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] text-[#8c8173] hidden sm:inline">
-                  {openFolders['biblio'] ? 'Fermer le dossier' : 'Ouvrir'}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 text-[#86efac] transition-transform duration-200 ${
-                    openFolders['biblio'] ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => toggleFolder('biblio')}
+                className="text-xs text-[#8c8173] hover:text-[#86efac] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Fermer</span>
+                <ChevronUp className="w-3.5 h-3.5 text-[#86efac]" />
+              </button>
             </div>
 
             {/* Instructions du dossier Bibliothèque Flamenca */}
-            {openFolders['biblio'] && (
-              <div className={`px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#382d22] animate-in fade-in duration-150 ${
-                translucent ? 'bg-black/25' : 'bg-[#0f1711]'
-              }`}>
-                <p>
-                  C'est la base de votre travail. Commencez sans attendre à alimenter votre bibliothèque, palo par palo, en y classant vos sources de référence : Grands Maîtres, cours et stages, letras poétiques et compás.
-                </p>
-              </div>
-            )}
-          </div>
+            <div className="px-3.5 py-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-[#ded3c5] leading-relaxed">
+              <p>
+                C'est la base de votre travail. Commencez sans attendre à alimenter votre bibliothèque, palo par palo, en y classant vos sources de référence : Grands Maîtres, cours et stages, letras poétiques et compás.
+              </p>
+            </div>
 
-          {/* SOUS-DOSSIERS DE LA BIBLIOTHÈQUE FLAMENCA */}
-          {openFolders['biblio'] && (
-            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-3">
+            {/* SOUS-DOSSIERS DE LA BIBLIOTHÈQUE FLAMENCA */}
+            <div className="ml-2 sm:ml-5 pl-3 sm:pl-5 border-l-2 border-[#382d22] space-y-3 pt-1">
               
               {/* --- SOUS-DOSSIER : GRANDS MAÎTRES --- */}
               <div className="relative group">
@@ -921,73 +974,44 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               </div>
 
             </div>
-          )}
-        </div>
-
+          </div>
+        )}
 
         {/* ========================================================================= */}
-        {/* DOSSIER 2 (DESSOUS) : ATELIER DE CRÉATION (AVEC SES SOUS-DOSSIERS ENFANTS) */}
+        {/* DÉPLIAGE ATELIER DE CRÉATION (TEXTE EXPLICATIF ET SOUS-DOSSIERS)           */}
         {/* ========================================================================= */}
-        <div className="relative pt-2">
-          <div 
-            ref={studioHeaderRef}
-            className={`rounded-xl overflow-hidden shadow-lg transition-all ${
-              borderedFolders
-                ? 'border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.18)]'
-                : 'border border-[#382d22]'
-            } ${
-              translucent ? 'bg-black/10 hover:bg-black/20' : 'bg-[#141210]'
-            }`}
-          >
-            <div
-              onClick={() => toggleFolder('studio')}
-              className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left cursor-pointer transition-colors select-none ${
-                translucent ? 'hover:bg-white/[0.04]' : 'hover:bg-[#1a1714]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {borderedFolders && (
-                  openFolders['studio'] ? (
-                    <FolderOpen className="w-5 h-5 text-blue-400 fill-blue-400/25 shrink-0" />
-                  ) : (
-                    <Folder className="w-5 h-5 text-blue-400 fill-blue-400/25 shrink-0" />
-                  )
-                )}
-                <span className="font-serif text-sm sm:text-base font-bold text-[#60a5fa] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        {openFolders['studio'] && (
+          <div className="rounded-2xl border-2 border-blue-500/50 bg-[#12100d] p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+            {/* Barre d'en-tête du dépliage */}
+            <div className="flex items-center justify-between pb-2 border-b border-[#2b2118]">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
+                <span className="font-serif text-xs sm:text-sm font-bold text-[#60a5fa]">
                   Atelier de création
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-[#60a5fa]/20 text-[#93c5fd] font-medium border border-[#60a5fa]/30 hidden xs:inline">
                   Danse & Chorégraphie
                 </span>
               </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] text-[#8c8173] hidden sm:inline">
-                  {openFolders['studio'] ? 'Fermer le dossier' : 'Ouvrir'}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 text-[#60a5fa] transition-transform duration-200 ${
-                    openFolders['studio'] ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={handleCollapseStudio}
+                className="text-xs text-[#8c8173] hover:text-[#60a5fa] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Fermer</span>
+                <ChevronUp className="w-3.5 h-3.5 text-[#60a5fa]" />
+              </button>
             </div>
 
             {/* Instructions du dossier Atelier de création */}
-            {openFolders['studio'] && (
-              <div className={`px-4 py-2.5 text-xs text-[#ded3c5] leading-relaxed border-t border-[#382d22] animate-in fade-in duration-150 ${
-                translucent ? 'bg-black/25' : 'bg-[#0c1322]'
-              }`}>
-                <p>
-                  L'Atelier de création est votre outil de travail principal. C'est ici que vous structurez votre danse, et que vous reliez les différentes parties à vos médias, grâce à des repères temporels.
-                </p>
-              </div>
-            )}
-          </div>
+            <div className="px-3.5 py-2.5 rounded-xl bg-blue-950/30 border border-blue-500/30 text-xs text-[#ded3c5] leading-relaxed">
+              <p>
+                L'Atelier de création est votre outil de travail principal. C'est ici que vous structurez votre danse, et que vous reliez les différentes parties à vos médias, grâce à des repères temporels.
+              </p>
+            </div>
 
-          {/* SOUS-DOSSIERS DE L'ATELIER DE CRÉATION */}
-          {openFolders['studio'] && (
-            <div className="ml-4 sm:ml-7 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-3">
+            {/* SOUS-DOSSIERS DE L'ATELIER DE CRÉATION */}
+            <div className="ml-2 sm:ml-5 pl-3 sm:pl-5 border-l-2 border-[#382d22] space-y-3 pt-1">
               
               {/* --- SOUS-DOSSIER : STRUCTURE TRADITIONNELLE --- */}
               <div className="relative group">
@@ -1299,8 +1323,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               </div>
 
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Zone noire du bas : Rubriques optionnelles (Caractère, Costume & Posture, Compás & Dynamique) */}
         {bottomContent && (

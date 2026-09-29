@@ -90,6 +90,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const initialStartSecondsRef = useRef<number>(initialStart);
   // Current playback position for UI display (in seconds)
   const [currentPosition, setCurrentPosition] = useState<number>(initialStart);
+  const [duration, setDuration] = useState<number>(0);
   const currentTimeRef = useRef<number>(initialStart);
   const [playerKey, setPlayerKey] = useState<number>(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -102,6 +103,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const isFromMontage = sectionName.toLowerCase().includes('montage');
   const [timeCopied, setTimeCopied] = useState<boolean>(false);
+  const [isExpandedVideo, setIsExpandedVideo] = useState<boolean>(false);
 
   // Prevent mobile page viewport zoom while video modal is open
   useEffect(() => {
@@ -506,6 +508,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 setCurrentPosition(sec);
               }
             }
+            if (typeof data.info.duration === 'number' && data.info.duration > 0) {
+              setDuration(Math.floor(data.info.duration));
+            }
           }
         }
       } catch {
@@ -889,12 +894,12 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const getEmbedInfo = (url: string) => {
     if (!url) return { type: 'none', embedSrc: '', isDirect: false };
 
-    // 1. YouTube
+    // 1. YouTube (controls=0 pour masquer totalement la barre de défilement rouge et les contrôles natifs)
     if (videoId) {
       const origin = typeof window !== 'undefined' && window.location?.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
       return {
         type: 'youtube',
-        embedSrc: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${initialStartSecondsRef.current}&enablejsapi=1&rel=0&playsinline=1&controls=1&iv_load_policy=3${origin}`,
+        embedSrc: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&start=${initialStartSecondsRef.current}&enablejsapi=1&rel=0&playsinline=1&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3${origin}`,
         isDirect: false
       };
     }
@@ -967,6 +972,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       }
       htmlVideoRef.current.volume = isMuted ? 0 : volume / 100;
       htmlVideoRef.current.muted = isMuted || volume === 0;
+      if (htmlVideoRef.current.duration && htmlVideoRef.current.duration > 0) {
+        setDuration(Math.floor(htmlVideoRef.current.duration));
+      }
     }
   };
 
@@ -977,6 +985,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       if (Math.abs(sec - currentPosition) >= 1) {
         setCurrentPosition(sec);
       }
+      if (htmlVideoRef.current.duration && htmlVideoRef.current.duration > 0) {
+        setDuration(Math.floor(htmlVideoRef.current.duration));
+      }
     }
   };
 
@@ -985,7 +996,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-2 bg-black overflow-hidden select-none"
     >
       <div
-        className="bg-[#181512] w-full h-full max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in fade-in duration-200 border-0 sm:border sm:border-[#383129] sm:rounded-2xl"
+        className={`bg-[#181512] w-full h-full flex flex-col overflow-hidden shadow-2xl animate-in fade-in duration-200 border-0 sm:border sm:border-[#383129] sm:rounded-2xl transition-all ${
+          isExpandedVideo ? 'max-w-[98vw] lg:max-w-7xl' : 'max-w-5xl'
+        }`}
       >
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2 shrink-0">
@@ -1128,7 +1141,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className="relative w-full flex-1 min-h-[48vh] sm:min-h-[58vh] max-h-[76vh] sm:max-h-[80vh] bg-black overflow-hidden flex items-center justify-center select-none"
+            className={`relative w-full flex-1 bg-black overflow-hidden flex items-center justify-center select-none transition-all duration-200 ${
+              isExpandedVideo
+                ? 'min-h-[66vh] sm:min-h-[72vh] max-h-[calc(100vh-210px)] h-[calc(100vh-210px)]'
+                : 'min-h-[48vh] sm:min-h-[58vh] max-h-[76vh] sm:max-h-[80vh]'
+            }`}
             style={{ touchAction: 'none' }}
           >
             {/* Zoomable & Pannable Video Canvas */}
@@ -1186,16 +1203,20 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   className="absolute inset-0 w-full h-full object-contain bg-black"
                 />
               ) : iframeSrc ? (
-                <iframe
-                  ref={iframeRef}
-                  key={playerKey}
-                  onLoad={handleIframeLoad}
-                  src={iframeSrc}
-                  title={currentVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="absolute inset-0 w-full h-full border-0 pointer-events-auto"
-                />
+                <div className="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-black">
+                  <iframe
+                    ref={iframeRef}
+                    key={playerKey}
+                    onLoad={handleIframeLoad}
+                    src={iframeSrc}
+                    title={currentVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute -top-12 sm:-top-14 left-0 w-full h-[calc(100%+85px)] sm:h-[calc(100%+100px)] border-0 pointer-events-none"
+                  />
+                  {/* Bande noire protectrice qui masque la zone inférieure du logo YouTube et de la vignette */}
+                  <div className="absolute bottom-0 left-0 right-0 h-10 sm:h-14 bg-black pointer-events-none z-10" />
+                </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-[#a69c8f]">
                   <p className="text-sm">Vidéo externe.</p>
@@ -1221,18 +1242,53 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               title="Pincer pour zoomer, glisser pour recadrer, toucher pour lecture/pause"
             />
 
-            {/* Bouton de réinitialisation du zoom tactile */}
-            {videoZoom > 1 && (
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/85 hover:bg-black text-[#10b981] text-[11px] font-medium border border-[#10b981]/50 backdrop-blur-sm shadow-md transition-all cursor-pointer pointer-events-auto active:scale-95"
-                title="Cliquer pour réinitialiser le zoom (1x)"
-              >
-                <RotateCcw className="w-3 h-3 text-[#10b981]" />
-                <span>Zoom {videoZoom}x (toucher pour 1x)</span>
-              </button>
-            )}
+            {/* Bouton deux flèches vertes en bas à droite pour agrandir la vidéo tout en gardant les contrôles en bas (sans liseré vert) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpandedVideo(prev => !prev);
+              }}
+              className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/80 hover:bg-black/95 text-[#10b981] hover:text-[#34d399] border border-white/10 hover:border-white/20 backdrop-blur-sm shadow-xl transition-all cursor-pointer pointer-events-auto active:scale-95 group"
+              title={isExpandedVideo ? "Réduire la taille de la vidéo" : "Agrandir la vidéo (garde les contrôles en bas)"}
+              aria-label={isExpandedVideo ? "Réduire la vidéo" : "Agrandir la vidéo"}
+            >
+              {isExpandedVideo ? (
+                <>
+                  <Minimize2 className="w-4 h-4 text-[#10b981] stroke-[2.5] group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold text-[#10b981] hidden sm:inline">Réduire</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-4 h-4 text-[#10b981] stroke-[2.5] group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold text-[#10b981] hidden sm:inline">Agrandir</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Curseur de défilement vidéo (remplace la ligne rouge de YouTube, sans position redondante à gauche) */}
+          <div className="px-3 sm:px-4 py-2 bg-[#120f0c] border-b border-[#29221a] flex items-center gap-2.5 sm:gap-3 text-xs w-full select-none">
+            <div className="relative flex-1 flex items-center">
+              <input
+                type="range"
+                min="0"
+                max={Math.max(duration || 60, currentPosition, 1)}
+                step="1"
+                value={currentPosition}
+                onChange={(e) => {
+                  const newTime = parseInt(e.target.value, 10);
+                  handleJumpToTime(newTime);
+                }}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                title="Curseur de défilement : glisser pour avancer ou reculer dans la vidéo"
+                aria-label="Position de lecture de la vidéo"
+              />
+            </div>
+
+            <span className="font-mono text-[11px] sm:text-xs text-[#8c8173] font-semibold min-w-[36px] text-right shrink-0">
+              {duration > 0 ? formatSecondsToMinutes(duration) : '--:--'}
+            </span>
           </div>
 
           {/* Playback Controls Bar */}
@@ -1432,7 +1488,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   setNewLmEndTime('');
                   setNewLmTitle('');
                 }}
-                className="w-7 h-7 rounded-lg bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                className="w-7 h-7 rounded-lg bg-[#10b981]/20 hover:bg-[#10b981]/35 text-[#10b981] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
                 title="Ajouter un repère"
                 aria-label="Ajouter un repère"
               >

@@ -272,7 +272,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0" />
                           )}
                         </span>
-                        <Folder className="w-3.5 h-3.5 text-[#e5a93b]" shrink-0 />
+                        <Folder className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
                         <div className="min-w-0">
                           <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
                             {item.title}
@@ -316,7 +316,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <FlamencoGuitaristeIcon className="w-4 h-4 inline-block shrink-0" />
                           )}
                         </span>
-                        <Film className="w-3.5 h-3.5 text-[#e5a93b]" shrink-0 />
+                        <Film className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
                         <div className="min-w-0">
                           <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
                             {item.title}
@@ -362,7 +362,7 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <FlamencoCantaorIcon className="w-4 h-4 inline-block shrink-0" />
-                        <BookOpen className="w-3.5 h-3.5 text-[#e5a93b]" shrink-0 />
+                        <BookOpen className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
                         <div className="min-w-0">
                           <span className="text-xs sm:text-sm font-semibold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors truncate block">
                             {item.title}

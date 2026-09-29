@@ -2606,17 +2606,19 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       </div>
                     </div>
 
-                    {/* Actions : Ajouter une vidéo & Vue liste / Vue icônes avec classement alphabétique intégré */}
+                    {/* Actions : Vue liste / Vue icônes & Ajouter une vidéo à droite de la ligne */}
                     <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                      <button
-                        onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Ajouter une vidéo</span>
-                      </button>
-
                       {renderViewModeControl()}
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                        className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                        title="Ajouter une vidéo"
+                        aria-label="Ajouter une vidéo"
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -3163,17 +3165,19 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 </div>
               </div>
 
-              {/* Actions : Ajouter une vidéo & Vue liste / Vue icônes avec classement alphabétique intégré */}
+              {/* Actions : Vue liste / Vue icônes & Ajouter une vidéo à droite de la ligne */}
               <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                <button
-                  onClick={() => onOpenAddVideo('maitres')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Ajouter une vidéo</span>
-                </button>
-
                 {renderViewModeControl()}
+
+                <button
+                  type="button"
+                  onClick={() => onOpenAddVideo('maitres')}
+                  className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                  title="Ajouter une vidéo"
+                  aria-label="Ajouter une vidéo"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </button>
               </div>
             </div>
           </div>
@@ -3779,15 +3783,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                <button
-                  onClick={() => onOpenAddVideo('cours')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#221d18] hover:bg-[#2c241c] border border-[#e5a93b]/50 hover:border-[#e5a93b] text-xs font-semibold text-[#e5a93b] cursor-pointer transition-all shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Ajouter une vidéo</span>
-                </button>
-
                 {renderViewModeControl()}
+
+                <button
+                  type="button"
+                  onClick={() => onOpenAddVideo('cours')}
+                  className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                  title="Ajouter une vidéo"
+                  aria-label="Ajouter une vidéo"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </button>
               </div>
             </div>
             <p className="text-xs text-[#a69c8f]">
