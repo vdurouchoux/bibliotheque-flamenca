@@ -472,14 +472,30 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     activeLoopLandmark.endTimeSeconds > activeLoopLandmark.timeSeconds
   );
 
-  const handleToggleLoop = () => {
-    if (!canLoop || !activeLoopLandmark) return;
-    const nextState = !isLooping;
-    setIsLooping(nextState);
-    if (nextState) {
-      if (currentPosition < activeLoopLandmark.timeSeconds || (activeLoopLandmark.endTimeSeconds && currentPosition >= activeLoopLandmark.endTimeSeconds)) {
-        handleJumpToTime(activeLoopLandmark.timeSeconds);
-      }
+  const handleToggleLoopForLandmark = (idx: number) => {
+    const lm = landmarks[idx];
+    if (!lm || typeof lm.endTimeSeconds !== 'number' || lm.endTimeSeconds <= lm.timeSeconds) {
+      return;
+    }
+
+    // Si la boucle est déjà active pour CE repère, on la désactive
+    if (isLooping && selectedLandmarkIndex === idx) {
+      setIsLooping(false);
+      return;
+    }
+
+    // Sinon, on active la boucle pour ce repère
+    setSelectedLandmarkIndex(idx);
+    setIsLooping(true);
+
+    const curTime = htmlVideoRef.current 
+      ? htmlVideoRef.current.currentTime 
+      : (currentTimeRef.current ?? currentPosition);
+
+    if (curTime < lm.timeSeconds || curTime >= lm.endTimeSeconds) {
+      handleJumpToTime(lm.timeSeconds);
+    } else if (!isPlaying) {
+      resumeVideo();
     }
   };
 
@@ -736,10 +752,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-hidden">
+      <div className="bg-[#181512] border border-[#383129] rounded-2xl w-full max-w-3xl max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1e1a16] border-b border-[#2e2720] gap-2 shrink-0">
           {/* Gauche : Bouton Retour et Titre de la vidéo */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
             {/* Bouton retour (remplace la croix pour fermer le lecteur) */}
@@ -871,7 +887,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         )}
 
         {/* Video Player Frame */}
-        <div className="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center">
+        <div className="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center shrink-0">
           {!availability.isAvailableOnCurrentDevice ? (
             <div className="absolute inset-0 bg-[#171410] border-b border-[#30271e] flex flex-col items-center justify-center text-center p-6 text-[#f4efe6]">
               <div className="w-14 h-14 rounded-2xl bg-amber-950/70 border border-amber-700/60 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
@@ -946,7 +962,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         </div>
 
         {/* Playback Controls Bar */}
-        <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center gap-1.5 sm:gap-2 text-xs">
+        <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center gap-1.5 sm:gap-2 text-xs shrink-0">
           {/* Boutons d'avance / recul rapide */}
           <button
             onClick={() => handleRewind(10)}
@@ -1035,9 +1051,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </button>
         </div>
 
-        {/* Ligne 1 : Régulateur de Volume étendu aux 3/4 de la largeur de la page */}
-        <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full">
-          <div className="w-3/4 flex items-center gap-2 sm:gap-2.5 pr-2">
+        {/* Ligne 1 : Régulateur de Volume */}
+        <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full shrink-0">
+          <div className="w-full flex items-center gap-2 sm:gap-2.5">
             <button
               type="button"
               onClick={toggleMute}
@@ -1060,7 +1076,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               step="1"
               value={isMuted ? 0 : volume}
               onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#10b981] focus:outline-none"
+              className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
               aria-label="Volume"
             />
             <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
@@ -1069,9 +1085,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </div>
         </div>
 
-        {/* Ligne 2 : Régulateur de Vitesse aux 3/4 + Bouton Boucle dans le 1/4 restant sous Lecture/Pause */}
-        <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center justify-between text-xs w-full">
-          <div className="w-3/4 flex items-center gap-2 sm:gap-2.5 pr-2">
+        {/* Ligne 2 : Régulateur de Vitesse */}
+        <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center text-xs w-full shrink-0">
+          <div className="w-full flex items-center gap-2 sm:gap-2.5">
             <div className="flex items-center shrink-0 text-[#10b981]" title="Vitesse de lecture">
               <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
             </div>
@@ -1089,7 +1105,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
                 changePlaybackSpeed(finalVal);
               }}
-              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#10b981] focus:outline-none"
+              className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
               aria-label="Vitesse"
               title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
             />
@@ -1114,38 +1130,15 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               {Number(playbackSpeed.toFixed(2))}x
             </span>
           </div>
-
-          {/* Bouton Boucle repère : Aligné à droite sous le bouton Lecture/Pause */}
-          <div className="w-1/4 flex justify-end shrink-0 pl-1">
-            <button
-              type="button"
-              onClick={handleToggleLoop}
-              disabled={!canLoop}
-              className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 min-w-[70px] sm:min-w-[80px] ${
-                isLooping
-                  ? 'bg-[#10b981] text-[#061a0e] border-[#10b981] shadow-md font-bold'
-                  : canLoop
-                  ? 'bg-[#251f18] hover:bg-[#34291f] text-white border-[#554332] hover:border-white/60 font-bold'
-                  : 'bg-[#1a1612] text-[#6b6052] border-[#29221b] opacity-50 cursor-not-allowed'
-              }`}
-              title={
-                !canLoop
-                  ? (activeLoopLandmark ? `Le repère R${currentLandmarkIndex! + 1} n'a pas de temps de fin (boucle indisponible)` : "Aucun repère sélectionné")
-                  : isLooping
-                  ? `Boucle R${currentLandmarkIndex! + 1} active (${formatSecondsToMinutes(activeLoopLandmark!.timeSeconds)} - ${formatSecondsToMinutes(activeLoopLandmark!.endTimeSeconds!)}) - Cliquer pour désactiver`
-                  : `Lire en boucle le repère R${currentLandmarkIndex! + 1} (${formatSecondsToMinutes(activeLoopLandmark!.timeSeconds)} - ${formatSecondsToMinutes(activeLoopLandmark!.endTimeSeconds!)})`
-              }
-            >
-              <Repeat className={`w-3.5 h-3.5 ${isLooping ? 'text-[#061a0e]' : canLoop ? 'text-white' : 'text-[#6b6052]'}`} />
-              <span className="text-[11px] sm:text-xs font-mono font-extrabold">
-                {currentLandmarkIndex !== null ? `R${currentLandmarkIndex + 1}` : 'R-'}
-              </span>
-            </button>
-          </div>
         </div>
 
-        {/* Video Info & Practice Tools */}
-        <div className="p-3 sm:p-4 space-y-3">
+        {/* Ligne blanche fine et plus basse pour séparer les contrôles de la vidéo et la liste des repères */}
+        <div className="w-full px-3 sm:px-4 mt-3 mb-1 shrink-0">
+          <div className="w-full h-[1px] bg-white/40" aria-hidden="true" />
+        </div>
+
+        {/* Video Info & Practice Tools (Liste des repères, Notes, etc. - défilement indépendant) */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 overscroll-contain">
           {/* Interactive Landmarks (Liste des repères) */}
           <div className="p-3 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
             {/* Header of landmarks section */}
@@ -1158,7 +1151,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 </span>
               </div>
 
-              {/* Bouton Ajouter un repère */}
+              {/* Bouton Ajouter un repère (carré avec un plus au milieu et fond vert) */}
               <button
                 type="button"
                 onClick={() => {
@@ -1167,10 +1160,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   setNewLmEndTime('');
                   setNewLmTitle('');
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2a2219] hover:bg-[#382d20] text-[#10b981] border border-[#4a3926] hover:border-[#10b981]/60 transition-all cursor-pointer shadow-sm active:scale-95"
+                className="w-7 h-7 rounded-lg bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                title="Ajouter un repère"
+                aria-label="Ajouter un repère"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ajouter un repère</span>
+                <Plus className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
 
@@ -1255,12 +1249,21 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 {landmarks.map((lm, idx) => {
                   const isEditingThis = editingLmIndex === idx;
                   const isCurrent = Math.abs(currentPosition - lm.timeSeconds) < 4;
+                  const curTime = htmlVideoRef.current 
+                    ? htmlVideoRef.current.currentTime 
+                    : (currentTimeRef.current ?? currentPosition);
+                  const hasEndTime = typeof lm.endTimeSeconds === 'number' && lm.endTimeSeconds > lm.timeSeconds;
+                  const isWithinLandmark = hasEndTime 
+                    ? (curTime >= lm.timeSeconds && curTime < lm.endTimeSeconds)
+                    : true;
                   const startMin = Math.floor(lm.timeSeconds / 60);
                   const startSec = (lm.timeSeconds % 60).toString().padStart(2, '0');
                   const timeDisplay = lm.endTimeSeconds
                     ? `${startMin}:${startSec} - ${Math.floor(lm.endTimeSeconds / 60)}:${(lm.endTimeSeconds % 60).toString().padStart(2, '0')}`
                     : `${startMin}:${startSec}`;
                   const displayTitle = lm.label.includes(' - ') ? lm.label.split(' - ').slice(1).join(' - ') : lm.label;
+
+                  const isThisLandmarkLooping = isLooping && selectedLandmarkIndex === idx;
 
                   if (isEditingThis) {
                     return (
@@ -1347,12 +1350,39 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                           : 'bg-[#1b1612] border-[#2f271f] hover:border-[#4a3926] text-[#d4c9ba]'
                       }`}
                     >
-                      {/* Clic sur le repère pour lancer la lecture ou mettre en pause / reprendre */}
+                      {/* Bouton Boucle pour ce repère (à gauche de chaque repère, remplace R1, R2...) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleLoopForLandmark(idx);
+                        }}
+                        disabled={!hasEndTime}
+                        className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 mr-1 flex items-center justify-center ${
+                          isThisLandmarkLooping
+                            ? 'bg-[#10b981] text-[#061a0e] border-[#10b981] shadow-sm active:scale-95'
+                            : hasEndTime
+                            ? 'bg-[#241c14] hover:bg-[#34291f] text-[#10b981] hover:text-[#34d399] border-[#3f3122] hover:border-[#10b981]/60'
+                            : 'bg-[#1a1612] text-[#6b6052] border-[#29221b] opacity-40 cursor-not-allowed'
+                        }`}
+                        title={
+                          !hasEndTime
+                            ? "Définissez un temps de fin pour activer la lecture en boucle"
+                            : isThisLandmarkLooping
+                            ? `Boucle active (${formatSecondsToMinutes(lm.timeSeconds)} - ${formatSecondsToMinutes(lm.endTimeSeconds!)}) - Cliquer pour désactiver`
+                            : `Lire ce repère en boucle (${formatSecondsToMinutes(lm.timeSeconds)} - ${formatSecondsToMinutes(lm.endTimeSeconds!)})`
+                        }
+                        aria-label={isThisLandmarkLooping ? "Désactiver la boucle" : "Activer la boucle"}
+                      >
+                        <Repeat className={`w-3.5 h-3.5 ${isThisLandmarkLooping ? 'text-[#061a0e]' : hasEndTime ? 'text-[#10b981]' : 'text-[#6b6052]'}`} />
+                      </button>
+
+                      {/* Clic sur le repère pour lancer la lecture ou mettre en pause / reprendre / réinitialiser au début si dépassé */}
                       <button
                         type="button"
                         onClick={() => {
-                          // Si c'est déjà ce repère qui est sélectionné :
-                          if (selectedLandmarkIndex === idx) {
+                          // Si ce repère est déjà sélectionné ET qu'on est encore dans l'intervalle du repère (avant le temps de fin) :
+                          if (selectedLandmarkIndex === idx && isWithinLandmark) {
                             if (isPlaying) {
                               // En cours de lecture : mettre sur pause
                               pauseVideo();
@@ -1363,7 +1393,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                             return;
                           }
 
-                          // Nouveau repère sélectionné : on part du début du repère
+                          // Nouveau repère sélectionné, OU temps de fin dépassé : on revient au début du repère
                           handleJumpToTime(lm.timeSeconds);
                           setSelectedLandmarkIndex(idx);
                           // Si ce repère n'a pas de temps de fin, désactiver la boucle
@@ -1373,30 +1403,19 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         }}
                         className="flex-1 flex items-center gap-2 overflow-hidden text-left cursor-pointer min-w-0 pr-2"
                         title={
-                          selectedLandmarkIndex === idx && isPlaying
-                            ? "Mettre en pause la vidéo"
-                            : selectedLandmarkIndex === idx && !isPlaying
-                            ? "Reprendre la lecture là où elle s'est arrêtée"
+                          selectedLandmarkIndex === idx && isWithinLandmark
+                            ? isPlaying
+                              ? "Mettre en pause la vidéo"
+                              : "Reprendre la lecture là où elle s'est arrêtée"
                             : `Aller à ${timeDisplay} et lancer la lecture`
                         }
                       >
-                        {/* Numéro du repère (R1, R2, ...) */}
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold shrink-0 border ${
-                          selectedLandmarkIndex === idx
-                            ? 'bg-[#10b981] text-[#061a0e] border-[#10b981]'
-                            : isCurrent
-                            ? 'bg-[#10b981]/20 text-[#10b981] border-[#10b981]/50'
-                            : 'bg-[#241c14] text-[#a7f3d0] border-[#3f3122]'
-                        }`}>
-                          R{idx + 1}
-                        </span>
-
                         <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
                           isCurrent
                             ? 'bg-[#10b981] text-[#061a0e]'
                             : 'bg-[#251e18] text-[#10b981] group-hover:bg-[#10b981] group-hover:text-[#061a0e] transition-colors'
                         }`}>
-                          {selectedLandmarkIndex === idx && isPlaying ? (
+                          {selectedLandmarkIndex === idx && isPlaying && isWithinLandmark ? (
                             <Pause className="w-2.5 h-2.5 fill-current" />
                           ) : (
                             <Play className="w-2.5 h-2.5 fill-current ml-0.2" />

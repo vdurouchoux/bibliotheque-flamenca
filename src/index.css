@@ -47,3 +47,42 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Slider range thumb vert transparent avec liseré vert */
+.range-slider-green-translucent {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #332a20;
+}
+
+.range-slider-green-translucent::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.4);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.range-slider-green-translucent::-webkit-slider-thumb:hover {
+  background: rgba(16, 185, 129, 0.6);
+  transform: scale(1.15);
+}
+
+.range-slider-green-translucent::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.4);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.35);
+  cursor: pointer;
+}
+
+.range-slider-green-translucent::-moz-range-thumb:hover {
+  background: rgba(16, 185, 129, 0.6);
+}
+
