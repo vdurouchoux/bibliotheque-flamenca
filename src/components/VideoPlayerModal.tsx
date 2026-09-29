@@ -286,6 +286,30 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
+  const pauseVideo = () => {
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.pause();
+    } else if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
+        '*'
+      );
+    }
+    setIsPlaying(false);
+  };
+
+  const resumeVideo = () => {
+    if (htmlVideoRef.current) {
+      htmlVideoRef.current.play().catch(() => {});
+    } else if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*'
+      );
+    }
+    setIsPlaying(true);
+  };
+
   // Listen to YouTube player state events and progress without triggering iframe reloads
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -721,10 +745,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             {/* Bouton retour (remplace la croix pour fermer le lecteur) */}
             <button
               onClick={onClose}
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#f4efe6] hover:text-[#e5a93b] border border-[#443522] hover:border-[#e5a93b]/50 text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#f4efe6] hover:text-[#10b981] border border-[#443522] hover:border-[#10b981]/50 text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
               title="Retour (fermer le lecteur)"
             >
-              <ChevronLeft className="w-4 h-4 text-[#e5a93b]" />
+              <ChevronLeft className="w-4 h-4 text-[#10b981]" />
               <span className="text-xs">Retour</span>
             </button>
 
@@ -743,7 +767,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           <div className="relative shrink-0" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(prev => !prev)}
-              className="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#e5a93b] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center"
+              className="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-[#2b2216] hover:bg-[#3d301f] text-[#10b981] hover:text-[#fff] border border-[#4d3a24] text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center"
               title="Options (Enregistrer, Partager, YouTube...)"
               aria-label="Options"
               aria-expanded={isMenuOpen}
@@ -760,10 +784,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     setIsMenuOpen(false);
                   }}
                   className={`w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isSaved ? 'text-[#e5a93b]' : 'text-[#f4efe6] hover:text-[#e5a93b]'
+                    isSaved ? 'text-[#10b981]' : 'text-[#f4efe6] hover:text-[#10b981]'
                   }`}
                 >
-                  <Bookmark className={`w-4 h-4 text-[#e5a93b] shrink-0 ${isSaved ? 'fill-current' : ''}`} />
+                  <Bookmark className={`w-4 h-4 text-[#10b981] shrink-0 ${isSaved ? 'fill-current' : ''}`} />
                   <div className="flex flex-col">
                     <span>{isSaved ? 'Enregistré dans mes études' : 'Ajouter à mes études'}</span>
                     <span className="text-[10px] text-[#8c8173] font-normal">
@@ -777,9 +801,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 {/* Option 2 : Partager */}
                 <button
                   onClick={handleShareVideo}
-                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#10b981] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  <Share2 className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                  <Share2 className="w-4 h-4 text-[#10b981] shrink-0" />
                   <div className="flex flex-col">
                     <span>Partager la vidéo</span>
                     <span className="text-[10px] text-[#8c8173] font-normal">Lien web, QR code, WhatsApp...</span>
@@ -795,9 +819,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => setIsMenuOpen(false)}
-                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#10b981] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
-                    <ExternalLink className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                    <ExternalLink className="w-4 h-4 text-[#10b981] shrink-0" />
                     <div className="flex flex-col">
                       <span>
                         Lire sur YouTube à la position actuelle ({Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')})
@@ -817,9 +841,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => setIsMenuOpen(false)}
-                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#e5a93b] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#f4efe6] hover:text-[#10b981] hover:bg-[#2b2218] flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  <Search className="w-4 h-4 text-[#e5a93b] shrink-0" />
+                  <Search className="w-4 h-4 text-[#10b981] shrink-0" />
                   <div className="flex flex-col">
                     <span>Rechercher des vidéos similaires</span>
                     <span className="text-[10px] text-[#8c8173] font-normal">Sur YouTube</span>
@@ -832,9 +856,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
         {/* Share notification toast */}
         {shareToastMessage && (
-          <div className="px-4 py-2 bg-[#2a2217] border-b border-[#e5a93b]/50 text-[#e5a93b] text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="px-4 py-2 bg-[#0d2217] border-b border-[#10b981]/50 text-[#10b981] text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#e5a93b] shrink-0" />
+              <Sparkles className="w-4 h-4 text-[#10b981] shrink-0" />
               <span>{shareToastMessage}</span>
             </div>
             <button
@@ -871,7 +895,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowReplaceModal(true)}
-                  className="px-4 py-2 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Remplacer par un lien YouTube / web</span>
@@ -911,7 +935,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   href={currentVideo.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e5a93b] text-[#121110] font-bold text-xs"
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#10b981] text-[#061a0e] font-bold text-xs"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Ouvrir le lien</span>
@@ -929,7 +953,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
             title="Reculer de 10s"
           >
-            <Rewind className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <Rewind className="w-3.5 h-3.5 text-[#10b981]" />
             <span>-10s</span>
           </button>
 
@@ -938,7 +962,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
             title="Avancer de 10s"
           >
-            <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
             <span>+10s</span>
           </button>
 
@@ -947,7 +971,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
             title="Avancer de 30s"
           >
-            <FastForward className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
             <span>+30s</span>
           </button>
 
@@ -959,7 +983,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               timeCopied
                 ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 ring-1 ring-emerald-400/40'
                 : !isPlaying
-                ? 'bg-gradient-to-r from-[#332414] to-[#453018] hover:from-[#3f2c18] hover:to-[#543b1e] text-[#fcd34d] border border-[#e5a93b]'
+                ? 'bg-gradient-to-r from-[#0d2818] to-[#133d24] hover:from-[#113520] hover:to-[#1a4d2e] text-[#6ee7b7] border border-[#10b981]'
                 : 'bg-[#1e1913] hover:bg-[#282119] text-[#d4c9ba] border border-[#3b3024]'
             }`}
             title={
@@ -979,8 +1003,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               </>
             ) : (
               <>
-                <Copy className="w-3 h-3 text-[#e5a93b] shrink-0" />
-                <span className="font-mono text-[#fcd34d] font-bold text-[11px]">
+                <Copy className="w-3 h-3 text-[#10b981] shrink-0" />
+                <span className="font-mono text-[#6ee7b7] font-bold text-[11px]">
                   {Math.floor(currentPosition / 60)}:{(currentPosition % 60).toString().padStart(2, '0')}
                 </span>
               </>
@@ -993,7 +1017,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             className={`flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-md shrink-0 active:scale-95 px-3 h-8.5 min-w-[80px] ${
               isPlaying
                 ? 'bg-[#261f18] hover:bg-[#34291f] text-[#f4efe6] border-[#483726]'
-                : 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] border-[#e5a93b]'
+                : 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] border-[#10b981]'
             }`}
             title={isPlaying ? "Mettre en pause la vidéo" : "Lancer la vidéo"}
           >
@@ -1017,7 +1041,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             <button
               type="button"
               onClick={toggleMute}
-              className="text-[#e5a93b] hover:text-[#f5b84c] p-0.5 rounded hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center shrink-0"
+              className="text-[#10b981] hover:text-[#34d399] p-0.5 rounded hover:bg-[#25201b] transition-colors cursor-pointer flex items-center justify-center shrink-0"
               title={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son (Muet)"}
               aria-label={isMuted || volume === 0 ? "Réactiver le son" : "Couper le son"}
             >
@@ -1036,10 +1060,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               step="1"
               value={isMuted ? 0 : volume}
               onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#10b981] focus:outline-none"
               aria-label="Volume"
             />
-            <span className="font-mono text-[11px] text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
+            <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
               {isMuted ? '0%' : `${volume}%`}
             </span>
           </div>
@@ -1048,8 +1072,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         {/* Ligne 2 : Régulateur de Vitesse aux 3/4 + Bouton Boucle dans le 1/4 restant sous Lecture/Pause */}
         <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center justify-between text-xs w-full">
           <div className="w-3/4 flex items-center gap-2 sm:gap-2.5 pr-2">
-            <div className="flex items-center shrink-0 text-[#e5a93b]" title="Vitesse de lecture">
-              <Gauge className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <div className="flex items-center shrink-0 text-[#10b981]" title="Vitesse de lecture">
+              <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
             </div>
 
             <input
@@ -1065,7 +1089,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
                 changePlaybackSpeed(finalVal);
               }}
-              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#e5a93b] focus:outline-none"
+              className="flex-1 w-full h-1.5 bg-[#332a20] rounded-lg appearance-none cursor-pointer accent-[#10b981] focus:outline-none"
               aria-label="Vitesse"
               title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
             />
@@ -1078,7 +1102,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               onClick={() => changePlaybackSpeed(1)}
               className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer select-none shrink-0 ${
                 playbackSpeed !== 1
-                  ? 'bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] active:scale-95'
+                  ? 'bg-[#10b981] hover:bg-[#34d399] text-[#061a0e] active:scale-95'
                   : 'bg-[#221c16] hover:bg-[#2c241c] text-[#a89b8c] border border-[#382d22]'
               }`}
               title="Remettre à 1x"
@@ -1086,7 +1110,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               <RotateCcw className="w-2.5 h-2.5 mr-0.5" />
               <span>1x</span>
             </button>
-            <span className="font-mono text-[11px] text-[#e5a93b] font-semibold min-w-[34px] text-right select-none shrink-0">
+            <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
               {Number(playbackSpeed.toFixed(2))}x
             </span>
           </div>
@@ -1099,7 +1123,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               disabled={!canLoop}
               className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 min-w-[70px] sm:min-w-[80px] ${
                 isLooping
-                  ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b] shadow-md font-bold'
+                  ? 'bg-[#10b981] text-[#061a0e] border-[#10b981] shadow-md font-bold'
                   : canLoop
                   ? 'bg-[#251f18] hover:bg-[#34291f] text-white border-[#554332] hover:border-white/60 font-bold'
                   : 'bg-[#1a1612] text-[#6b6052] border-[#29221b] opacity-50 cursor-not-allowed'
@@ -1112,7 +1136,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   : `Lire en boucle le repère R${currentLandmarkIndex! + 1} (${formatSecondsToMinutes(activeLoopLandmark!.timeSeconds)} - ${formatSecondsToMinutes(activeLoopLandmark!.endTimeSeconds!)})`
               }
             >
-              <Repeat className={`w-3.5 h-3.5 ${isLooping ? 'text-[#121110]' : canLoop ? 'text-white' : 'text-[#6b6052]'}`} />
+              <Repeat className={`w-3.5 h-3.5 ${isLooping ? 'text-[#061a0e]' : canLoop ? 'text-white' : 'text-[#6b6052]'}`} />
               <span className="text-[11px] sm:text-xs font-mono font-extrabold">
                 {currentLandmarkIndex !== null ? `R${currentLandmarkIndex + 1}` : 'R-'}
               </span>
@@ -1127,7 +1151,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             {/* Header of landmarks section */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-[#f4efe6]">
-                <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />
                 <span>Liste des repères</span>
                 <span className="text-[11px] font-normal text-[#8c8173] ml-0.5">
                   ({landmarks.length})
@@ -1143,7 +1167,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   setNewLmEndTime('');
                   setNewLmTitle('');
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2a2219] hover:bg-[#382d20] text-[#e5a93b] border border-[#4a3926] hover:border-[#e5a93b]/60 transition-all cursor-pointer shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2a2219] hover:bg-[#382d20] text-[#10b981] border border-[#4a3926] hover:border-[#10b981]/60 transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Ajouter un repère</span>
@@ -1152,8 +1176,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
             {/* Formulaire d'ajout d'un repère (Début + Fin optionnelle) */}
             {showAddForm && (
-              <form onSubmit={handleAddLandmark} className="p-3 rounded-xl bg-[#201913] border border-[#e5a93b]/60 space-y-2.5 animate-in fade-in duration-150">
-                <div className="text-xs font-bold text-[#e5a93b] flex items-center justify-between">
+              <form onSubmit={handleAddLandmark} className="p-3 rounded-xl bg-[#0e2117] border border-[#10b981]/60 space-y-2.5 animate-in fade-in duration-150">
+                <div className="text-xs font-bold text-[#10b981] flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Plus className="w-3.5 h-3.5" />
                     <span>Nouveau repère</span>
@@ -1176,7 +1200,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                       value={newLmTitle}
                       onChange={e => setNewLmTitle(e.target.value)}
                       placeholder="ex: Primera Letra, Llamada du milieu, Marcaje..."
-                      className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
+                      className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#10b981]"
                       autoFocus
                     />
                   </div>
@@ -1189,7 +1213,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         value={newLmStartTime}
                         onChange={e => setNewLmStartTime(e.target.value)}
                         placeholder={formatSecondsToMinutes(currentPosition)}
-                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#10b981]"
                       />
                     </div>
 
@@ -1200,7 +1224,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         value={newLmEndTime}
                         onChange={e => setNewLmEndTime(e.target.value)}
                         placeholder="ex: 2:05 (laisser vide si aucun)"
-                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                        className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#10b981]"
                       />
                     </div>
                   </div>
@@ -1217,7 +1241,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   <button
                     type="submit"
                     disabled={!newLmTitle.trim()}
-                    className="px-3 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] disabled:opacity-50 text-[#121110] font-bold text-xs cursor-pointer shadow-sm"
+                    className="px-3 py-1 rounded-lg bg-[#10b981] hover:bg-[#34d399] disabled:opacity-50 text-[#061a0e] font-bold text-xs cursor-pointer shadow-sm"
                   >
                     Valider le repère
                   </button>
@@ -1240,8 +1264,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
                   if (isEditingThis) {
                     return (
-                      <div key={idx} className="p-3 rounded-xl bg-[#201913] border-2 border-[#e5a93b] space-y-2.5 animate-in fade-in duration-100">
-                        <div className="text-xs font-bold text-[#e5a93b] flex items-center justify-between">
+                      <div key={idx} className="p-3 rounded-xl bg-[#0e2117] border-2 border-[#10b981] space-y-2.5 animate-in fade-in duration-100">
+                        <div className="text-xs font-bold text-[#10b981] flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
                             <Edit3 className="w-3.5 h-3.5" />
                             <span>Modifier le repère</span>
@@ -1263,7 +1287,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                               value={editLmTitle}
                               onChange={e => setEditLmTitle(e.target.value)}
                               placeholder="Nom du repère"
-                              className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#e5a93b]"
+                              className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] focus:outline-none focus:border-[#10b981]"
                               autoFocus
                             />
                           </div>
@@ -1276,7 +1300,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                                 value={editLmStartTime}
                                 onChange={e => setEditLmStartTime(e.target.value)}
                                 placeholder="ex: 1:24"
-                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#10b981]"
                               />
                             </div>
 
@@ -1287,7 +1311,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                                 value={editLmEndTime}
                                 onChange={e => setEditLmEndTime(e.target.value)}
                                 placeholder="ex: 2:05 (laisser vide si aucun)"
-                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#e5a93b]"
+                                className="w-full px-2.5 py-1.5 bg-[#14110e] border border-[#382d22] rounded-lg text-xs text-[#f4efe6] font-mono focus:outline-none focus:border-[#10b981]"
                               />
                             </div>
                           </div>
@@ -1305,7 +1329,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                             type="button"
                             onClick={() => handleSaveEditLandmark(idx)}
                             disabled={!editLmTitle.trim()}
-                            className="px-3 py-1 rounded-lg bg-[#e5a93b] hover:bg-[#f5b84c] disabled:opacity-50 text-[#121110] font-bold text-xs cursor-pointer shadow-sm"
+                            className="px-3 py-1 rounded-lg bg-[#10b981] hover:bg-[#34d399] disabled:opacity-50 text-[#061a0e] font-bold text-xs cursor-pointer shadow-sm"
                           >
                             Enregistrer
                           </button>
@@ -1319,14 +1343,27 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                       key={idx}
                       className={`group relative flex items-center justify-between p-2 sm:p-2.5 rounded-xl border text-xs transition-all ${
                         isCurrent
-                          ? 'bg-[#e5a93b]/15 border-[#e5a93b] text-[#f4efe6] shadow-sm'
+                          ? 'bg-[#10b981]/15 border-[#10b981] text-[#f4efe6] shadow-sm'
                           : 'bg-[#1b1612] border-[#2f271f] hover:border-[#4a3926] text-[#d4c9ba]'
                       }`}
                     >
-                      {/* Clic sur le repère pour lancer la lecture */}
+                      {/* Clic sur le repère pour lancer la lecture ou mettre en pause / reprendre */}
                       <button
                         type="button"
                         onClick={() => {
+                          // Si c'est déjà ce repère qui est sélectionné :
+                          if (selectedLandmarkIndex === idx) {
+                            if (isPlaying) {
+                              // En cours de lecture : mettre sur pause
+                              pauseVideo();
+                            } else {
+                              // En pause : reprendre là où elle s'est arrêtée (pas au début du repère !)
+                              resumeVideo();
+                            }
+                            return;
+                          }
+
+                          // Nouveau repère sélectionné : on part du début du repère
                           handleJumpToTime(lm.timeSeconds);
                           setSelectedLandmarkIndex(idx);
                           // Si ce repère n'a pas de temps de fin, désactiver la boucle
@@ -1335,34 +1372,46 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                           }
                         }}
                         className="flex-1 flex items-center gap-2 overflow-hidden text-left cursor-pointer min-w-0 pr-2"
-                        title={`Aller à ${timeDisplay}`}
+                        title={
+                          selectedLandmarkIndex === idx && isPlaying
+                            ? "Mettre en pause la vidéo"
+                            : selectedLandmarkIndex === idx && !isPlaying
+                            ? "Reprendre la lecture là où elle s'est arrêtée"
+                            : `Aller à ${timeDisplay} et lancer la lecture`
+                        }
                       >
                         {/* Numéro du repère (R1, R2, ...) */}
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold shrink-0 border ${
                           selectedLandmarkIndex === idx
-                            ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b]'
+                            ? 'bg-[#10b981] text-[#061a0e] border-[#10b981]'
                             : isCurrent
-                            ? 'bg-[#e5a93b]/20 text-[#e5a93b] border-[#e5a93b]/50'
-                            : 'bg-[#241c14] text-[#d6b074] border-[#3f3122]'
+                            ? 'bg-[#10b981]/20 text-[#10b981] border-[#10b981]/50'
+                            : 'bg-[#241c14] text-[#a7f3d0] border-[#3f3122]'
                         }`}>
                           R{idx + 1}
                         </span>
 
                         <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
-                          isCurrent ? 'bg-[#e5a93b] text-[#121110]' : 'bg-[#251e18] text-[#e5a93b] group-hover:bg-[#e5a93b] group-hover:text-[#121110] transition-colors'
+                          isCurrent
+                            ? 'bg-[#10b981] text-[#061a0e]'
+                            : 'bg-[#251e18] text-[#10b981] group-hover:bg-[#10b981] group-hover:text-[#061a0e] transition-colors'
                         }`}>
-                          <Play className="w-2.5 h-2.5 fill-current ml-0.2" />
+                          {selectedLandmarkIndex === idx && isPlaying ? (
+                            <Pause className="w-2.5 h-2.5 fill-current" />
+                          ) : (
+                            <Play className="w-2.5 h-2.5 fill-current ml-0.2" />
+                          )}
                         </div>
 
                         <span className={`px-1.5 py-0.5 rounded font-mono text-[11px] font-bold shrink-0 ${
                           isCurrent
-                            ? 'bg-[#e5a93b] text-[#121110]'
-                            : 'bg-[#261f18] text-[#e5a93b] border border-[#3e3223]'
+                            ? 'bg-[#10b981] text-[#061a0e]'
+                            : 'bg-[#261f18] text-[#10b981] border border-[#3e3223]'
                         }`}>
                           {timeDisplay}
                         </span>
 
-                        <span className="truncate font-medium text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors">
+                        <span className="truncate font-medium text-[#f4efe6] group-hover:text-[#10b981] transition-colors">
                           {displayTitle}
                         </span>
                       </button>
@@ -1394,9 +1443,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                                 handleStartEditLandmark(idx);
                                 setActiveDropdownIndex(null);
                               }}
-                              className="w-full px-3 py-1.5 text-left text-[#f4efe6] hover:bg-[#2a221a] hover:text-[#e5a93b] flex items-center gap-2 cursor-pointer transition-colors"
+                              className="w-full px-3 py-1.5 text-left text-[#f4efe6] hover:bg-[#2a221a] hover:text-[#10b981] flex items-center gap-2 cursor-pointer transition-colors"
                             >
-                              <Edit3 className="w-3.5 h-3.5 text-[#e5a93b]" />
+                              <Edit3 className="w-3.5 h-3.5 text-[#10b981]" />
                               <span>Modifier</span>
                             </button>
                             <button
@@ -1434,7 +1483,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 onClick={() => handleStatusChange('to_learn')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
                   status === 'to_learn'
-                    ? 'bg-[#433524] text-[#e5a93b] border-[#e5a93b]'
+                    ? 'bg-[#132c1c] text-[#10b981] border-[#10b981]'
                     : 'bg-[#26211c] text-[#8c8173] border-transparent hover:text-[#d4c9ba]'
                 }`}
               >
@@ -1467,7 +1516,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-[#a69c8f]">
               <div className="flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#e5a93b]" />
+                <FileText className="w-3.5 h-3.5 text-[#10b981]" />
                 <span className="font-semibold text-[#f4efe6]">
                   {isDance
                     ? 'Mes notes de travail (posture, pieds, repères chorégraphiques) :'
@@ -1487,7 +1536,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   : "Exemple : ralentir le passage à 0:45, faire attention au compás sur le 3ème temps, capo case 2..."
               }
               rows={2}
-              className="w-full bg-[#141210] border border-[#332c25] focus:border-[#e5a93b] rounded-xl p-3 text-xs sm:text-sm text-[#f4efe6] placeholder-[#6b6256] outline-none transition-colors"
+              className="w-full bg-[#141210] border border-[#332c25] focus:border-[#10b981] rounded-xl p-3 text-xs sm:text-sm text-[#f4efe6] placeholder-[#6b6256] outline-none transition-colors"
             />
           </div>
 
@@ -1497,7 +1546,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               {onPrevious ? (
                 <button
                   onClick={onPrevious}
-                  className="flex items-center gap-1 text-xs text-[#a69c8f] hover:text-[#e5a93b] transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-[#a69c8f] hover:text-[#10b981] transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Vidéo précédente</span>
@@ -1507,7 +1556,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               {onNext ? (
                 <button
                   onClick={onNext}
-                  className="flex items-center gap-1 text-xs text-[#a69c8f] hover:text-[#e5a93b] transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-[#a69c8f] hover:text-[#10b981] transition-colors cursor-pointer"
                 >
                   <span>Vidéo suivante</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1520,7 +1569,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           <div className="pt-4 border-t border-[#2e261f]">
             <button
               onClick={onClose}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#221c17] hover:bg-[#2d241d] active:bg-[#1b1612] text-[#e5a93b] hover:text-[#f4efe6] border border-[#3e3224] text-xs sm:text-sm font-bold transition-all shadow-md active:scale-98 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#221c17] hover:bg-[#2d241d] active:bg-[#1b1612] text-[#10b981] hover:text-[#f4efe6] border border-[#3e3224] text-xs sm:text-sm font-bold transition-all shadow-md active:scale-98 cursor-pointer"
               title={isFromMontage ? "Fermer le lecteur et revenir à l'atelier de création" : "Fermer le lecteur et revenir à la liste des vidéos"}
             >
               <ChevronLeft className="w-4 h-4" />
