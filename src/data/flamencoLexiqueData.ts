@@ -407,7 +407,7 @@ export const FLAMENCO_LEXIQUE: LexiqueTerm[] = [
     icon: '🌿',
     shortDef: "Chaque style, genre ou variété de chant, de guitare ou de danse au sein de l'univers flamenco.",
     detailedDef: "Il existe plus de 50 palos différents (Soleá, Bulerías, Tangos, Farruca, Alegrías, Guajiras, Fandangos...). Chaque palo se distingue par son compás, son humeur (grave ou festif), son origine géographique et sa cadence harmonique.",
-    appContext: "La Bibliothèque Flamenca organise toute sa structure autour de la sélection et l'étude des Palos.",
+    appContext: "La Médiathèque Flamenca organise toute sa structure autour de la sélection et l'étude des Palos.",
     relatedTerms: ['Compás', 'Arborescence']
   },
   {
@@ -446,7 +446,7 @@ export const FLAMENCO_LEXIQUE: LexiqueTerm[] = [
     icon: '🗣️',
     shortDef: "Cris d'encouragement spontanés et chaleureux ('¡Olé!', '¡Eso es!', '¡Agua!', '¡Guapo!') lancés aux artistes.",
     detailedDef: "En flamenco, le public et les membres du cuadro ne sont pas passifs. Les jaleos, lancés à bon escient sur les temps forts ou après un trait virtuose, galvanisent les musiciens et les danseurs pour les pousser au dépassement de soi.",
-    appContext: "Présent dans les pistes audio et vidéos d'accompagnement de la bibliothèque.",
+    appContext: "Présent dans les pistes audio et vidéos d'accompagnement de la médiathèque.",
     relatedTerms: ['Pitos', 'Palmas claras']
   },
   {

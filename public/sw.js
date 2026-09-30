@@ -1,4 +1,4 @@
-// Service Worker pour Bibliothèque Flamenca (PWA Standalone)
+// Service Worker pour Médiathèque Flamenca (PWA Standalone)
 const CACHE_NAME = 'flamenco-v1';
 
 self.addEventListener('install', (event) => {

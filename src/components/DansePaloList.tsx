@@ -4,7 +4,9 @@ import {
   Lock,
   Activity,
   Search,
-  X
+  X,
+  BookOpen,
+  Film
 } from 'lucide-react';
 import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA } from '../data/baileData';
 import { DanseArborescenceTree } from './DanseArborescenceTree';
@@ -21,6 +23,8 @@ interface DansePaloListProps {
   onOpenLexique?: () => void;
   onPlayVideo?: (video: VideoItem, paloName: string, paloKey: string, sectionName: string) => void;
   onNavigateDanseTab?: (paloKey: string, tab: DanseSectionTab) => void;
+  onOpenBibliotheque?: (paloKey: string) => void;
+  onOpenAtelier?: (paloKey: string) => void;
 }
 
 export const DansePaloList: React.FC<DansePaloListProps> = ({
@@ -30,7 +34,9 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
   onOpenArborescence,
   onOpenLexique,
   onPlayVideo,
-  onNavigateDanseTab
+  onNavigateDanseTab,
+  onOpenBibliotheque,
+  onOpenAtelier
 }) => {
   // Image d'arrière-plan du bloc BAILE avec fallback automatique
   const [bgImageSrc, setBgImageSrc] = useState<string>(baileBgImg);
@@ -262,14 +268,35 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                       </div>
 
                       {item.isAvailable ? (
-                        <button
-                          type="button"
-                          onClick={() => onSelectPalo(item.id)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] text-xs font-bold transition-all shadow-md cursor-pointer hover:translate-x-0.5 shrink-0"
-                        >
-                          <span>Ouvrir la Farruca</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                          {/* Bouton carré Médiathèque */}
+                          <button
+                            type="button"
+                            onClick={() => onOpenBibliotheque ? onOpenBibliotheque(item.id) : onSelectPalo(item.id)}
+                            className="w-16 h-16 sm:w-18 sm:h-18 aspect-square rounded-xl bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 flex flex-col items-center justify-center gap-1 p-1 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                            title="Ouvrir la médiathèque"
+                            aria-label="Ouvrir la médiathèque"
+                          >
+                            <BookOpen className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                            <span className="text-[9.5px] sm:text-[10.5px] font-bold leading-tight block truncate max-w-full">
+                              Médiathèque
+                            </span>
+                          </button>
+
+                          {/* Bouton carré Atelier */}
+                          <button
+                            type="button"
+                            onClick={() => onOpenAtelier ? onOpenAtelier(item.id) : onSelectPalo(item.id)}
+                            className="w-16 h-16 sm:w-18 sm:h-18 aspect-square rounded-xl bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-100 border border-blue-500/40 flex flex-col items-center justify-center gap-1 p-1 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                            title="Ouvrir l'atelier"
+                            aria-label="Ouvrir l'atelier"
+                          >
+                            <Film className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
+                            <span className="text-[9.5px] sm:text-[10.5px] font-bold leading-tight block truncate max-w-full">
+                              Atelier
+                            </span>
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-xs text-[#6e6355] italic shrink-0">
                           Prochainement

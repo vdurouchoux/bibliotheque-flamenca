@@ -82,6 +82,17 @@ export default defineConfig(() => {
         },
       }),
     ],
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'lucide-react',
+        'qrcode',
+        'firebase/app',
+        'firebase/firestore',
+      ],
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

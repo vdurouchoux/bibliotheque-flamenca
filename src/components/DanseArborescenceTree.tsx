@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown, ArrowRight, Lightbulb, UploadCloud, CheckCircle2, Sparkles, Compass, List, LayoutGrid, Play, Video as VideoIcon, Film, Folder, FolderOpen, ArrowDownAZ, ArrowUpAZ, ArrowUpDown } from 'lucide-react';
 import { VideoItem } from '../types';
 import { extractYouTubeInfo } from '../utils/storage';
@@ -8,6 +8,7 @@ export interface DanseArborescenceTreeProps {
   onOpenBibliotheque?: () => void;
   onOpenLexique?: () => void;
   defaultExpanded?: boolean;
+  initialOpenFolder?: 'biblio' | 'studio' | null;
   title?: React.ReactNode;
   translucent?: boolean;
   borderedFolders?: boolean;
@@ -29,6 +30,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
   onNavigate,
   onOpenLexique,
   defaultExpanded = false,
+  initialOpenFolder = null,
   title,
   translucent = false,
   borderedFolders = false,
@@ -61,18 +63,29 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
 
   // État d'ouverture des dossiers (par défaut tous repliés, sauf si explicitement demandé)
   const [openFolders, setOpenFolders] = useState<{ [key: string]: boolean }>({
-    biblio: defaultExpanded,
+    biblio: defaultExpanded || initialOpenFolder === 'biblio',
     maitres: false,
     cours: false,
     letras: false,
     compas: false,
-    studio: defaultExpanded,
+    studio: defaultExpanded || initialOpenFolder === 'studio',
     structure: false,
     carnet: false
   });
 
   const studioScrollOriginRef = useRef<number | null>(null);
   const studioHeaderRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (initialOpenFolder === 'studio') {
+      setOpenFolders(prev => ({ ...prev, studio: true, biblio: false }));
+      setTimeout(() => {
+        studioHeaderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    } else if (initialOpenFolder === 'biblio') {
+      setOpenFolders(prev => ({ ...prev, biblio: true, studio: false }));
+    }
+  }, [initialOpenFolder]);
 
   const [openTips, setOpenTips] = useState<boolean>(false);
   const tipsScrollOriginRef = useRef<number | null>(null);
@@ -190,10 +203,10 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
       <div className="relative pl-1 sm:pl-2 space-y-4 font-sans text-xs sm:text-sm">
         
         {/* ========================================================================= */}
-        {/* DEUX CARRÉS L'UN À CÔTÉ DE L'AUTRE : BIBLIOTHÈQUE FLAMENCA & ATELIER DE CRÉATION */}
+        {/* DEUX CARRÉS L'UN À CÔTÉ DE L'AUTRE : MÉDIATHÈQUE FLAMENCA & ATELIER DE CRÉATION */}
         {/* ========================================================================= */}
         <div className="grid grid-cols-2 gap-3 sm:gap-5 select-none">
-          {/* CARRÉ GAUCHE : BIBLIOTHÈQUE FLAMENCA SUR DEUX LIGNES */}
+          {/* CARRÉ GAUCHE : MÉDIATHÈQUE FLAMENCA SUR DEUX LIGNES */}
           <div
             onClick={() => toggleFolder('biblio')}
             className={`rounded-2xl transition-all p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center cursor-pointer relative shadow-lg group aspect-square ${
@@ -201,18 +214,10 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                 ? 'border-2 border-emerald-400 bg-emerald-950/40 shadow-[0_0_15px_rgba(16,185,129,0.22)]'
                 : 'border border-[#382d22] hover:border-emerald-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
             }`}
-            title={openFolders['biblio'] ? 'Replier Bibliothèque Flamenca' : 'Déplier Bibliothèque Flamenca'}
+            title={openFolders['biblio'] ? 'Replier Médiathèque Flamenca' : 'Déplier Médiathèque Flamenca'}
           >
-            <div className="mb-1.5 sm:mb-2 p-2 rounded-xl bg-emerald-950/50 text-emerald-400 group-hover:scale-105 transition-transform">
-              {openFolders['biblio'] ? (
-                <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 fill-emerald-400/20" />
-              ) : (
-                <Folder className="w-6 h-6 sm:w-8 sm:h-8 fill-emerald-400/20" />
-              )}
-            </div>
-
             <h4 className="font-serif text-xs sm:text-base md:text-lg font-bold text-[#86efac] leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-              Bibliothèque<br />Flamenca
+              MÉDIATHÈQUE<br />FLAMENCA
             </h4>
 
             <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#86efac]/20 text-[#bbf7d0] font-medium border border-[#86efac]/30 mt-1.5 hidden xs:inline">
@@ -240,16 +245,8 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
             }`}
             title={openFolders['studio'] ? "Replier l'Atelier de création" : "Déplier l'Atelier de création"}
           >
-            <div className="mb-1.5 sm:mb-2 p-2 rounded-xl bg-blue-950/50 text-blue-400 group-hover:scale-105 transition-transform">
-              {openFolders['studio'] ? (
-                <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 fill-blue-400/20" />
-              ) : (
-                <Folder className="w-6 h-6 sm:w-8 sm:h-8 fill-blue-400/20" />
-              )}
-            </div>
-
             <h4 className="font-serif text-xs sm:text-base md:text-lg font-bold text-[#60a5fa] leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-              Atelier<br />de création
+              ATELIER<br />DE CRÉATION
             </h4>
 
             <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#60a5fa]/20 text-[#93c5fd] font-medium border border-[#60a5fa]/30 mt-1.5 hidden xs:inline">
@@ -268,7 +265,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* DÉPLIAGE BIBLIOTHÈQUE FLAMENCA (TEXTE EXPLICATIF ET SOUS-DOSSIERS)        */}
+        {/* DÉPLIAGE MÉDIATHÈQUE FLAMENCA (TEXTE EXPLICATIF ET SOUS-DOSSIERS)        */}
         {/* ========================================================================= */}
         {openFolders['biblio'] && (
           <div className="rounded-2xl border-2 border-emerald-500/50 bg-[#12100d] p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
@@ -277,7 +274,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               <div className="flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
                 <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac]">
-                  Bibliothèque Flamenca
+                  Médiathèque Flamenca
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-[#86efac]/20 text-[#bbf7d0] font-medium border border-[#86efac]/30 hidden xs:inline">
                   Ressources & Références
@@ -293,14 +290,14 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               </button>
             </div>
 
-            {/* Instructions du dossier Bibliothèque Flamenca */}
+            {/* Instructions du dossier Médiathèque Flamenca */}
             <div className="px-3.5 py-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-[#ded3c5] leading-relaxed">
               <p>
-                C'est la base de votre travail. Commencez sans attendre à alimenter votre bibliothèque, palo par palo, en y classant vos sources de référence : Grands Maîtres, cours et stages, letras poétiques et compás.
+                C'est la base de votre travail. Commencez sans attendre à alimenter votre médiathèque, palo par palo, en y classant vos sources de référence : Grands Maîtres, cours et stages, letras poétiques et compás.
               </p>
             </div>
 
-            {/* SOUS-DOSSIERS DE LA BIBLIOTHÈQUE FLAMENCA */}
+            {/* SOUS-DOSSIERS DE LA MÉDIATHÈQUE FLAMENCA */}
             <div className="ml-2 sm:ml-5 pl-3 sm:pl-5 border-l-2 border-[#382d22] space-y-3 pt-1">
               
               {/* --- SOUS-DOSSIER : GRANDS MAÎTRES --- */}

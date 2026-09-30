@@ -78,8 +78,11 @@ interface DansePaloDetailProps {
   onTabChange?: (tab: DanseSectionTab) => void;
   isBiblioPageOpen?: boolean;
   onToggleBiblioPage?: (open: boolean) => void;
+  isStudioPageOpen?: boolean;
+  onToggleStudioPage?: (open: boolean) => void;
   activeCustomFolderId?: string | null;
   onCustomFolderChange?: (folderId: string | null) => void;
+  initialTreeFolder?: 'biblio' | 'studio' | null;
 }
 
 const ESPACE_INFO_MAP: Record<Exclude<DanseSectionTab, 'hub'>, { title: string; subtitle: string; icon: string }> = {
@@ -135,13 +138,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   onTabChange,
   isBiblioPageOpen: isBiblioPageOpenProp,
   onToggleBiblioPage,
+  isStudioPageOpen: isStudioPageOpenProp,
+  onToggleStudioPage,
   activeCustomFolderId: activeCustomFolderIdProp,
-  onCustomFolderChange
+  onCustomFolderChange,
+  initialTreeFolder
 }) => {
   const [internalTab, setInternalTab] = useState<DanseSectionTab>('hub');
   const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
 
-  const [internalBiblioPageOpen, setInternalBiblioPageOpen] = useState<boolean>(false);
+  const [internalBiblioPageOpen, setInternalBiblioPageOpen] = useState<boolean>(initialTreeFolder === 'biblio');
   const isBiblioPageOpen = isBiblioPageOpenProp !== undefined ? isBiblioPageOpenProp : internalBiblioPageOpen;
 
   const setIsBiblioPageOpen = (open: boolean) => {
@@ -149,6 +155,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       onToggleBiblioPage(open);
     } else {
       setInternalBiblioPageOpen(open);
+    }
+  };
+
+  const [internalStudioPageOpen, setInternalStudioPageOpen] = useState<boolean>(initialTreeFolder === 'studio');
+  const isStudioPageOpen = isStudioPageOpenProp !== undefined ? isStudioPageOpenProp : internalStudioPageOpen;
+
+  const setIsStudioPageOpen = (open: boolean) => {
+    if (onToggleStudioPage) {
+      onToggleStudioPage(open);
+    } else {
+      setInternalStudioPageOpen(open);
     }
   };
 
@@ -181,6 +198,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       }
     }
   };
+
+  const isFarrucaPalo = palo.id.toLowerCase().includes('farruca') || palo.name.toLowerCase().includes('farruca');
+  const mediathequeTitle = isFarrucaPalo ? 'Médiathèque de la Farruca' : `Médiathèque de ${palo.name}`;
   const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const [videoVersion, setVideoVersion] = useState<number>(0);
   const [videoToDelete, setVideoToDelete] = useState<{ id: string; title: string; sectionKey: string } | null>(null);
@@ -248,11 +268,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     }
   };
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [addFolderModal, setAddFolderModal] = useState<{ isOpen: boolean; parentId: string | null; parentName: string } | null>(null);
+  const [addFolderModal, setAddFolderModal] = useState<{ isOpen: boolean; parentId: string | null; parentName: string; isStudio?: boolean } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
   const [folderToRename, setFolderToRename] = useState<{ id: string; name: string } | null>(null);
   const [standardRenames, setStandardRenames] = useState<Record<string, string>>(() => getStandardFolderRenames(palo.id));
   const [deletedStandardIds, setDeletedStandardIds] = useState<string[]>(() => getStandardFolderDeleted(palo.id));
+
+  const isFolderStudio = (folderId: string | null | undefined): boolean => {
+    if (!folderId) return false;
+    const f = danseFolders.find(item => item.id === folderId);
+    if (!f) {
+      return folderId.includes('studio_') || folderId.includes('choregraphies') || folderId.includes('llamadas') || folderId.includes('remate');
+    }
+    if (f.category === 'studio') return true;
+    if (f.parentId) return isFolderStudio(f.parentId);
+    return false;
+  };
 
   // État de pliage/dépliage des dossiers de l'arborescence (par défaut tous ouverts)
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Record<string, boolean>>(() => {
@@ -301,7 +332,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   }, []);
 
   const handleCreateDanseFolder = (name: string, parentId: string | null) => {
-    saveDanseFolder(palo.id, name, parentId);
+    const isStudio = addFolderModal?.isStudio || (parentId ? isFolderStudio(parentId) : isStudioPageOpen);
+    saveDanseFolder(palo.id, name, parentId, isStudio ? 'studio' : 'biblio');
     setDanseFolders(getDanseFolders(palo.id));
     setShareToastMessage(`Dossier « ${name} » créé avec succès !`);
     setTimeout(() => setShareToastMessage(null), 3500);
@@ -1885,7 +1917,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       tab: item.tab
     }));
 
-  const topLevelCustomFolders = danseFolders.filter(f => !f.parentId);
+  const topLevelBiblioCustomFolders = danseFolders.filter(f => !f.parentId && f.category !== 'studio');
 
   // Tri alphabétique des dossiers dans l'arborescence ('default' | 'asc' | 'desc')
   const [folderSortOrder, setFolderSortOrder] = useState<'default' | 'asc' | 'desc'>(() => {
@@ -1911,12 +1943,32 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const allRootFolders: TreeFolderItem[] = [
     ...standardFolders.map(s => ({ type: 'standard' as const, id: s.id, name: s.name, tab: s.tab })),
-    ...topLevelCustomFolders.map(c => ({ type: 'custom' as const, id: c.id, name: c.name }))
+    ...topLevelBiblioCustomFolders.map(c => ({ type: 'custom' as const, id: c.id, name: c.name }))
   ];
 
   const sortedRootFolders: TreeFolderItem[] = folderSortOrder === 'default'
     ? allRootFolders
     : [...allRootFolders].sort((a, b) => {
+        if (folderSortOrder === 'asc') {
+          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        } else {
+          return b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' });
+        }
+      });
+
+  const topLevelStudioFolders = danseFolders.filter(f => !f.parentId && (f.category === 'studio' || f.id.includes('choregraphies') || f.id.includes('llamadas') || f.id.includes('remate')));
+
+  const getStudioPriority = (name: string): number => {
+    const lower = name.toLowerCase();
+    if (lower.includes('chorégraphie')) return 1;
+    if (lower.includes('llamada')) return 2;
+    if (lower.includes('remate')) return 3;
+    return 10;
+  };
+
+  const sortedStudioRootFolders = folderSortOrder === 'default'
+    ? [...topLevelStudioFolders].sort((a, b) => getStudioPriority(a.name) - getStudioPriority(b.name))
+    : [...topLevelStudioFolders].sort((a, b) => {
         if (folderSortOrder === 'asc') {
           return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
         } else {
@@ -1934,6 +1986,29 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     }
     return subs;
   };
+
+  // Déployer toute l'arborescence au niveau des sous-dossiers au niveau 1 quand on arrive sur l'arborescence verte de la médiathèque
+  useEffect(() => {
+    if (isBiblioPageOpen && activeTab === 'hub') {
+      setCollapsedFolderIds(prev => {
+        const next = { ...prev };
+        // Déplier la racine
+        delete next['farruca_root'];
+        // Déplier tous les dossiers racine (niveau 1) et leurs sous-dossiers
+        sortedRootFolders.forEach(folder => {
+          delete next[folder.id];
+          const subs = getSubfoldersOf(folder.id);
+          subs.forEach(sub => {
+            delete next[sub.id];
+          });
+        });
+        try {
+          localStorage.setItem(`flamenco_collapsed_folders_${palo.id}`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+  }, [isBiblioPageOpen, activeTab]);
 
   const getFolderItemCount = (folderId: string): { files: number; subfolders: number } => {
     const subs = getSubfoldersOf(folderId).length;
@@ -1961,22 +2036,30 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const handleOpenCustomFolder = (folderId: string) => {
     setActiveCustomFolderId(folderId);
-    setIsBiblioPageOpen(true);
+    if (isFolderStudio(folderId)) {
+      setIsStudioPageOpen(true);
+      setIsBiblioPageOpen(false);
+    } else {
+      setIsBiblioPageOpen(true);
+      setIsStudioPageOpen(false);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderFolderDropdownMenu = (
     menuId: string,
     folderName: string,
-    folderId: string | null
+    folderId: string | null,
+    isStudioMenu?: boolean
   ) => {
     if (openDropdownId !== menuId) return null;
 
     const isFarruca = folderId === null;
+    const isStudio = isStudioMenu !== undefined ? isStudioMenu : (folderId ? isFolderStudio(folderId) : isStudioPageOpen);
 
     return (
       <div 
-        className="dropdown-menu-container absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl bg-[#1c1814] border border-[#3e3226] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
+        className="dropdown-menu-container absolute right-0 top-full mt-2 z-50 w-60 rounded-2xl bg-[#1c1814] border border-[#3e3226] shadow-2xl p-2.5 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
         onClick={e => e.stopPropagation()}
       >
         {/* Action 1 : Ajouter un dossier (ou sous-dossier) */}
@@ -1987,13 +2070,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             setAddFolderModal({
               isOpen: true,
               parentId: folderId,
-              parentName: folderName
+              parentName: folderName,
+              isStudio
             });
           }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-white hover:bg-emerald-950/50 transition-colors cursor-pointer group"
+          className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-[#ded3c5] hover:text-white transition-colors cursor-pointer group ${
+            isStudio ? 'hover:bg-blue-950/60' : 'hover:bg-emerald-950/60'
+          }`}
         >
-          <FolderPlus className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-          <span className="font-semibold text-emerald-300 group-hover:text-emerald-200">
+          <FolderPlus className={`w-4 h-4 group-hover:scale-110 transition-transform ${isStudio ? 'text-blue-400' : 'text-emerald-400'}`} />
+          <span className={`font-semibold ${isStudio ? 'text-blue-300 group-hover:text-blue-200' : 'text-emerald-300 group-hover:text-emerald-200'}`}>
             {isFarruca ? 'Ajouter un dossier' : 'Ajouter un sous-dossier'}
           </span>
         </button>
@@ -2006,7 +2092,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               setOpenDropdownId(null);
               setFolderToRename({ id: folderId, name: folderName });
             }}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[#ded3c5] hover:text-amber-300 hover:bg-[#26201a] transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-[#ded3c5] hover:text-amber-300 hover:bg-[#26201a] transition-colors cursor-pointer group"
           >
             <Pencil className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
             <span>Renommer ce dossier</span>
@@ -2021,7 +2107,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               setOpenDropdownId(null);
               setFolderToDelete({ id: folderId, name: folderName });
             }}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer group"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
             <span>Supprimer ce dossier</span>
@@ -2037,7 +2123,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             setOpenDropdownId(null);
             handleShareFolder(folderName, folderId || undefined);
           }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
+          className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-[#ded3c5] hover:text-[#e5a93b] hover:bg-[#26201a] transition-colors cursor-pointer group"
         >
           <Share2 className="w-3.5 h-3.5 text-[#e5a93b] group-hover:scale-110 transition-transform" />
           <span>Partager</span>
@@ -2076,7 +2162,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               setOpenDropdownId(prev => prev === 'sidebar_farruca' ? null : 'sidebar_farruca');
             }}
             className="p-1 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 transition-colors cursor-pointer"
-            title="Options Farruca"
+            title={`Options ${palo.name}`}
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -2257,9 +2343,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
-      {/* VUE NOUVELLE PAGE : ARBORESCENCE BIBLIOTHÈQUE FLAMENCA MINIMALISTE */}
+      {/* VUE NOUVELLE PAGE : ARBORESCENCE MÉDIATHÈQUE FLAMENCA MINIMALISTE */}
       {activeTab === 'hub' && isBiblioPageOpen && !activeCustomFolderId && (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Titre pleine largeur en majuscules : juste du texte, ce n'est pas un dossier */}
+          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#f4efe6] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
+            </h1>
+          </div>
+
           <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
             {/* En haut : Farruca avec bouton unique de tri alphabétique et trois petits points à droite */}
             <div className="flex items-center justify-between gap-3 relative pb-2 border-b border-[#2b2118]/80">
@@ -2323,7 +2416,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 </span>
               </div>
 
-              {/* TROIS PETITS POINTS À DROITE DE FARRUCA AU BOUT DE LA LIGNE : uniquement Ajouter un dossier et Partager */}
+              {/* TROIS PETITS POINTS À DROITE AU BOUT DE LA LIGNE : uniquement Ajouter un dossier et Partager */}
               <div className="relative dropdown-menu-trigger">
                 <button
                   type="button"
@@ -2332,7 +2425,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     setOpenDropdownId(prev => prev === 'farruca_root' ? null : 'farruca_root');
                   }}
                   className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
-                  title="Options Farruca"
+                  title={`Options ${palo.name}`}
                 >
                   <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -2515,12 +2608,239 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
+      {/* VUE NOUVELLE PAGE : ARBORESCENCE BLEUE ATELIER DE CRÉATION */}
+      {activeTab === 'hub' && isStudioPageOpen && !activeCustomFolderId && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+            {/* En haut : Farruca avec bouton unique de tri alphabétique et trois petits points à droite */}
+            <div className="flex items-center justify-between gap-3 relative pb-2 border-b border-[#2b2118]/80">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => toggleFolderCollapse('farruca_studio_root')}
+                  className="p-1 -ml-1 rounded-md text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                  title={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
+                  aria-label={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
+                >
+                  {collapsedFolderIds['farruca_studio_root'] ? (
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                  )}
+                </button>
+                <FolderOpen className="w-6 h-6 text-blue-400 shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] truncate">
+                  {palo.name}
+                </span>
+
+                {/* Bouton unique de tri alphabétique / contre-alphabétique placé près du nom du dossier */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSetFolderSortOrder(
+                      folderSortOrder === 'default' ? 'asc' : folderSortOrder === 'asc' ? 'desc' : 'default'
+                    );
+                  }}
+                  className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    folderSortOrder !== 'default'
+                      ? 'bg-blue-950/70 border-blue-500/40 text-blue-300 shadow-xs'
+                      : 'bg-[#181410] border-[#33281d] text-[#8c8173] hover:text-[#ded3c5] hover:bg-[#231e18]'
+                  }`}
+                  title={
+                    folderSortOrder === 'asc'
+                      ? "Classé A → Z (cliquer pour trier Z → A)"
+                      : folderSortOrder === 'desc'
+                      ? "Classé Z → A (cliquer pour ordre initial)"
+                      : "Classer les dossiers par ordre alphabétique (A → Z, Z → A)"
+                  }
+                  aria-label="Classer les dossiers par ordre alphabétique ou contre-alphabétique"
+                >
+                  {folderSortOrder === 'desc' ? (
+                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                  ) : folderSortOrder === 'asc' ? (
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                  ) : (
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
+                  {folderSortOrder !== 'default' && (
+                    <span className="text-[10px] font-bold text-blue-400 leading-none">
+                      {folderSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                    </span>
+                  )}
+                </button>
+
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950/60 text-blue-300 border border-blue-500/30 hidden xs:inline font-medium">
+                  Atelier de création
+                </span>
+              </div>
+
+              {/* TROIS PETITS POINTS À DROITE DE FARRUCA AU BOUT DE LA LIGNE */}
+              <div className="relative dropdown-menu-trigger">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdownId(prev => prev === 'farruca_studio_root' ? null : 'farruca_studio_root');
+                  }}
+                  className="p-1.5 sm:p-2 rounded-xl text-[#a69c8f] hover:text-blue-300 hover:bg-blue-950/40 border border-[#382d22] hover:border-blue-500/40 transition-all cursor-pointer shadow-xs"
+                  title="Options Farruca (Atelier)"
+                >
+                  <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                {renderFolderDropdownMenu('farruca_studio_root', palo.name, null, true)}
+              </div>
+            </div>
+
+            {/* En dessous : arborescence des dossiers & sous-dossiers classés */}
+            {!collapsedFolderIds['farruca_studio_root'] && (
+              <div className="ml-3 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-[#382d22] space-y-3 pt-1 animate-in fade-in duration-150">
+                {sortedStudioRootFolders.map(folderItem => {
+                  const counts = getFolderItemCount(folderItem.id);
+                  const subfolders = getSortedSubfoldersOf(folderItem.id);
+                  const isCollapsed = !!collapsedFolderIds[folderItem.id];
+                  const hasSubfolders = subfolders.length > 0;
+
+                  return (
+                    <div key={folderItem.id} className="space-y-2">
+                      <div className="relative group flex items-center">
+                        <div className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 w-4 sm:w-6 h-0.5 bg-[#382d22] group-hover:bg-blue-500/60 transition-colors" />
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleOpenCustomFolder(folderItem.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              handleOpenCustomFolder(folderItem.id);
+                            }
+                          }}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-blue-500/60 transition-all text-left cursor-pointer group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            {hasSubfolders ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFolderCollapse(folderItem.id);
+                                }}
+                                className="p-1 -ml-1 rounded-md text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                                title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
+                              >
+                                {isCollapsed ? (
+                                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-blue-400" />
+                                )}
+                              </button>
+                            ) : (
+                              <span className="w-5 h-5 shrink-0 -ml-0.5" />
+                            )}
+                            <Folder className="w-4 h-4 text-blue-400 group-hover:text-blue-300 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                {folderItem.name}
+                              </span>
+                              <span className="text-[11px] text-[#8c8173] font-normal leading-tight mt-0.5">
+                                {counts.subfolders} dossier{counts.subfolders > 1 ? 's' : ''} • {counts.files} {counts.files > 1 ? 'médias' : 'média'}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </div>
+
+                        {/* Trois petits points pour chaque dossier */}
+                        <div className="relative dropdown-menu-trigger ml-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `tree_${folderItem.id}` ? null : `tree_${folderItem.id}`);
+                            }}
+                            className="p-2 rounded-xl text-[#73685a] hover:text-blue-300 hover:bg-blue-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
+                            title={`Options ${folderItem.name}`}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {renderFolderDropdownMenu(
+                            `tree_${folderItem.id}`,
+                            folderItem.name,
+                            folderItem.id,
+                            true
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Sous-dossiers au niveau inférieur */}
+                      {hasSubfolders && !isCollapsed && (
+                        <div className="ml-4 sm:ml-6 pl-4 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1 animate-in fade-in duration-150">
+                          {subfolders.map(sub => {
+                            const subCounts = getFolderItemCount(sub.id);
+                            const subSubfolders = getSortedSubfoldersOf(sub.id);
+                            const isSubCollapsed = !!collapsedFolderIds[sub.id];
+                            const hasSubSubfolders = subSubfolders.length > 0;
+                            return (
+                              <div key={sub.id} className="space-y-1.5">
+                                <div className="relative group flex items-center">
+                                  <div className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-blue-500/60 transition-colors" />
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleOpenCustomFolder(sub.id)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCustomFolder(sub.id); }}
+                                    className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-blue-500/50 transition-all text-left cursor-pointer group shadow-xs"
+                                  >
+                                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                      {hasSubSubfolders ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleFolderCollapse(sub.id);
+                                          }}
+                                          className="p-0.5 -ml-0.5 rounded text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/20 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                                          title={isSubCollapsed ? `Déplier ${sub.name}` : `Replier ${sub.name}`}
+                                        >
+                                          {isSubCollapsed ? (
+                                            <ChevronRight className="w-3.5 h-3.5 text-blue-400" />
+                                          ) : (
+                                            <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
+                                          )}
+                                        </button>
+                                      ) : null}
+                                      <Folder className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                          {sub.name}
+                                        </span>
+                                        <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
+                                          {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-blue-400 transition-all shrink-0" />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* VUE DOSSIER PERSONNALISÉ OU SOUS-DOSSIER */}
       {activeCustomFolderId && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {(() => {
             const currentFolder = danseFolders.find(f => f.id === activeCustomFolderId);
             if (!currentFolder) return null;
+            const isStudioFolder = isFolderStudio(currentFolder.id);
             const parentFolder = currentFolder.parentId ? (
               standardFolders.find(s => s.id === currentFolder.parentId) || 
               danseFolders.find(f => f.id === currentFolder.parentId)
@@ -2536,14 +2856,24 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     type="button"
                     onClick={() => {
                       setActiveCustomFolderId(null);
-                      setIsBiblioPageOpen(true);
+                      if (isStudioFolder) {
+                        setIsStudioPageOpen(true);
+                        setIsBiblioPageOpen(false);
+                      } else {
+                        setIsBiblioPageOpen(true);
+                        setIsStudioPageOpen(false);
+                      }
                       setActiveTab('hub');
                     }}
-                    className="flex items-center gap-2 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-                    title="Retourner à l'arborescence Farruca"
+                    className={`flex items-center gap-2 text-left group transition-colors cursor-pointer ${
+                      isStudioFolder ? 'hover:text-blue-400' : 'hover:text-emerald-400'
+                    }`}
+                    title={`Retourner à l'arborescence ${palo.name}`}
                   >
-                    <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
+                    <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-blue-400' : 'text-emerald-400'}`} />
+                    <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
+                      isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
+                    }`}>
                       {palo.name}
                     </span>
                   </button>
@@ -2559,7 +2889,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                             handleOpenCustomFolder(parentFolder.id);
                           }
                         }}
-                        className="text-sm sm:text-base font-semibold text-[#a69c8f] hover:text-emerald-400 transition-colors cursor-pointer"
+                        className={`text-sm sm:text-base font-semibold text-[#a69c8f] transition-colors cursor-pointer ${
+                          isStudioFolder ? 'hover:text-blue-400' : 'hover:text-emerald-400'
+                        }`}
                       >
                         {parentFolder.name}
                       </button>
@@ -2573,7 +2905,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     {/* Dossier + nombre de fichiers + Barre de recherche à droite du dossier */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 shrink-0">
-                        <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <Folder className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-blue-400' : 'text-emerald-400'}`} />
                         <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap">
                           {currentFolder.name}
                         </h3>
@@ -2702,7 +3034,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       )}
 
       {/* Hero Card Palo Danse compact : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
-      {activeTab === 'hub' && !isBiblioPageOpen && (
+      {activeTab === 'hub' && !isBiblioPageOpen && !isStudioPageOpen && (
         <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 shadow-lg">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 font-bold text-xs uppercase tracking-wider shrink-0 shadow-xs">
@@ -2716,18 +3048,26 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         </div>
       )}
 
-      {/* VUE 1 : DIRECTEMENT LES 2 ARBORESCENCES CLIQUABLES (BIBLIOTHÈQUE FLAMENCA ET ATELIER DE CRÉATION) */}
-      {activeTab === 'hub' && !isBiblioPageOpen && (
+      {/* VUE 1 : DIRECTEMENT LES 2 ARBORESCENCES CLIQUABLES (MÉDIATHÈQUE FLAMENCA ET ATELIER DE CRÉATION) */}
+      {activeTab === 'hub' && !isBiblioPageOpen && !isStudioPageOpen && (
         <div 
           id="danse-espaces-etude" 
           className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20"
           onClickCapture={(e) => {
             const target = e.target as HTMLElement;
-            const isBiblio = target.closest('.border-emerald-500') || (target.textContent?.includes('Bibliothèque Flamenca') ? target.closest('.cursor-pointer') : null);
+            const isBiblio = target.closest('.border-emerald-500') || (target.textContent?.includes('MÉDIATHÈQUE') || target.textContent?.includes('Médiathèque') || target.textContent?.includes('BIBLIOTHÈQUE') || target.textContent?.includes('Bibliothèque') ? target.closest('.cursor-pointer') : null);
+            const isStudio = target.closest('.border-blue-400') || (target.textContent?.includes('ATELIER') || target.textContent?.includes('Atelier') ? target.closest('.cursor-pointer') : null);
             if (isBiblio) {
               e.preventDefault();
               e.stopPropagation();
               setIsBiblioPageOpen(true);
+              setIsStudioPageOpen(false);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (isStudio) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsStudioPageOpen(true);
+              setIsBiblioPageOpen(false);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }
           }}
@@ -2744,6 +3084,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             defaultExpanded={false}
+            initialOpenFolder={initialTreeFolder}
             counts={{
               maitres: getMaitresVideos().length,
               cours: getCoursVideos().length,
@@ -3118,11 +3459,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-              title="Retourner à l'arborescence Farruca"
+              title={`Retourner à l'arborescence ${palo.name}`}
             >
               <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
-                Farruca
+                {palo.name}
               </span>
             </button>
           </div>
@@ -3228,11 +3569,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-              title="Retourner à l'arborescence Farruca"
+              title={`Retourner à l'arborescence ${palo.name}`}
             >
               <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
-                Farruca
+                {palo.name}
               </span>
             </button>
           </div>
@@ -3548,11 +3889,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-              title="Retourner à l'arborescence Farruca"
+              title={`Retourner à l'arborescence ${palo.name}`}
             >
               <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
-                Farruca
+                {palo.name}
               </span>
             </button>
           </div>
@@ -3734,11 +4075,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
-              title="Retourner à l'arborescence Farruca"
+              title={`Retourner à l'arborescence ${palo.name}`}
             >
               <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
-                Farruca
+                {palo.name}
               </span>
             </button>
           </div>

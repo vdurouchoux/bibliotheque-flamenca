@@ -46,7 +46,9 @@ export default function App() {
   const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
   const [danseTab, setDanseTab] = useState<DanseSectionTab>('hub');
   const [isBiblioPageOpen, setIsBiblioPageOpen] = useState<boolean>(false);
+  const [isStudioPageOpen, setIsStudioPageOpen] = useState<boolean>(false);
   const [danseCustomFolderId, setDanseCustomFolderId] = useState<string | null>(null);
+  const [danseInitialTreeFolder, setDanseInitialTreeFolder] = useState<'biblio' | 'studio' | null>(null);
 
   // Modals state
   const [activeVideoData, setActiveVideoData] = useState<{
@@ -251,6 +253,7 @@ export default function App() {
     setDiscipline(mode);
     setDanseTab('hub');
     setIsBiblioPageOpen(false);
+    setIsStudioPageOpen(false);
     try {
       localStorage.setItem('flamenco_discipline', mode);
     } catch (e) {
@@ -306,6 +309,32 @@ export default function App() {
     setDanseTab('hub');
     setDanseCustomFolderId(null);
     setIsBiblioPageOpen(false);
+    setIsStudioPageOpen(false);
+    setDanseInitialTreeFolder(null);
+    setCurrentView('palo-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenBibliotheque = (paloKey: string) => {
+    setSelectedPaloKey(paloKey);
+    setSelectedVariantKey(null);
+    setDanseTab('hub');
+    setDanseCustomFolderId(null);
+    setIsBiblioPageOpen(true);
+    setIsStudioPageOpen(false);
+    setDanseInitialTreeFolder('biblio');
+    setCurrentView('palo-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenAtelier = (paloKey: string) => {
+    setSelectedPaloKey(paloKey);
+    setSelectedVariantKey(null);
+    setDanseTab('hub');
+    setDanseCustomFolderId(null);
+    setIsBiblioPageOpen(false);
+    setIsStudioPageOpen(true);
+    setDanseInitialTreeFolder('studio');
     setCurrentView('palo-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -315,6 +344,7 @@ export default function App() {
     setSelectedVariantKey(null);
     setDanseTab(tab);
     setDanseCustomFolderId(null);
+    setDanseInitialTreeFolder(null);
     if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
       setIsBiblioPageOpen(true);
     }
@@ -356,14 +386,21 @@ export default function App() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } else if (danseTab !== 'hub') {
-          // Si on est dans un dossier (ex: Grands Maîtres, Cours, Letras, Compás, etc.), on retourne à l'arborescence de la Farruca avec les dossiers verts
+          // Si on est dans un dossier (ex: Grands Maîtres, Cours, Letras, Compás, etc.), on retourne à l'arborescence de la Farruca
           setDanseCustomFolderId(null);
           setDanseTab('hub');
-          setIsBiblioPageOpen(true);
+          if (!isStudioPageOpen) {
+            setIsBiblioPageOpen(true);
+          }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        } else if (isStudioPageOpen) {
+          // Si on est sur l'arborescence bleue de l'Atelier, on retourne à la vue principale du palo
+          setIsStudioPageOpen(false);
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } else if (isBiblioPageOpen) {
-          // Si on est sur l'arborescence de la Farruca avec les dossiers verts, on retourne à la vue principale du palo
+          // Si on est sur l'arborescence verte de la Médiathèque, on retourne à la vue principale du palo
           setIsBiblioPageOpen(false);
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
@@ -413,6 +450,7 @@ export default function App() {
     setDanseTab('hub');
     setDanseCustomFolderId(null);
     setIsBiblioPageOpen(false);
+    setIsStudioPageOpen(false);
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -526,7 +564,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className={`flex-1 w-full mx-auto p-3 sm:p-6 pb-24 ${isBiblioPageOpen ? 'max-w-6xl' : 'max-w-4xl'}`}>
+      <main className={`flex-1 w-full mx-auto p-3 sm:p-6 pb-24 ${isBiblioPageOpen || isStudioPageOpen ? 'max-w-6xl' : 'max-w-4xl'}`}>
         {/* Sync notification toast */}
         {syncToast && (
           <div className="mb-5 p-3.5 sm:p-4 rounded-2xl bg-[#261f17] border-2 border-[#e5a93b] text-[#f4efe6] shadow-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -566,6 +604,8 @@ export default function App() {
                 });
               }}
               onNavigateDanseTab={handleNavigateDanseTab}
+              onOpenBibliotheque={handleOpenBibliotheque}
+              onOpenAtelier={handleOpenAtelier}
             />
           ) : discipline === 'guitare' ? (
             <PaloList
@@ -648,8 +688,11 @@ export default function App() {
               activeTab={danseTab}
               isBiblioPageOpen={isBiblioPageOpen}
               onToggleBiblioPage={setIsBiblioPageOpen}
+              isStudioPageOpen={isStudioPageOpen}
+              onToggleStudioPage={setIsStudioPageOpen}
               activeCustomFolderId={danseCustomFolderId}
               onCustomFolderChange={setDanseCustomFolderId}
+              initialTreeFolder={danseInitialTreeFolder}
               onTabChange={tab => {
                 setDanseTab(tab);
                 if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {

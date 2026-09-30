@@ -1281,6 +1281,7 @@ export interface DanseFolderNode {
   name: string;
   parentId?: string | null;
   createdAt: number;
+  category?: 'biblio' | 'studio';
 }
 
 const STORAGE_DANSE_FOLDERS_KEY = 'flamenco_danse_folders_v1';
@@ -1292,6 +1293,8 @@ export function getDanseFolders(paloId: string): DanseFolderNode[] {
     const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
     let folders = store[paloId] || [];
 
+    let hasChanges = false;
+
     if (paloId.includes('farruca') && !folders.some(f => f.name.toLowerCase() === 'essai' && f.parentId === 'maitres')) {
       const defaultEssai: DanseFolderNode = {
         id: 'folder_farruca_essai',
@@ -1301,6 +1304,44 @@ export function getDanseFolders(paloId: string): DanseFolderNode[] {
         createdAt: 1700000000000
       };
       folders = [...folders, defaultEssai];
+      hasChanges = true;
+    }
+
+    // Initialisation des dossiers de l'Atelier de création sous le dossier Farruca :
+    // 1. Mes chorégraphies, 2. Mes llamadas, 3. Mes remate
+    const hasStudioChoreo = folders.some(f => (f.category === 'studio' || f.id.includes('choregraphies')) && f.name.toLowerCase().includes('chorégraphie'));
+    if (!hasStudioChoreo) {
+      const defaultStudioFolders: DanseFolderNode[] = [
+        {
+          id: `folder_${paloId}_choregraphies`,
+          paloId,
+          name: 'Mes chorégraphies',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000010
+        },
+        {
+          id: `folder_${paloId}_llamadas`,
+          paloId,
+          name: 'Mes llamadas',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000020
+        },
+        {
+          id: `folder_${paloId}_remates`,
+          paloId,
+          name: 'Mes remate',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000030
+        }
+      ];
+      folders = [...folders, ...defaultStudioFolders];
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
       store[paloId] = folders;
       try {
         localStorage.setItem(STORAGE_DANSE_FOLDERS_KEY, JSON.stringify(store));
@@ -1313,13 +1354,21 @@ export function getDanseFolders(paloId: string): DanseFolderNode[] {
   }
 }
 
-export function saveDanseFolder(paloId: string, name: string, parentId?: string | null): DanseFolderNode {
+export function saveDanseFolder(paloId: string, name: string, parentId?: string | null, category?: 'biblio' | 'studio'): DanseFolderNode {
   const folders = getDanseFolders(paloId);
+  let effectiveCategory = category;
+  if (parentId) {
+    const parent = folders.find(f => f.id === parentId);
+    if (parent?.category === 'studio') {
+      effectiveCategory = 'studio';
+    }
+  }
   const newFolder: DanseFolderNode = {
     id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     paloId,
     name: name.trim(),
     parentId: parentId || null,
+    category: effectiveCategory,
     createdAt: Date.now()
   };
   const updated = [...folders, newFolder];

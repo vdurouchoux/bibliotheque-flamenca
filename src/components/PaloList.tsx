@@ -59,7 +59,7 @@ export const PaloList: React.FC<PaloListProps> = ({
             <span>Répertoire & Étude de la Guitare Flamenca</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] tracking-tight font-serif">
-            Bibliothèque Flamenca
+            Médiathèque Flamenca
           </h2>
           <p className="text-xs sm:text-sm text-[#b5a99a] mt-1.5 leading-relaxed">
             Choisissez un palo pour explorer ses falsetas par niveau (1, 2, 3), l'accompagnement du cante et du baile, ses cadences harmoniques et son compás interactif.
@@ -233,7 +233,7 @@ export const PaloList: React.FC<PaloListProps> = ({
 
       {/* Footer info note */}
       <div className="text-center text-xs text-[#6e6355] pt-4 pb-2">
-        Bibliothèque Flamenca
+        Médiathèque Flamenca
       </div>
     </div>
   );

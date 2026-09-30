@@ -162,7 +162,7 @@ export const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ onClose })
                 1. Scannez avec l'appareil photo de votre téléphone
               </h4>
               <p className="text-xs text-[#a69c8f] leading-relaxed">
-                Pointez l'appareil photo de votre smartphone vers ce QR Code pour ouvrir directement la Bibliothèque Flamenca.
+                Pointez l'appareil photo de votre smartphone vers ce QR Code pour ouvrir directement la Médiathèque Flamenca.
               </p>
 
               {/* Copy URL */}

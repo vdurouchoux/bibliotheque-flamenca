@@ -205,7 +205,7 @@ export function getSectionShareData(params: {
   });
 
   const title = `Flamenco ${discipline === 'danse' ? 'Danse' : 'Guitare'} – ${paloName} : ${sectionTitle}`;
-  const text = `Consulte l'espace d'étude "${sectionTitle}" pour la ${paloName} sur la Bibliothèque Flamenca.`;
+  const text = `Consulte l'espace d'étude "${sectionTitle}" pour la ${paloName} sur la Médiathèque Flamenca.`;
 
   return {
     title,
