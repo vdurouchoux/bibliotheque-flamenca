@@ -486,6 +486,29 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     setIsPlaying(true);
   };
 
+  const handleToggleExpand = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    const wasPlaying = isPlaying;
+    setIsExpandedVideo(prev => !prev);
+
+    // Maintien strict de l'état : si en pause rester en pause, si en lecture continuer à lire
+    if (wasPlaying) {
+      setTimeout(() => {
+        resumeVideo();
+      }, 60);
+      setTimeout(() => {
+        resumeVideo();
+      }, 260);
+    } else {
+      setTimeout(() => {
+        pauseVideo();
+      }, 60);
+      setTimeout(() => {
+        pauseVideo();
+      }, 260);
+    }
+  };
+
   // Listen to YouTube player state events and progress without triggering iframe reloads
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -1245,10 +1268,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             {/* Bouton deux flèches vertes en bas à droite pour agrandir la vidéo tout en gardant les contrôles en bas (sans liseré vert) */}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpandedVideo(prev => !prev);
-              }}
+              onClick={handleToggleExpand}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/80 hover:bg-black/95 text-[#10b981] hover:text-[#34d399] border border-white/10 hover:border-white/20 backdrop-blur-sm shadow-xl transition-all cursor-pointer pointer-events-auto active:scale-95 group"
               title={isExpandedVideo ? "Réduire la taille de la vidéo" : "Agrandir la vidéo (garde les contrôles en bas)"}
               aria-label={isExpandedVideo ? "Réduire la vidéo" : "Agrandir la vidéo"}
@@ -1267,58 +1291,74 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </button>
           </div>
 
-          {/* Curseur de défilement vidéo (remplace la ligne rouge de YouTube, sans position redondante à gauche) */}
-          <div className="px-3 sm:px-4 py-2 bg-[#120f0c] border-b border-[#29221a] flex items-center gap-2.5 sm:gap-3 text-xs w-full select-none">
-            <div className="relative flex-1 flex items-center">
-              <input
-                type="range"
-                min="0"
-                max={Math.max(duration || 60, currentPosition, 1)}
-                step="1"
-                value={currentPosition}
-                onChange={(e) => {
-                  const newTime = parseInt(e.target.value, 10);
-                  handleJumpToTime(newTime);
-                }}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
-                title="Curseur de défilement : glisser pour avancer ou reculer dans la vidéo"
-                aria-label="Position de lecture de la vidéo"
-              />
-            </div>
+          {/* Curseur de défilement vidéo (décalé de 2cm vers la droite, ligne plus fine avec surlignage brillant à gauche façon YouTube) */}
+          <div className="px-3 sm:px-4 py-2 bg-[#120f0c] border-b border-[#29221a] flex items-center text-xs w-full select-none">
+            <div className="w-full flex items-center gap-2.5 sm:gap-3" style={{ paddingLeft: '2cm' }}>
+              <span className="font-mono text-[11px] sm:text-xs text-[#8c8173] font-semibold min-w-[36px] text-left shrink-0">
+                {formatSecondsToMinutes(currentPosition)}
+              </span>
 
-            <span className="font-mono text-[11px] sm:text-xs text-[#8c8173] font-semibold min-w-[36px] text-right shrink-0">
-              {duration > 0 ? formatSecondsToMinutes(duration) : '--:--'}
-            </span>
+              <div className="relative flex-1 flex items-center">
+                {(() => {
+                  const maxVal = Math.max(duration || 60, currentPosition, 1);
+                  const progressPercent = Math.min(100, Math.max(0, (currentPosition / maxVal) * 100));
+
+                  return (
+                    <input
+                      type="range"
+                      min="0"
+                      max={maxVal}
+                      step="1"
+                      value={currentPosition}
+                      onChange={(e) => {
+                        const newTime = parseInt(e.target.value, 10);
+                        handleJumpToTime(newTime);
+                      }}
+                      style={{
+                        background: `linear-gradient(to right, #10b981 0%, #34d399 ${progressPercent}%, #2e261f ${progressPercent}%, #2e261f 100%)`
+                      }}
+                      className="w-full h-1 rounded-full appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                      title="Curseur de défilement : glisser pour avancer ou reculer dans la vidéo"
+                      aria-label="Position de lecture de la vidéo"
+                    />
+                  );
+                })()}
+              </div>
+
+              <span className="font-mono text-[11px] sm:text-xs text-[#8c8173] font-semibold min-w-[36px] text-right shrink-0">
+                {duration > 0 ? formatSecondsToMinutes(duration) : '--:--'}
+              </span>
+            </div>
           </div>
 
           {/* Playback Controls Bar */}
           <div className="px-2.5 sm:px-4 py-2 bg-[#171410] border-b border-[#2d261e] flex items-center gap-1.5 sm:gap-2 text-xs">
-            {/* Boutons d'avance / recul rapide */}
+            {/* Boutons d'avance / recul rapide avec flèches plus petites, discrètes et épurées */}
             <button
               onClick={() => handleRewind(10)}
-              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#1f1a15] hover:bg-[#2c221a] text-[#c2b5a5] hover:text-[#f4efe6] border border-[#362b20] transition-colors cursor-pointer text-[11px] shrink-0"
               title="Reculer de 10s"
             >
-              <Rewind className="w-3.5 h-3.5 text-[#10b981]" />
-              <span>-10s</span>
+              <Rewind className="w-2.5 h-2.5 text-[#10b981]/75 stroke-[1.5] shrink-0" />
+              <span className="font-mono">-10s</span>
             </button>
 
             <button
               onClick={() => handleSkipForward(10)}
-              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#d4c9ba] border border-[#3b3228] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#1f1a15] hover:bg-[#2c221a] text-[#c2b5a5] hover:text-[#f4efe6] border border-[#362b20] transition-colors cursor-pointer text-[11px] shrink-0"
               title="Avancer de 10s"
             >
-              <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
-              <span>+10s</span>
+              <FastForward className="w-2.5 h-2.5 text-[#10b981]/75 stroke-[1.5] shrink-0" />
+              <span className="font-mono">+10s</span>
             </button>
 
             <button
               onClick={() => handleSkipForward(30)}
-              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg bg-[#25201b] hover:bg-[#322a22] text-[#b8ada0] border border-[#352e25] transition-colors cursor-pointer text-[11px] sm:text-xs shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#1f1a15] hover:bg-[#2c221a] text-[#c2b5a5] hover:text-[#f4efe6] border border-[#362b20] transition-colors cursor-pointer text-[11px] shrink-0"
               title="Avancer de 30s"
             >
-              <FastForward className="w-3.5 h-3.5 text-[#10b981]" />
-              <span>+30s</span>
+              <FastForward className="w-2.5 h-2.5 text-[#10b981]/75 stroke-[1.5] shrink-0" />
+              <span className="font-mono">+30s</span>
             </button>
 
             {/* Bouton Copier la position actuelle */}
@@ -1412,7 +1452,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 step="1"
                 value={isMuted ? 0 : volume}
                 onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
-                className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                style={{
+                  background: `linear-gradient(to right, #10b981 0%, #10b981 ${isMuted ? 0 : volume}%, #2c251e ${isMuted ? 0 : volume}%, #2c251e 100%)`
+                }}
+                className="flex-1 w-full h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none range-slider-fader-knob"
                 aria-label="Volume"
               />
               <span className="font-mono text-[11px] text-[#10b981] font-semibold min-w-[34px] text-right select-none shrink-0">
@@ -1444,7 +1487,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   const finalVal = Math.abs(val - 1) <= 0.06 ? 1 : val;
                   changePlaybackSpeed(finalVal);
                 }}
-                className="flex-1 w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none range-slider-green-translucent"
+                style={{
+                  background: `linear-gradient(to right, #10b981 0%, #10b981 ${Math.min(100, Math.max(0, ((playbackSpeed - 0.25) / 1.75) * 100))}%, #2c251e ${Math.min(100, Math.max(0, ((playbackSpeed - 0.25) / 1.75) * 100))}%, #2c251e 100%)`
+                }}
+                className="flex-1 w-full h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none range-slider-fader-knob"
                 aria-label="Vitesse"
                 title="Glisser pour ajuster la vitesse (double-clic pour 1x)"
               />
@@ -1471,10 +1517,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </div>
           </div>
 
-          {/* Video Info & Practice Tools (Liste des repères, Notes, etc.) */}
-          <div className="p-3 sm:p-4 space-y-3">
+          {/* Video Info & Practice Tools (Liste des repères, Notes, etc.) avec espace aéré après la ligne de vitesse */}
+          <div className="p-3 sm:p-4 pt-7 sm:pt-9 space-y-5">
           {/* Interactive Landmarks (Liste des repères) */}
-          <div className="p-3 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
+          <div className="p-3 sm:p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5 mt-2">
             {/* Header of landmarks section */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-[#f4efe6]">
