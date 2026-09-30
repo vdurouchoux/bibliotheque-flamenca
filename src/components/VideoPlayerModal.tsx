@@ -1424,8 +1424,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </button>
           </div>
 
-          {/* Ligne 1 : Régulateur de Volume (décalé de 2cm vers la droite pour le confort du pouce gauche) */}
-          <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full">
+          {/* Bloc combiné : Régulateurs de Volume et de Vitesse (même couleur de fond, sans séparation entre les deux, et fond étendu vers le bas) */}
+          <div className="px-3 sm:px-4 pt-2 pb-3.5 sm:pb-4 bg-[#14110d] border-b border-[#29221a] flex flex-col gap-2 w-full text-xs">
+            {/* Ligne Volume */}
             <div className="w-full flex items-center gap-2 sm:gap-2.5" style={{ paddingLeft: '2cm' }}>
               <span className="text-[10px] text-[#8c8173] font-medium tracking-tight select-none shrink-0 w-10">
                 Volume
@@ -1462,10 +1463,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 {isMuted ? '0%' : `${volume}%`}
               </span>
             </div>
-          </div>
 
-          {/* Ligne 2 : Régulateur de Vitesse (décalé de 2cm vers la droite pour le confort du pouce gauche) */}
-          <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center text-xs w-full">
+            {/* Ligne Vitesse (sur le même fond sans trait de séparation) */}
             <div className="w-full flex items-center gap-2 sm:gap-2.5" style={{ paddingLeft: '2cm' }}>
               <span className="text-[10px] text-[#8c8173] font-medium tracking-tight select-none shrink-0 w-10">
                 Vitesse
@@ -1517,10 +1516,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             </div>
           </div>
 
-          {/* Video Info & Practice Tools (Liste des repères, Notes, etc.) avec espace aéré après la ligne de vitesse */}
-          <div className="p-3 sm:p-4 pt-7 sm:pt-9 space-y-5">
+          {/* Video Info & Practice Tools (Liste des repères, Notes, etc.) */}
+          <div className="p-3 sm:p-4 space-y-3">
           {/* Interactive Landmarks (Liste des repères) */}
-          <div className="p-3 sm:p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5 mt-2">
+          <div className="p-3 sm:p-3.5 bg-[#171410] border border-[#302820] rounded-xl space-y-2.5">
             {/* Header of landmarks section */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-[#f4efe6]">
