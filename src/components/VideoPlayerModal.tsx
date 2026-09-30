@@ -1387,6 +1387,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           {/* Ligne 1 : Régulateur de Volume (décalé de 2cm vers la droite pour le confort du pouce gauche) */}
           <div className="px-3 sm:px-4 py-1 bg-[#15120e] border-b border-[#29221a] flex items-center text-xs w-full">
             <div className="w-full flex items-center gap-2 sm:gap-2.5" style={{ paddingLeft: '2cm' }}>
+              <span className="text-[10px] text-[#8c8173] font-medium tracking-tight select-none shrink-0 w-10">
+                Volume
+              </span>
               <button
                 type="button"
                 onClick={toggleMute}
@@ -1421,6 +1424,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           {/* Ligne 2 : Régulateur de Vitesse (décalé de 2cm vers la droite pour le confort du pouce gauche) */}
           <div className="px-3 sm:px-4 py-1 bg-[#13100d] border-b border-[#29221a] flex items-center text-xs w-full">
             <div className="w-full flex items-center gap-2 sm:gap-2.5" style={{ paddingLeft: '2cm' }}>
+              <span className="text-[10px] text-[#8c8173] font-medium tracking-tight select-none shrink-0 w-10">
+                Vitesse
+              </span>
               <div className="flex items-center shrink-0 text-[#10b981]" title="Vitesse de lecture">
                 <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
               </div>

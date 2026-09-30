@@ -1295,11 +1295,20 @@ export function getDanseFolders(paloId: string): DanseFolderNode[] {
 
     let hasChanges = false;
 
-    if (paloId.includes('farruca') && !folders.some(f => f.name.toLowerCase() === 'essai' && f.parentId === 'maitres')) {
+    // Mettre à jour "Essai" vers "Essais" avec un s
+    folders = folders.map(f => {
+      if (f.id === 'folder_farruca_essai' && f.name === 'Essai') {
+        hasChanges = true;
+        return { ...f, name: 'Essais' };
+      }
+      return f;
+    });
+
+    if (paloId.includes('farruca') && !folders.some(f => (f.name.toLowerCase() === 'essai' || f.name.toLowerCase() === 'essais') && f.parentId === 'maitres')) {
       const defaultEssai: DanseFolderNode = {
         id: 'folder_farruca_essai',
         paloId,
-        name: 'Essai',
+        name: 'Essais',
         parentId: 'maitres',
         createdAt: 1700000000000
       };

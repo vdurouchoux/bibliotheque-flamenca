@@ -326,7 +326,7 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac] group-hover:text-white transition-colors">
-                            Grands maîtres
+                            Grands Maîtres
                           </span>
                           {counts?.maitres !== undefined && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#86efac]/15 text-[#86efac] border border-[#86efac]/30 font-medium">

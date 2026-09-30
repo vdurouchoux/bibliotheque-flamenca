@@ -256,43 +256,43 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <h4 className="text-xl font-bold font-serif text-[#f4efe6]">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4">
+                      <div className="min-w-0">
+                        <h4 className="text-xl sm:text-2xl font-bold font-serif text-[#f4efe6]">
                           {item.name}
                         </h4>
                         <p className="text-xs text-[#e5a93b] font-medium flex items-center gap-1.5 mt-1">
-                          <Activity className="w-3.5 h-3.5 text-[#e5a93b]" />
+                          <Activity className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
                           <span>{item.tag}</span>
                         </p>
                       </div>
 
                       {item.isAvailable ? (
                         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-                          {/* Bouton carré Médiathèque */}
+                          {/* Bouton Médiathèque élargi pour afficher le mot entier */}
                           <button
                             type="button"
                             onClick={() => onOpenBibliotheque ? onOpenBibliotheque(item.id) : onSelectPalo(item.id)}
-                            className="w-16 h-16 sm:w-18 sm:h-18 aspect-square rounded-xl bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 flex flex-col items-center justify-center gap-1 p-1 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                            className="w-[84px] sm:w-[96px] h-[70px] sm:h-[76px] px-1.5 py-2 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 flex flex-col items-center justify-center gap-1.5 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
                             title="Ouvrir la médiathèque"
                             aria-label="Ouvrir la médiathèque"
                           >
                             <BookOpen className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
-                            <span className="text-[9.5px] sm:text-[10.5px] font-bold leading-tight block truncate max-w-full">
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold leading-tight whitespace-nowrap">
                               Médiathèque
                             </span>
                           </button>
 
-                          {/* Bouton carré Atelier */}
+                          {/* Bouton Atelier */}
                           <button
                             type="button"
                             onClick={() => onOpenAtelier ? onOpenAtelier(item.id) : onSelectPalo(item.id)}
-                            className="w-16 h-16 sm:w-18 sm:h-18 aspect-square rounded-xl bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-100 border border-blue-500/40 flex flex-col items-center justify-center gap-1 p-1 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                            className="w-[84px] sm:w-[96px] h-[70px] sm:h-[76px] px-1.5 py-2 rounded-xl bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-100 border border-blue-500/40 flex flex-col items-center justify-center gap-1.5 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
                             title="Ouvrir l'atelier"
                             aria-label="Ouvrir l'atelier"
                           >
                             <Film className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
-                            <span className="text-[9.5px] sm:text-[10.5px] font-bold leading-tight block truncate max-w-full">
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold leading-tight whitespace-nowrap">
                               Atelier
                             </span>
                           </button>
