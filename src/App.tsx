@@ -21,7 +21,7 @@ import { InstallGuideModal } from './components/InstallGuideModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { flamencoMetronome } from './utils/audioMetronome';
-import { getBookmarks, importAllSyncData, decodeSharedMontage, importSharedMontage } from './utils/storage';
+import { getBookmarks, importAllSyncData, decodeSharedMontage, importSharedMontage, getDanseFolders } from './utils/storage';
 import { startCloudSync, subscribeToSyncStatus, SyncState, loadSharedMontageCloud } from './utils/firebaseSync';
 import { Volume2, Square, Play, CheckCircle2, Sparkles, X } from 'lucide-react';
 
@@ -45,7 +45,7 @@ export default function App() {
   const [selectedPaloKey, setSelectedPaloKey] = useState<string | null>(null);
   const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
   const [danseTab, setDanseTab] = useState<DanseSectionTab>('hub');
-  const [isBiblioPageOpen, setIsBiblioPageOpen] = useState<boolean>(false);
+  const [isBiblioPageOpen, setIsBiblioPageOpen] = useState<boolean>(true);
   const [isStudioPageOpen, setIsStudioPageOpen] = useState<boolean>(false);
   const [danseCustomFolderId, setDanseCustomFolderId] = useState<string | null>(null);
   const [danseInitialTreeFolder, setDanseInitialTreeFolder] = useState<'biblio' | 'studio' | null>(null);
@@ -252,7 +252,7 @@ export default function App() {
   const handleToggleDiscipline = (mode: DisciplineMode) => {
     setDiscipline(mode);
     setDanseTab('hub');
-    setIsBiblioPageOpen(false);
+    setIsBiblioPageOpen(true);
     setIsStudioPageOpen(false);
     try {
       localStorage.setItem('flamenco_discipline', mode);
@@ -308,7 +308,7 @@ export default function App() {
     setPaloInitialTab(initialTab);
     setDanseTab('hub');
     setDanseCustomFolderId(null);
-    setIsBiblioPageOpen(false);
+    setIsBiblioPageOpen(true);
     setIsStudioPageOpen(false);
     setDanseInitialTreeFolder(null);
     setCurrentView('palo-detail');
@@ -377,35 +377,39 @@ export default function App() {
       else setCurrentView('home');
     } else if (currentView === 'palo-detail') {
       if (discipline === 'danse') {
-        if (danseCustomFolderId) {
-          // Si on est dans un dossier au même niveau que essai dans l'arborescence (ou sous-dossier),
-          // on revient sur l'arborescence de la farruca en vert
-          setDanseCustomFolderId(null);
-          setDanseTab('hub');
-          setIsBiblioPageOpen(true);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        } else if (danseTab !== 'hub') {
-          // Si on est dans un dossier (ex: Grands Maîtres, Cours, Letras, Compás, etc.), on retourne à l'arborescence de la Farruca
-          setDanseCustomFolderId(null);
-          setDanseTab('hub');
-          if (!isStudioPageOpen) {
-            setIsBiblioPageOpen(true);
+        if (danseCustomFolderId && selectedPaloKey) {
+          // Remonter hiérarchiquement : si dossier parent, on y va, sinon on revient à la racine du même espace
+          const folders = getDanseFolders(selectedPaloKey);
+          const current = folders.find(f => f.id === danseCustomFolderId);
+          if (current?.parentId) {
+            setDanseCustomFolderId(current.parentId);
+          } else {
+            setDanseCustomFolderId(null);
+            setDanseTab('hub');
           }
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
+        } else if (danseTab !== 'hub') {
+          // Si on est dans un sous-onglet (Grands Maîtres, Cours, etc.), on retourne au hub du même espace
+          setDanseCustomFolderId(null);
+          setDanseTab('hub');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
         } else if (isStudioPageOpen) {
-          // Si on est sur l'arborescence bleue de l'Atelier, on retourne à la vue principale du palo
+          // Si on est sur l'Atelier à la racine, on retourne à la liste des palos (jamais vers Médiathèque !)
           setIsStudioPageOpen(false);
+          setSelectedPaloKey(null);
+          setCurrentView('home');
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } else if (isBiblioPageOpen) {
-          // Si on est sur l'arborescence verte de la Médiathèque, on retourne à la vue principale du palo
+          // Si on est sur la Médiathèque à la racine, on retourne à la liste des palos (jamais vers Atelier !)
           setIsBiblioPageOpen(false);
+          setSelectedPaloKey(null);
+          setCurrentView('home');
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } else {
-          // Déjà sur la vue principale du palo, on revient à la liste des palos
           setSelectedPaloKey(null);
           setCurrentView('home');
         }
@@ -449,7 +453,7 @@ export default function App() {
     setSelectedVariantKey(null);
     setDanseTab('hub');
     setDanseCustomFolderId(null);
-    setIsBiblioPageOpen(false);
+    setIsBiblioPageOpen(true);
     setIsStudioPageOpen(false);
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -531,6 +535,25 @@ export default function App() {
     discipline
   ]);
 
+  // Espace danse actuel (Médiathèque = vert, Atelier = bleu) pour la couleur de la flèche de retour
+  const currentDanseSpace = useMemo<'biblio' | 'studio' | null>(() => {
+    if (discipline !== 'danse' || currentView !== 'palo-detail') return null;
+    if (danseCustomFolderId && selectedPaloKey) {
+      const folders = getDanseFolders(selectedPaloKey);
+      const isFolderStudioCheck = (folderId: string | null | undefined): boolean => {
+        if (!folderId) return false;
+        const f = folders.find(item => item.id === folderId);
+        if (!f) return folderId.includes('studio_') || folderId.includes('choregraphies') || folderId.includes('llamadas') || folderId.includes('remate');
+        if (f.category === 'studio') return true;
+        if (f.parentId) return isFolderStudioCheck(f.parentId);
+        return false;
+      };
+      return isFolderStudioCheck(danseCustomFolderId) ? 'studio' : 'biblio';
+    }
+    if (isStudioPageOpen) return 'studio';
+    return 'biblio';
+  }, [discipline, currentView, isStudioPageOpen, isBiblioPageOpen, danseCustomFolderId, selectedPaloKey]);
+
   return (
     <div className="min-h-screen bg-[#0f0e0d] text-[#f4efe6] flex flex-col font-sans selection:bg-[#e5a93b]/30">
       {/* Top Header */}
@@ -540,6 +563,7 @@ export default function App() {
         canGoBack={currentView !== 'home'}
         backButtonLabel="Retour"
         onBack={handleGoBack}
+        danseSpace={currentDanseSpace}
         onNavigateHome={handleNavigateHome}
         discipline={discipline}
         onToggleDiscipline={handleToggleDiscipline}

@@ -41,6 +41,7 @@ interface HeaderProps {
   onOpenCloudSync?: () => void;
   cloudSyncStatus?: 'synced' | 'saving' | 'offline' | 'connecting' | 'error';
   activeFileName?: string;
+  danseSpace?: 'biblio' | 'studio' | null;
   // Fonctions de navigation et de lecture globale depuis la recherche
   onPlayVideo?: (video: VideoItem, paloName: string, paloKey: string, sectionName: string) => void;
   onNavigatePalo?: (paloKey: string, discipline: DisciplineMode, danseTab?: DanseSectionTab, guitarTab?: SectionTab) => void;
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCloudSync,
   cloudSyncStatus = 'synced',
   activeFileName,
+  danseSpace,
   onPlayVideo,
   onNavigatePalo
 }) => {
@@ -542,11 +544,19 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="header-back-btn"
                   onClick={onBack}
-                  className="flex items-center gap-1 xs:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#282119] hover:bg-[#362b20] active:scale-95 text-[#e5a93b] text-xs sm:text-sm font-bold transition-all cursor-pointer border border-[#e5a93b]/70 hover:border-[#e5a93b] shadow-md shrink-0 h-[38px] sm:h-[40px]"
-                  title={backButtonLabel ? `Retourner vers : ${backButtonLabel}` : "Retourner à la vue précédente"}
+                  className={`flex items-center justify-center p-2 rounded-xl transition-all cursor-pointer shadow-md shrink-0 h-[38px] sm:h-[40px] w-[38px] sm:w-[40px] active:scale-95 ${
+                    danseSpace === 'studio'
+                      ? 'bg-blue-950/70 hover:bg-blue-900/80 border border-[#60a5fa]/60 text-[#60a5fa] shadow-[0_0_12px_rgba(96,165,250,0.4)]'
+                      : danseSpace === 'biblio'
+                      ? 'bg-emerald-950/70 hover:bg-emerald-900/80 border border-[#86efac]/60 text-[#86efac] shadow-[0_0_12px_rgba(134,239,172,0.4)]'
+                      : 'bg-[#282119] hover:bg-[#362b20] border border-[#e5a93b]/70 text-[#e5a93b]'
+                  }`}
+                  title={danseSpace === 'studio' ? "Remonter dans l'Atelier" : danseSpace === 'biblio' ? "Remonter dans la Médiathèque" : "Retour"}
+                  aria-label="Retourner au dossier précédent"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                  <span className="inline font-bold">{backButtonLabel || 'Retour'}</span>
+                  <ArrowLeft className={`w-5 h-5 sm:w-6 sm:h-6 stroke-[3] ${
+                    danseSpace === 'studio' ? 'text-[#60a5fa]' : danseSpace === 'biblio' ? 'text-[#86efac]' : 'text-[#e5a93b]'
+                  }`} />
                 </button>
               )}
 

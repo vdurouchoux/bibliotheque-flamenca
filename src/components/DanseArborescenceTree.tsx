@@ -184,20 +184,23 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
   };
 
   return (
-    <div className={`rounded-2xl border p-4 sm:p-6 shadow-2xl relative space-y-4 transition-all duration-200 ${
+    <div className={`rounded-2xl transition-all duration-200 relative space-y-4 ${
       translucent
-        ? 'bg-black/15 border-[#382d22] shadow-black/80'
-        : 'bg-[#0f0d0b] border-[#382d22]'
+        ? 'border-0 bg-transparent p-0 sm:p-1 shadow-none'
+        : 'border border-[#382d22] bg-[#0f0d0b] p-4 sm:p-6 shadow-2xl'
     }`}>
-      {/* Contrôle supérieur : Titre d'invitation au travail */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]/80 flex-wrap">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Sparkles className="w-4 h-4 text-[#e5a93b] shrink-0" />
-          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] font-sans break-words whitespace-normal leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-            {title ?? "Commencer à travailler, explorer et créer"}
-          </span>
+      {/* Contrôle supérieur : Titre d'invitation au travail si spécifié */}
+      {title && (
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]/80 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className={`text-xs sm:text-sm font-bold uppercase tracking-wider font-sans break-words whitespace-normal leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${
+              translucent ? 'text-white' : 'text-[#e5a93b]'
+            }`}>
+              {title}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ARBRE DES DOSSIERS AVEC BRANCHES VISUELLES */}
       <div className="relative pl-1 sm:pl-2 space-y-4 font-sans text-xs sm:text-sm">
@@ -211,8 +214,10 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
             onClick={() => toggleFolder('biblio')}
             className={`rounded-2xl transition-all p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center cursor-pointer relative shadow-lg group aspect-square ${
               openFolders['biblio']
-                ? 'border-2 border-emerald-400 bg-emerald-950/40 shadow-[0_0_15px_rgba(16,185,129,0.22)]'
-                : 'border border-[#382d22] hover:border-emerald-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
+                ? 'bg-emerald-950/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                : translucent
+                  ? 'border-0 bg-transparent hover:bg-black/15'
+                  : 'border border-[#382d22] hover:border-emerald-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
             }`}
             title={openFolders['biblio'] ? 'Replier Médiathèque Flamenca' : 'Déplier Médiathèque Flamenca'}
           >
@@ -220,15 +225,18 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               MÉDIATHÈQUE<br />FLAMENCA
             </h4>
 
-            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#86efac]/20 text-[#bbf7d0] font-medium border border-[#86efac]/30 mt-1.5 hidden xs:inline">
+            <span className="text-[9px] sm:text-[10px] text-[#bbf7d0]/90 font-medium mt-1.5 hidden xs:inline">
               Ressources & Références
             </span>
 
-            <div className="flex items-center gap-1 mt-1.5 text-[#8c8173] group-hover:text-[#86efac] text-[10px] sm:text-[11px] font-medium transition-colors">
-              <span>{openFolders['biblio'] ? 'Replier' : 'Déplier'}</span>
+            <span className="text-[9px] sm:text-[10px] text-[#ded3c5]/75 italic mt-1 font-sans">
+              à lire attentivement
+            </span>
+
+            <div className="mt-1.5 flex items-center justify-center">
               <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                  openFolders['biblio'] ? 'rotate-180 text-[#86efac]' : ''
+                className={`w-4 h-4 sm:w-5 sm:h-5 text-[#86efac] group-hover:text-emerald-300 transition-transform duration-200 ${
+                  openFolders['biblio'] ? 'rotate-180' : ''
                 }`}
               />
             </div>
@@ -240,8 +248,10 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
             onClick={() => toggleFolder('studio')}
             className={`rounded-2xl transition-all p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center cursor-pointer relative shadow-lg group aspect-square ${
               openFolders['studio']
-                ? 'border-2 border-blue-400 bg-blue-950/40 shadow-[0_0_15px_rgba(59,130,246,0.22)]'
-                : 'border border-[#382d22] hover:border-blue-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
+                ? 'bg-blue-950/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                : translucent
+                  ? 'border-0 bg-transparent hover:bg-black/15'
+                  : 'border border-[#382d22] hover:border-blue-500/60 bg-[#141210]/90 hover:bg-[#1a1714]'
             }`}
             title={openFolders['studio'] ? "Replier l'Atelier de création" : "Déplier l'Atelier de création"}
           >
@@ -249,15 +259,18 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
               ATELIER<br />DE CRÉATION
             </h4>
 
-            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-[#60a5fa]/20 text-[#93c5fd] font-medium border border-[#60a5fa]/30 mt-1.5 hidden xs:inline">
+            <span className="text-[9px] sm:text-[10px] text-[#93c5fd]/90 font-medium mt-1.5 hidden xs:inline">
               Danse & Chorégraphie
             </span>
 
-            <div className="flex items-center gap-1 mt-1.5 text-[#8c8173] group-hover:text-[#60a5fa] text-[10px] sm:text-[11px] font-medium transition-colors">
-              <span>{openFolders['studio'] ? 'Replier' : 'Déplier'}</span>
+            <span className="text-[9px] sm:text-[10px] text-[#ded3c5]/75 italic mt-1 font-sans">
+              à lire attentivement
+            </span>
+
+            <div className="mt-1.5 flex items-center justify-center">
               <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                  openFolders['studio'] ? 'rotate-180 text-[#60a5fa]' : ''
+                className={`w-4 h-4 sm:w-5 sm:h-5 text-[#60a5fa] group-hover:text-blue-300 transition-transform duration-200 ${
+                  openFolders['studio'] ? 'rotate-180' : ''
                 }`}
               />
             </div>
@@ -268,11 +281,13 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
         {/* DÉPLIAGE MÉDIATHÈQUE FLAMENCA (TEXTE EXPLICATIF ET SOUS-DOSSIERS)        */}
         {/* ========================================================================= */}
         {openFolders['biblio'] && (
-          <div className="rounded-2xl border-2 border-emerald-500/50 bg-[#12100d] p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl border-2 border-emerald-500/50 p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200 ${
+            translucent ? 'bg-black/35' : 'bg-[#12100d]'
+          }`}>
             {/* Barre d'en-tête du dépliage */}
             <div className="flex items-center justify-between pb-2 border-b border-[#2b2118]">
               <div className="flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
+                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#86efac] shrink-0" />
                 <span className="font-serif text-xs sm:text-sm font-bold text-[#86efac]">
                   Médiathèque Flamenca
                 </span>
@@ -318,9 +333,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['maitres'] ? (
-                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#86efac] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#86efac] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">
@@ -567,9 +582,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['cours'] ? (
-                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#86efac] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#86efac] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">
@@ -816,9 +831,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['letras'] ? (
-                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#86efac] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#86efac] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">
@@ -902,9 +917,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['compas'] ? (
-                          <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#86efac] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#86efac] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">
@@ -978,11 +993,13 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
         {/* DÉPLIAGE ATELIER DE CRÉATION (TEXTE EXPLICATIF ET SOUS-DOSSIERS)           */}
         {/* ========================================================================= */}
         {openFolders['studio'] && (
-          <div className="rounded-2xl border-2 border-blue-500/50 bg-[#12100d] p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+          <div className={`rounded-2xl border-2 border-blue-500/50 p-3.5 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200 ${
+            translucent ? 'bg-black/35' : 'bg-[#12100d]'
+          }`}>
             {/* Barre d'en-tête du dépliage */}
             <div className="flex items-center justify-between pb-2 border-b border-[#2b2118]">
               <div className="flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
+                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#60a5fa] shrink-0" />
                 <span className="font-serif text-xs sm:text-sm font-bold text-[#60a5fa]">
                   Atelier de création
                 </span>
@@ -1028,9 +1045,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['structure'] ? (
-                          <FolderOpen className="w-4 h-4 text-blue-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#60a5fa] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#60a5fa] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">
@@ -1114,9 +1131,9 @@ export const DanseArborescenceTree: React.FC<DanseArborescenceTreeProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {borderedFolders && (
                         openFolders['carnet'] ? (
-                          <FolderOpen className="w-4 h-4 text-blue-400 shrink-0" />
+                          <FolderOpen className="w-4 h-4 text-[#60a5fa] shrink-0" />
                         ) : (
-                          <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                          <Folder className="w-4 h-4 text-[#60a5fa] shrink-0" />
                         )
                       )}
                       <div className="min-w-0">

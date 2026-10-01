@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Plus, Bookmark, ChevronLeft, ArrowLeft, ArrowUp, ArrowDown, Layers, Volume2, 
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { DansePaloData, DanseSectionTab, VideoItem, MontageBlock, BlockVideoLink, VideoLandmark } from '../types';
 import { CompasVisualizer } from './CompasVisualizer';
-import { DanseArborescenceTree } from './DanseArborescenceTree';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { ReplaceVideoModal } from './ReplaceVideoModal';
 import { MontageBlockModal } from './MontageBlockModal';
@@ -147,7 +146,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [internalTab, setInternalTab] = useState<DanseSectionTab>('hub');
   const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
 
-  const [internalBiblioPageOpen, setInternalBiblioPageOpen] = useState<boolean>(initialTreeFolder === 'biblio');
+  const [internalBiblioPageOpen, setInternalBiblioPageOpen] = useState<boolean>(initialTreeFolder === 'studio' ? false : true);
   const isBiblioPageOpen = isBiblioPageOpenProp !== undefined ? isBiblioPageOpenProp : internalBiblioPageOpen;
 
   const setIsBiblioPageOpen = (open: boolean) => {
@@ -274,6 +273,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const [standardRenames, setStandardRenames] = useState<Record<string, string>>(() => getStandardFolderRenames(palo.id));
   const [deletedStandardIds, setDeletedStandardIds] = useState<string[]>(() => getStandardFolderDeleted(palo.id));
 
+  // Mémorisation de l'arborescence exacte de chaque espace pour y revenir fidèlement
+  const lastBiblioFolderIdRef = useRef<string | null>(null);
+  const lastBiblioTabRef = useRef<DanseSectionTab>('hub');
+  const lastStudioFolderIdRef = useRef<string | null>(null);
+
   const isFolderStudio = (folderId: string | null | undefined): boolean => {
     if (!folderId) return false;
     const f = danseFolders.find(item => item.id === folderId);
@@ -300,6 +304,43 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       structure: true
     };
   });
+
+  // Mettre à jour la mémoire d'emplacement quand l'utilisateur navigue
+  useEffect(() => {
+    if (activeCustomFolderId) {
+      if (isFolderStudio(activeCustomFolderId)) {
+        lastStudioFolderIdRef.current = activeCustomFolderId;
+      } else {
+        lastBiblioFolderIdRef.current = activeCustomFolderId;
+      }
+    } else {
+      if (isStudioPageOpen) {
+        lastStudioFolderIdRef.current = null;
+      } else if (isBiblioPageOpen) {
+        lastBiblioFolderIdRef.current = null;
+        lastBiblioTabRef.current = activeTab;
+      }
+    }
+  }, [activeCustomFolderId, isStudioPageOpen, isBiblioPageOpen, activeTab]);
+
+  const handleSwitchToBiblio = () => {
+    setIsBiblioPageOpen(true);
+    setIsStudioPageOpen(false);
+    const targetFolder = lastBiblioFolderIdRef.current;
+    const targetTab = lastBiblioTabRef.current || 'hub';
+    setActiveCustomFolderId(targetFolder);
+    setActiveTab(targetTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSwitchToStudio = () => {
+    setIsStudioPageOpen(true);
+    setIsBiblioPageOpen(false);
+    const targetFolder = lastStudioFolderIdRef.current;
+    setActiveCustomFolderId(targetFolder);
+    setActiveTab('hub');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const toggleFolderCollapse = (folderId: string) => {
     setCollapsedFolderIds(prev => {
@@ -416,21 +457,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   };
 
   const getSubfoldersOf = (parentId: string) => danseFolders.filter(f => f.parentId === parentId);
-
-  // Menus déroulants pour les 3 rubriques fondamentales du palo (Caractère de la danse, Costume & Posture, Compás & Dynamique)
-  // Repliés par défaut quand on arrive sur la page
-  const [openInfoSections, setOpenInfoSections] = useState<{ character: boolean; costume: boolean; compas: boolean }>({
-    character: false,
-    costume: false,
-    compas: false
-  });
-
-  const toggleInfoSection = (key: 'character' | 'costume' | 'compas') => {
-    setOpenInfoSections(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
 
   // Menus déroulants pour l'espace "Structure traditionnelle" :
   // openStructureSteps : état d'ouverture de chaque bloc (au début fermé, seul le titre est visible)
@@ -1215,9 +1241,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   };
 
   // Composant sélecteur de mode d'affichage (Vue liste / Vue icônes) avec classement alphabétique directement intégré
-  const renderViewModeControl = () => {
+  const renderViewModeControl = (isStudio: boolean = false) => {
     return (
-      <div className="flex items-center bg-[#15120f] border border-[#2b2219] rounded-xl p-0.5 shadow-xs shrink-0">
+      <div className={`flex items-center bg-[#15120f] border ${isStudio ? 'border-[#60a5fa]/40' : 'border-[#86efac]/30'} rounded-xl p-0.5 shadow-xs shrink-0`}>
         <button
           type="button"
           onClick={() => {
@@ -1229,7 +1255,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           }}
           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
             mediaViewMode === 'list'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? isStudio
+                ? 'bg-[#60a5fa]/20 text-[#60a5fa] border border-[#60a5fa]/45 shadow-xs'
+                : 'bg-[#86efac]/20 text-[#86efac] border border-[#86efac]/40 shadow-xs'
+              : isStudio
+              ? 'text-[#8c8173] hover:text-[#60a5fa] hover:bg-white/5 border border-transparent'
               : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
           }`}
           title={
@@ -1248,19 +1278,21 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             <span
               className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
                 mediaSortOrder !== 'default'
-                  ? 'bg-emerald-400/25 text-emerald-300 border border-emerald-400/40'
+                  ? isStudio
+                    ? 'bg-[#60a5fa]/20 text-[#60a5fa] border border-[#60a5fa]/35'
+                    : 'bg-[#86efac]/20 text-[#86efac] border border-[#86efac]/35'
                   : 'bg-[#251f18] text-[#a69c8f] hover:text-[#f4efe6] border border-[#382d22]'
               }`}
               title="Classement alphabétique A-Z"
             >
               {mediaSortOrder === 'alpha-asc' ? (
                 <>
-                  <ArrowDownAZ className="w-3 h-3 text-emerald-400" />
+                  <ArrowDownAZ className={`w-3 h-3 ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                   <span>A-Z</span>
                 </>
               ) : mediaSortOrder === 'alpha-desc' ? (
                 <>
-                  <ArrowUpAZ className="w-3 h-3 text-emerald-400" />
+                  <ArrowUpAZ className={`w-3 h-3 ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                   <span>Z-A</span>
                 </>
               ) : (
@@ -1284,7 +1316,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           }}
           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
             mediaViewMode === 'icons'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              ? isStudio
+                ? 'bg-[#60a5fa]/20 text-[#60a5fa] border border-[#60a5fa]/45 shadow-xs'
+                : 'bg-[#86efac]/20 text-[#86efac] border border-[#86efac]/40 shadow-xs'
+              : isStudio
+              ? 'text-[#8c8173] hover:text-[#60a5fa] hover:bg-white/5 border border-transparent'
               : 'text-[#8c8173] hover:text-[#ded3c5] hover:bg-white/5 border border-transparent'
           }`}
           title={
@@ -1303,19 +1339,21 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             <span
               className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
                 mediaSortOrder !== 'default'
-                  ? 'bg-emerald-400/25 text-emerald-300 border border-emerald-400/40'
+                  ? isStudio
+                    ? 'bg-[#60a5fa]/20 text-[#60a5fa] border border-[#60a5fa]/35'
+                    : 'bg-[#86efac]/20 text-[#86efac] border border-[#86efac]/35'
                   : 'bg-[#251f18] text-[#a69c8f] hover:text-[#f4efe6] border border-[#382d22]'
               }`}
               title="Classement alphabétique A-Z"
             >
               {mediaSortOrder === 'alpha-asc' ? (
                 <>
-                  <ArrowDownAZ className="w-3 h-3 text-emerald-400" />
+                  <ArrowDownAZ className={`w-3 h-3 ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                   <span>A-Z</span>
                 </>
               ) : mediaSortOrder === 'alpha-desc' ? (
                 <>
-                  <ArrowUpAZ className="w-3 h-3 text-emerald-400" />
+                  <ArrowUpAZ className={`w-3 h-3 ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                   <span>Z-A</span>
                 </>
               ) : (
@@ -1633,7 +1671,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs ${
               isGreen
-                ? 'bg-emerald-950/80 group-hover:bg-emerald-400 text-emerald-400 group-hover:text-[#0b1710] border border-emerald-500/30'
+                ? 'bg-emerald-950/80 group-hover:bg-emerald-400 text-[#86efac] group-hover:text-[#0b1710] border border-emerald-500/30'
                 : 'bg-[#221b14] group-hover:bg-[#e5a93b] text-[#e5a93b] group-hover:text-[#121110]'
             }`}
           >
@@ -2129,7 +2167,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             isStudio ? 'hover:bg-blue-950/60' : 'hover:bg-emerald-950/60'
           }`}
         >
-          <FolderPlus className={`w-4 h-4 group-hover:scale-110 transition-transform ${isStudio ? 'text-blue-400' : 'text-emerald-400'}`} />
+          <FolderPlus className={`w-4 h-4 group-hover:scale-110 transition-transform ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
           <span className={`font-semibold ${isStudio ? 'text-blue-300 group-hover:text-blue-200' : 'text-emerald-300 group-hover:text-emerald-200'}`}>
             {isFarruca ? 'Ajouter un dossier' : 'Ajouter un sous-dossier'}
           </span>
@@ -2195,10 +2233,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             setActiveTab('hub');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="flex-1 flex items-center gap-2 text-left group hover:text-emerald-400 transition-colors cursor-pointer min-w-0"
+          className="flex-1 flex items-center gap-2 text-left group hover:text-[#86efac] transition-colors cursor-pointer min-w-0"
           title="Retourner à l'arborescence complète"
         >
-          <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+          <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
           <span className="text-base sm:text-lg font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300 truncate">
             {palo.name}
           </span>
@@ -2273,21 +2311,21 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           e.stopPropagation();
                           toggleFolderCollapse(folderItem.id);
                         }}
-                        className="p-0.5 -ml-0.5 rounded text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                        className="p-0.5 -ml-0.5 rounded text-[#86efac]/80 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                         title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                         aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                       >
                         {isCollapsed ? (
-                          <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                          <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                          <ChevronDown className="w-3.5 h-3.5 text-[#86efac]" />
                         )}
                       </button>
                     ) : null}
                     {isActive ? (
-                      <FolderOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <FolderOpen className="w-4 h-4 text-[#86efac] shrink-0" />
                     ) : (
-                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                     )}
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs sm:text-sm truncate">
@@ -2347,7 +2385,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           }`}
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <Folder className="w-3.5 h-3.5 text-[#86efac] shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="text-[11px] sm:text-xs truncate">{sub.name}</span>
                               <span className="text-[9px] text-[#8c8173] font-normal leading-tight truncate">
@@ -2368,6 +2406,42 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           );
         })}
       </div>
+    </div>
+  );
+
+  const renderDualPaves = (isCurrentStudio: boolean) => (
+    <div className="w-full bg-black border-0 rounded-2xl p-3 sm:p-4 shadow-xl grid grid-cols-2 divide-x divide-neutral-800/70 select-none">
+      {/* Pavé gauche : Médiathèque de la Farruca */}
+      <button
+        type="button"
+        onClick={handleSwitchToBiblio}
+        className="px-3 py-2 text-center transition-all cursor-pointer flex items-center justify-center border-0 bg-transparent"
+        title={`Afficher la Médiathèque de la ${palo.name}`}
+      >
+        <span className={`text-xs sm:text-sm md:text-base font-serif uppercase tracking-wider transition-all duration-200 ${
+          !isCurrentStudio
+            ? 'text-[#86efac] font-extrabold drop-shadow-[0_0_12px_rgba(134,239,172,0.95)]'
+            : 'text-[#86efac]/40 hover:text-[#86efac]/80 font-bold'
+        }`}>
+          MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
+        </span>
+      </button>
+
+      {/* Pavé droite : Atelier de la Farruca */}
+      <button
+        type="button"
+        onClick={handleSwitchToStudio}
+        className="px-3 py-2 text-center transition-all cursor-pointer flex items-center justify-center border-0 bg-transparent"
+        title={`Afficher l'Atelier de la ${palo.name}`}
+      >
+        <span className={`text-xs sm:text-sm md:text-base font-serif uppercase tracking-wider transition-all duration-200 ${
+          isCurrentStudio
+            ? 'text-[#60a5fa] font-extrabold drop-shadow-[0_0_12px_rgba(96,165,250,0.95)]'
+            : 'text-[#60a5fa]/40 hover:text-[#60a5fa]/80 font-bold'
+        }`}>
+          ATELIER DE LA {palo.name.toUpperCase()}
+        </span>
+      </button>
     </div>
   );
 
@@ -2397,12 +2471,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* VUE NOUVELLE PAGE : ARBORESCENCE MÉDIATHÈQUE FLAMENCA MINIMALISTE */}
       {activeTab === 'hub' && isBiblioPageOpen && !activeCustomFolderId && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Titre pleine largeur en majuscules : juste du texte, ce n'est pas un dossier */}
-          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#86efac] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
-            </h1>
-          </div>
+          {renderDualPaves(false)}
 
           <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
             {/* En haut : Farruca avec bouton unique de tri alphabétique et trois petits points à droite */}
@@ -2411,17 +2480,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleFolderCollapse('farruca_root')}
-                  className="p-1 -ml-1 rounded-md text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                  className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                   aria-label={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                 >
                   {collapsedFolderIds['farruca_root'] ? (
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-[#86efac]" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-[#86efac]" />
                   )}
                 </button>
-                <FolderOpen className="w-6 h-6 text-emerald-400 shrink-0" />
+                <FolderOpen className="w-6 h-6 text-[#86efac] shrink-0" />
                 <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] truncate">
                   {palo.name}
                 </span>
@@ -2449,14 +2518,14 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   aria-label="Classer les dossiers par ordre alphabétique ou contre-alphabétique"
                 >
                   {folderSortOrder === 'desc' ? (
-                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#86efac]" />
                   ) : folderSortOrder === 'asc' ? (
-                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#86efac]" />
                   ) : (
                     <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   )}
                   {folderSortOrder !== 'default' && (
-                    <span className="text-[10px] font-bold text-emerald-400 leading-none">
+                    <span className="text-[10px] font-bold text-[#86efac] leading-none">
                       {folderSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
                     </span>
                   )}
@@ -2526,20 +2595,20 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                   e.stopPropagation();
                                   toggleFolderCollapse(folderItem.id);
                                 }}
-                                className="p-1 -ml-1 rounded-md text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                                 title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                                 aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                               >
                                 {isCollapsed ? (
-                                  <ChevronRight className="w-4 h-4 text-emerald-400" />
+                                  <ChevronRight className="w-4 h-4 text-[#86efac]" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-emerald-400" />
+                                  <ChevronDown className="w-4 h-4 text-[#86efac]" />
                                 )}
                               </button>
                             ) : (
                               <span className="w-5 h-5 shrink-0 -ml-0.5" />
                             )}
-                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                            <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
                                 {folderItem.name}
@@ -2549,7 +2618,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               </span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-[#86efac] group-hover:translate-x-0.5 transition-all shrink-0" />
                         </div>
 
                         {/* Trois petits points pour chaque dossier */}
@@ -2600,17 +2669,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                             e.stopPropagation();
                                             toggleFolderCollapse(sub.id);
                                           }}
-                                          className="p-0.5 -ml-0.5 rounded text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                          className="p-0.5 -ml-0.5 rounded text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                                           title={isSubCollapsed ? `Déplier ${sub.name}` : `Replier ${sub.name}`}
                                         >
                                           {isSubCollapsed ? (
-                                            <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                                            <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
                                           ) : (
-                                            <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                                            <ChevronDown className="w-3.5 h-3.5 text-[#86efac]" />
                                           )}
                                         </button>
                                       ) : null}
-                                      <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                      <Folder className="w-3.5 h-3.5 text-[#86efac] shrink-0" />
                                       <div className="flex flex-col min-w-0">
                                         <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
                                           {sub.name}
@@ -2620,7 +2689,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                         </span>
                                       </div>
                                     </div>
-                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-emerald-400 transition-all shrink-0" />
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-[#86efac] transition-all shrink-0" />
                                   </div>
                                 </div>
 
@@ -2637,7 +2706,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                           className="flex-1 min-w-0 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#14120f] hover:bg-[#1b1713] border border-neutral-700/30 text-left cursor-pointer"
                                         >
                                           <div className="flex items-center gap-2 min-w-0">
-                                            <Folder className="w-3 h-3 text-emerald-400 shrink-0" />
+                                            <Folder className="w-3 h-3 text-[#86efac] shrink-0" />
                                             <span className="text-xs text-[#ded3c5] truncate">{subSub.name}</span>
                                           </div>
                                         </div>
@@ -2662,6 +2731,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* VUE NOUVELLE PAGE : ARBORESCENCE BLEUE ATELIER DE CRÉATION */}
       {activeTab === 'hub' && isStudioPageOpen && !activeCustomFolderId && (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {renderDualPaves(true)}
+
           <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
             {/* En haut : Farruca avec bouton unique de tri alphabétique et trois petits points à droite */}
             <div className="flex items-center justify-between gap-3 relative pb-2 border-b border-[#2b2118]/80">
@@ -2669,17 +2740,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleFolderCollapse('farruca_studio_root')}
-                  className="p-1 -ml-1 rounded-md text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                  className="p-1 -ml-1 rounded-md text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                   aria-label={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                 >
                   {collapsedFolderIds['farruca_studio_root'] ? (
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-[#60a5fa]" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-[#60a5fa]" />
                   )}
                 </button>
-                <FolderOpen className="w-6 h-6 text-blue-400 shrink-0" />
+                <FolderOpen className="w-6 h-6 text-[#60a5fa] shrink-0" />
                 <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] truncate">
                   {palo.name}
                 </span>
@@ -2707,14 +2778,14 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   aria-label="Classer les dossiers par ordre alphabétique ou contre-alphabétique"
                 >
                   {folderSortOrder === 'desc' ? (
-                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                    <ArrowUpAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#60a5fa]" />
                   ) : folderSortOrder === 'asc' ? (
-                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                    <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#60a5fa]" />
                   ) : (
                     <ArrowDownAZ className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   )}
                   {folderSortOrder !== 'default' && (
-                    <span className="text-[10px] font-bold text-blue-400 leading-none">
+                    <span className="text-[10px] font-bold text-[#60a5fa] leading-none">
                       {folderSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
                     </span>
                   )}
@@ -2774,19 +2845,19 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                   e.stopPropagation();
                                   toggleFolderCollapse(folderItem.id);
                                 }}
-                                className="p-1 -ml-1 rounded-md text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                                className="p-1 -ml-1 rounded-md text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
                                 title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                               >
                                 {isCollapsed ? (
-                                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                                  <ChevronRight className="w-4 h-4 text-[#60a5fa]" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-blue-400" />
+                                  <ChevronDown className="w-4 h-4 text-[#60a5fa]" />
                                 )}
                               </button>
                             ) : (
                               <span className="w-5 h-5 shrink-0 -ml-0.5" />
                             )}
-                            <Folder className="w-4 h-4 text-blue-400 group-hover:text-blue-300 shrink-0" />
+                            <Folder className="w-4 h-4 text-[#60a5fa] group-hover:text-blue-300 shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
                                 {folderItem.name}
@@ -2796,7 +2867,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               </span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-[#60a5fa] group-hover:translate-x-0.5 transition-all shrink-0" />
                         </div>
 
                         {/* Trois petits points pour chaque dossier */}
@@ -2848,17 +2919,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                             e.stopPropagation();
                                             toggleFolderCollapse(sub.id);
                                           }}
-                                          className="p-0.5 -ml-0.5 rounded text-blue-400/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/20 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                                          className="p-0.5 -ml-0.5 rounded text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/20 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
                                           title={isSubCollapsed ? `Déplier ${sub.name}` : `Replier ${sub.name}`}
                                         >
                                           {isSubCollapsed ? (
-                                            <ChevronRight className="w-3.5 h-3.5 text-blue-400" />
+                                            <ChevronRight className="w-3.5 h-3.5 text-[#60a5fa]" />
                                           ) : (
-                                            <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
+                                            <ChevronDown className="w-3.5 h-3.5 text-[#60a5fa]" />
                                           )}
                                         </button>
                                       ) : null}
-                                      <Folder className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                      <Folder className="w-3.5 h-3.5 text-[#60a5fa] shrink-0" />
                                       <div className="flex flex-col min-w-0">
                                         <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
                                           {sub.name}
@@ -2868,7 +2939,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                         </span>
                                       </div>
                                     </div>
-                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-blue-400 transition-all shrink-0" />
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-[#60a5fa] transition-all shrink-0" />
                                   </div>
                                 </div>
                               </div>
@@ -2902,14 +2973,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
             return (
               <div className="space-y-4">
-                {/* Titre pleine largeur en majuscules tout en haut */}
-                <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-                  <h1 className={`text-xl sm:text-2xl md:text-3xl font-extrabold font-serif tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] ${
-                    isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'
-                  }`}>
-                    {isStudioFolder ? `ATELIER DE CRÉATION DE LA ${palo.name.toUpperCase()}` : `MÉDIATHÈQUE DE LA ${palo.name.toUpperCase()}`}
-                  </h1>
-                </div>
+                {renderDualPaves(isStudioFolder)}
 
                 {/* En haut : Farruca */}
                 <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
@@ -2927,11 +2991,11 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       setActiveTab('hub');
                     }}
                     className={`flex items-center gap-2 text-left group transition-colors cursor-pointer ${
-                      isStudioFolder ? 'hover:text-blue-400' : 'hover:text-emerald-400'
+                      isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
                     }`}
                     title={`Retourner à l'arborescence ${palo.name}`}
                   >
-                    <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-blue-400' : 'text-emerald-400'}`} />
+                    <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                     <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
                       isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
                     }`}>
@@ -2951,7 +3015,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           }
                         }}
                         className={`text-sm sm:text-base font-semibold text-[#a69c8f] transition-colors cursor-pointer ${
-                          isStudioFolder ? 'hover:text-blue-400' : 'hover:text-emerald-400'
+                          isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
                         }`}
                       >
                         {parentFolder.name}
@@ -2972,9 +3036,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                         title={isSubfoldersOpen ? "Fermer le dossier et masquer les sous-dossiers" : "Ouvrir le dossier et afficher les sous-dossiers"}
                       >
                         {isSubfoldersOpen ? (
-                          <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-blue-400' : 'text-emerald-400'}`} />
+                          <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                         ) : (
-                          <Folder className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-blue-400' : 'text-emerald-400'}`} />
+                          <Folder className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                         )}
                         <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap group-hover/folder:text-white transition-colors">
                           {currentFolder.name}
@@ -3013,12 +3077,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
                     {/* Actions : Vue liste / Vue icônes & Ajouter une vidéo à droite de la ligne */}
                     <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                      {renderViewModeControl()}
+                      {renderViewModeControl(isStudioFolder)}
 
                       <button
                         type="button"
                         onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                        className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 ${
+                          isStudioFolder
+                            ? 'bg-[#60a5fa]/20 hover:bg-[#60a5fa]/35 text-[#60a5fa] hover:text-[#93c5fd] border border-[#60a5fa]/40 shadow-[0_0_10px_rgba(96,165,250,0.3)]'
+                            : 'bg-[#86efac]/20 hover:bg-[#86efac]/35 text-[#86efac] hover:text-[#bbf7d0] border border-[#86efac]/40 shadow-[0_0_10px_rgba(134,239,172,0.3)]'
+                        }`}
                         title="Ajouter une vidéo"
                         aria-label="Ajouter une vidéo"
                       >
@@ -3030,16 +3098,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
                 {/* Sous-dossiers au niveau inférieur affichés si le dossier est ouvert */}
                 {isSubfoldersOpen && subfolders.length > 0 && (
-                  <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219] animate-in fade-in duration-150">
-                    <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center justify-between">
+                  <div className={`space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border ${isStudioFolder ? 'border-[#60a5fa]/30' : 'border-[#86efac]/30'} animate-in fade-in duration-150`}>
+                    <div className={`text-[11px] font-bold uppercase tracking-wider flex items-center justify-between ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`}>
                       <div className="flex items-center gap-1.5">
-                        <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                        <FolderOpen className={`w-3.5 h-3.5 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                         <span>Sous-dossiers ({subfolders.length})</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => toggleMediaFolderSubfolders(currentFolder.id)}
-                        className="text-[10px] text-[#8c8173] hover:text-[#86efac] transition-colors cursor-pointer"
+                        className={`text-[10px] text-[#8c8173] ${isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'} transition-colors cursor-pointer`}
                       >
                         Fermer
                       </button>
@@ -3049,11 +3117,13 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                         <div
                           key={sub.id}
                           onClick={() => handleOpenCustomFolder(sub.id)}
-                          className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
+                          className={`p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] ${
+                            isStudioFolder ? 'hover:border-[#60a5fa]/60' : 'hover:border-[#86efac]/60'
+                          } flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs`}
                           title={`Ouvrir le dossier « ${sub.name} »`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                            <Folder className={`w-4 h-4 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                             <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
                               {sub.name}
                             </span>
@@ -3065,12 +3135,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                 e.stopPropagation();
                                 setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
                               }}
-                              className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
+                              className={`p-1 rounded text-[#73685a] ${isStudioFolder ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'} cursor-pointer`}
                               title="Options"
                             >
                               <MoreVertical className="w-3.5 h-3.5" />
                             </button>
-                            {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id)}
+                            {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, isStudioFolder)}
                           </div>
                         </div>
                       ))}
@@ -3115,191 +3185,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           })()}
         </div>
       )}
-
-      {/* Hero Card Palo Danse compact : affiché UNIQUEMENT sur la vue hub des 6 espaces */}
-      {activeTab === 'hub' && !isBiblioPageOpen && !isStudioPageOpen && (
-        <div className="bg-gradient-to-br from-[#1a1612] via-[#141210] to-[#1a1210] border border-[#382d22] rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#e5a93b]/15 text-[#e5a93b] border border-[#e5a93b]/30 font-bold text-xs uppercase tracking-wider shrink-0 shadow-xs">
-              <FlamencoBailaoraIcon className="w-4 h-4 inline-block shrink-0 -mt-0.5 text-[#e5a93b]" />
-              <span>BAILE</span>
-            </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] font-serif tracking-tight">
-              {palo.name}
-            </h2>
-          </div>
-        </div>
-      )}
-
-      {/* VUE 1 : DIRECTEMENT LES 2 ARBORESCENCES CLIQUABLES (MÉDIATHÈQUE FLAMENCA ET ATELIER DE CRÉATION) */}
-      {activeTab === 'hub' && !isBiblioPageOpen && !isStudioPageOpen && (
-        <div 
-          id="danse-espaces-etude" 
-          className="space-y-4 animate-in fade-in duration-200 scroll-mt-16 sm:scroll-mt-20"
-          onClickCapture={(e) => {
-            const target = e.target as HTMLElement;
-            const isBiblio = target.closest('.border-emerald-500') || (target.textContent?.includes('MÉDIATHÈQUE') || target.textContent?.includes('Médiathèque') || target.textContent?.includes('BIBLIOTHÈQUE') || target.textContent?.includes('Bibliothèque') ? target.closest('.cursor-pointer') : null);
-            const isStudio = target.closest('.border-blue-400') || (target.textContent?.includes('ATELIER') || target.textContent?.includes('Atelier') ? target.closest('.cursor-pointer') : null);
-            if (isBiblio) {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsBiblioPageOpen(true);
-              setIsStudioPageOpen(false);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else if (isStudio) {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsStudioPageOpen(true);
-              setIsBiblioPageOpen(false);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
-        >
-          {/* Arborescence réelle cliquable pointant vers les mêmes pages */}
-          <DanseArborescenceTree
-            title="Commencer à travailler, explorer et créer"
-            borderedFolders={true}
-            onNavigate={(tab) => {
-              if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
-                setIsBiblioPageOpen(true);
-              }
-              setActiveTab(tab);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            defaultExpanded={false}
-            initialOpenFolder={initialTreeFolder}
-            counts={{
-              maitres: getMaitresVideos().length,
-              cours: getCoursVideos().length,
-              letras: 3,
-              compas: 'Binaire 4t',
-              structure: 6,
-              montages: montageKeys.length
-            }}
-            maitresVideos={getMaitresVideos()}
-            coursVideos={getCoursVideos()}
-            onPlayVideo={onPlayVideo}
-            bottomContent={
-              <div className="space-y-3 pt-1">
-                {/* En-tête des 3 rubriques fondamentales */}
-                <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]/80 flex-wrap">
-                  <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] font-sans flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#e5a93b]" />
-                    <span>Fondamentaux du Baile · {palo.name}</span>
-                  </span>
-                </div>
-
-                {/* Les 3 rubriques du fichier DansePaloList.tsx : caractère de la danse, costume et posture, compas et dynamique */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Section 1 : Caractère de la danse */}
-                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => toggleInfoSection('character')}
-                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                      title="Cliquer pour dérouler ou fermer le caractère de la danse"
-                    >
-                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
-                        <Flame className="w-4 h-4 text-[#e5a93b] shrink-0" />
-                        <span>Caractère de la danse</span>
-                      </span>
-                      <ChevronDown 
-                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                          openInfoSections.character ? 'rotate-180 text-[#e5a93b]' : ''
-                        }`} 
-                      />
-                    </button>
-                    {openInfoSections.character && (
-                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
-                        <p>{palo.character}</p>
-                        <div className="pt-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => toggleInfoSection('character')}
-                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                          >
-                            Fermer ▲
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Section 2 : Costume & Posture */}
-                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => toggleInfoSection('costume')}
-                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                      title="Cliquer pour dérouler ou fermer costume et posture"
-                    >
-                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
-                        <ShieldAlert className="w-4 h-4 text-[#e5a93b] shrink-0" />
-                        <span>Costume & Posture</span>
-                      </span>
-                      <ChevronDown 
-                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                          openInfoSections.costume ? 'rotate-180 text-[#e5a93b]' : ''
-                        }`} 
-                      />
-                    </button>
-                    {openInfoSections.costume && (
-                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
-                        <p>{palo.costumeAdvice}</p>
-                        <div className="pt-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => toggleInfoSection('costume')}
-                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                          >
-                            Fermer ▲
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Section 3 : Compás & Dynamique */}
-                  <div className="bg-[#171410] border border-[#2b2219] rounded-xl overflow-hidden transition-colors flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => toggleInfoSection('compas')}
-                      className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-[#201a14] transition-colors cursor-pointer group"
-                      title="Cliquer pour dérouler ou fermer compás et dynamique"
-                    >
-                      <span className="text-xs sm:text-sm font-bold text-[#e5a93b] flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-[#e5a93b] shrink-0" />
-                        <span>Compás & Dynamique</span>
-                      </span>
-                      <ChevronDown 
-                        className={`w-4 h-4 text-[#8c8173] group-hover:text-[#e5a93b] transition-transform duration-200 ${
-                          openInfoSections.compas ? 'rotate-180 text-[#e5a93b]' : ''
-                        }`} 
-                      />
-                    </button>
-                    {openInfoSections.compas && (
-                      <div className="px-3 sm:px-3.5 pb-3.5 pt-1 border-t border-[#251e16] text-xs sm:text-sm text-[#ded3c5] leading-relaxed animate-in fade-in duration-150 flex-1 flex flex-col justify-between">
-                        <p>{palo.compas.description}</p>
-                        <div className="pt-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => toggleInfoSection('compas')}
-                            className="text-[10px] text-[#8c8173] hover:text-[#e5a93b] font-medium underline cursor-pointer"
-                          >
-                            Fermer ▲
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            }
-          />
-        </div>
-      )}
-
-
 
       {/* TAB 1: Structure traditionnelle de la Farruca */}
       {activeTab === 'structure' && (
@@ -3531,12 +3416,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* TAB 2: Grands Maîtres & Références */}
       {activeTab === 'maitres' && !activeCustomFolderId && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
-          {/* Titre pleine largeur en majuscules tout en haut en vert */}
-          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#86efac] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
-            </h1>
-          </div>
+          {renderDualPaves(false)}
 
           {/* En haut : Farruca */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
@@ -3548,10 +3428,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+              <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
               </span>
@@ -3578,7 +3458,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       className="flex items-center gap-2 shrink-0 text-left cursor-pointer group/folder py-1 px-1.5 -ml-1.5 rounded-xl hover:bg-white/[0.06] transition-all"
                       title={maitresSubfolders.length > 0 ? `Ouvrir le dossier ${maitresSubfolders.find(s => s.name.toLowerCase().includes('essai'))?.name || maitresSubfolders[0].name}` : "Dossier Grands Maîtres"}
                     >
-                      <Folder className="w-5 h-5 text-emerald-400 group-hover/folder:text-emerald-300 shrink-0 transition-colors" />
+                      <Folder className="w-5 h-5 text-[#86efac] group-hover/folder:text-emerald-300 shrink-0 transition-colors" />
                       <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] group-hover/folder:text-white font-serif whitespace-nowrap transition-colors">
                         {standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres'}
                       </h3>
@@ -3632,12 +3512,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {/* Rendu des médias selon le mode choisi (vue liste / vue icônes / cartes) */}
           {filterAndSortVideos(getMaitresVideos()).length === 0 ? (
             <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-emerald-900/30 text-[#8c8173]">
-              <Search className="w-6 h-6 mx-auto mb-2 text-emerald-400/50" />
+              <Search className="w-6 h-6 mx-auto mb-2 text-[#86efac]/50" />
               <p className="text-sm font-medium text-[#d5cabb]">Aucun média ne correspond à « {mediaSearchQuery} »</p>
               <button
                 type="button"
                 onClick={() => setMediaSearchQuery('')}
-                className="mt-2 text-xs text-emerald-400 hover:underline cursor-pointer"
+                className="mt-2 text-xs text-[#86efac] hover:underline cursor-pointer"
               >
                 Effacer la recherche
               </button>
@@ -3682,12 +3562,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* TAB: Letras & Textes Traditionnels */}
       {activeTab === 'letras' && !activeCustomFolderId && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
-          {/* Titre pleine largeur en majuscules tout en haut en vert */}
-          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#86efac] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
-            </h1>
-          </div>
+          {renderDualPaves(false)}
 
           {/* En haut : Farruca */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
@@ -3699,10 +3574,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+              <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
               </span>
@@ -3753,7 +3628,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             {getSubfoldersOf('letras').length > 0 && (
               <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
                 <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
-                  <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                  <Folder className="w-3.5 h-3.5 text-[#86efac]" />
                   <span>Sous-dossiers ({getSubfoldersOf('letras').length})</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -3764,7 +3639,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                        <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                         <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
                           {sub.name}
                         </span>
@@ -4009,12 +3884,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* TAB 6: Compás & Métronome (4 temps) */}
       {activeTab === 'compas' && !activeCustomFolderId && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
-          {/* Titre pleine largeur en majuscules tout en haut en vert */}
-          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#86efac] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
-            </h1>
-          </div>
+          {renderDualPaves(false)}
 
           {/* En haut : Farruca */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
@@ -4026,10 +3896,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+              <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
               </span>
@@ -4070,7 +3940,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {getSubfoldersOf('compas').length > 0 && (
             <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219]">
               <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5 text-emerald-400" />
+                <Folder className="w-3.5 h-3.5 text-[#86efac]" />
                 <span>Sous-dossiers ({getSubfoldersOf('compas').length})</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -4081,7 +3951,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                       <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
                         {sub.name}
                       </span>
@@ -4202,12 +4072,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       {/* TAB 5: Cours/Tutoriels/Stages/Vidéos personnelles */}
       {activeTab === 'cours' && !activeCustomFolderId && (
         <div className="w-full space-y-4 animate-in fade-in duration-200">
-          {/* Titre pleine largeur en majuscules tout en haut en vert */}
-          <div className="w-full bg-[#141210] border border-[#2b2118] rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-xl">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-serif text-[#86efac] tracking-wider uppercase text-center sm:text-left drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              MÉDIATHÈQUE DE LA {palo.name.toUpperCase()}
-            </h1>
-          </div>
+          {renderDualPaves(false)}
 
           {/* En haut : Farruca */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
@@ -4219,10 +4084,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="flex items-center gap-2.5 text-left group hover:text-emerald-400 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+              <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
               </span>
@@ -4240,9 +4105,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   title={openMediaFolderSubfolders['cours'] ? "Fermer le dossier et masquer les sous-dossiers" : "Ouvrir le dossier et afficher les sous-dossiers"}
                 >
                   {openMediaFolderSubfolders['cours'] ? (
-                    <FolderOpen className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
                   ) : (
-                    <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <Folder className="w-5 h-5 text-[#86efac] shrink-0" />
                   )}
                   <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] whitespace-nowrap group-hover/folder:text-white transition-colors">
                     Mes Cours & Stages
@@ -4303,7 +4168,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219] animate-in fade-in duration-150">
               <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                  <FolderOpen className="w-3.5 h-3.5 text-[#86efac]" />
                   <span>Sous-dossiers ({getSubfoldersOf('cours').length})</span>
                 </div>
                 <button
@@ -4322,7 +4187,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <Folder className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                      <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                       <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
                         {sub.name}
                       </span>
@@ -5660,8 +5525,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  setIsBiblioPageOpen(true);
                   setActiveTab('hub');
-                  scrollToEspacesEtude();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="px-3 sm:px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer text-[#e5a93b] bg-[#221c16] hover:bg-[#2c241e] border border-[#e5a93b]/50 shadow-sm flex items-center gap-1.5 shrink-0"
                 title="Retourner aux 6 espaces d'étude"

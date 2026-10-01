@@ -11,8 +11,7 @@ import {
 import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA } from '../data/baileData';
 import { DanseArborescenceTree } from './DanseArborescenceTree';
 import { VideoItem, DanseSectionTab } from '../types';
-import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
-import baileBgImg from '../assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg';
+import baileBgImg from '../assets/images/danseuse_guitariste_parquet_1790850568980.jpg';
 
 interface DansePaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -94,11 +93,8 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
             alt="Danseuse Flamenco - Baile"
             referrerPolicy="no-referrer"
             onError={() => {
-              // Si l'import échoue sur le PC (chemin, majuscule ou cache), bascule automatique sur /public
-              if (bgImageSrc !== '/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
-                setBgImageSrc('/maryam-tello-v07wdRY8qxo-unsplash.jpg');
-              } else if (bgImageSrc !== '/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
-                setBgImageSrc('/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg');
+              if (bgImageSrc !== '/danseuse_guitariste_parquet.jpg') {
+                setBgImageSrc('/danseuse_guitariste_parquet.jpg');
               }
             }}
             style={{ objectPosition: 'center 50%' }}
@@ -110,25 +106,17 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <FlamencoBailaoraIcon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-md" />
-              <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                BAILE
-              </span>
-            </div>
+            <span className="text-[8.5px] sm:text-[9.5px] font-bold tracking-wider text-white/90 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pt-0.5 leading-tight">
+              Présentation<br />générale
+            </span>
 
-            <h2 className="text-right text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-tight shrink-0">
+            <h2 className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] leading-tight shrink-0 max-w-[100px] sm:max-w-[120px] pt-0.5">
               Monter sa<br />danse flamenca
             </h2>
           </div>
 
           {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide laissant voir la danseuse au travers */}
           <DanseArborescenceTree 
-            title={
-              <>
-                Présentation<br />générale
-              </>
-            } 
             onOpenLexique={onOpenLexique} 
             defaultExpanded={false}
             translucent={true}
@@ -242,19 +230,14 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   }`}
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center justify-end gap-2">
-                      {item.isAvailable ? (
-                        <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <span>Module complet disponible</span>
-                        </span>
-                      ) : (
+                    {!item.isAvailable && (
+                      <div className="flex items-center justify-end gap-2">
                         <span className="text-[11px] font-medium text-[#7d7162] bg-[#1a1612] px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#2b2219]">
                           <Lock className="w-3 h-3" />
                           <span>Bientôt disponible</span>
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between gap-3 sm:gap-4">
                       <div className="min-w-0">
