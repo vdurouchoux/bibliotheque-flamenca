@@ -537,7 +537,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Suppression de : compas, arborescence, lexique, plein écran                */}
         {/* Uniquement : recherche avec la loupe (à gauche de Mes Études) + Mes Études + Cloud */}
         {/* ========================================================================= */}
-        {discipline === 'danse' ? (
+        {discipline === 'danse' || discipline === 'guitare' ? (
           <div ref={searchContainerRef} className="relative pt-0.5">
             <div className="flex items-center gap-1.5 sm:gap-2">
               {canGoBack && (
@@ -787,10 +787,26 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     id="header-back-btn"
                     onClick={onBack}
-                    className="flex items-center gap-1 xs:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-[#282119] hover:bg-[#362b20] active:scale-95 text-[#e5a93b] text-xs sm:text-sm font-bold transition-all cursor-pointer border border-[#e5a93b]/70 hover:border-[#e5a93b] shadow-md shrink-0 h-[40px] sm:h-[44px]"
-                    title={backButtonLabel ? `Retourner vers : ${backButtonLabel}` : "Retourner à la vue précédente"}
+                    className={`flex items-center gap-1 xs:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl active:scale-95 text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-md shrink-0 h-[40px] sm:h-[44px] ${
+                      danseSpace === 'studio'
+                        ? 'bg-blue-950/70 hover:bg-blue-900/80 border border-[#60a5fa]/70 hover:border-[#60a5fa] text-[#60a5fa] shadow-[0_0_12px_rgba(96,165,250,0.4)]'
+                        : danseSpace === 'biblio'
+                        ? 'bg-emerald-950/70 hover:bg-emerald-900/80 border border-[#86efac]/70 hover:border-[#86efac] text-[#86efac] shadow-[0_0_12px_rgba(134,239,172,0.4)]'
+                        : 'bg-[#282119] hover:bg-[#362b20] border border-[#e5a93b]/70 hover:border-[#e5a93b] text-[#e5a93b]'
+                    }`}
+                    title={
+                      backButtonLabel 
+                        ? `Retourner vers : ${backButtonLabel}` 
+                        : danseSpace === 'studio' 
+                        ? "Remonter dans l'Atelier" 
+                        : danseSpace === 'biblio' 
+                        ? "Remonter dans la Médiathèque" 
+                        : "Retour"
+                    }
                   >
-                    <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <ArrowLeft className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] ${
+                      danseSpace === 'studio' ? 'text-[#60a5fa]' : danseSpace === 'biblio' ? 'text-[#86efac]' : 'text-[#e5a93b]'
+                    }`} />
                     <span className="inline font-bold">{backButtonLabel || 'Retour'}</span>
                   </button>
                 )}

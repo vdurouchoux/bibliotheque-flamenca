@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   ArrowRight,
   Lock,
@@ -9,9 +9,11 @@ import {
   Film
 } from 'lucide-react';
 import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA } from '../data/baileData';
+import { GUITARE_PALOS_CATALOG, GUITARE_PALOS_DATA } from '../data/guitareData';
 import { DanseArborescenceTree } from './DanseArborescenceTree';
-import { VideoItem, DanseSectionTab } from '../types';
-import baileBgImg from '../assets/images/danseuse_guitariste_parquet_1790850568980.jpg';
+import { VideoItem, DanseSectionTab, DisciplineMode } from '../types';
+import baileBgImg from '../assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg';
+import guitareBgImg from '../assets/images/guitare_mains_flamenco_1790872455832.jpg';
 
 interface DansePaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -24,6 +26,7 @@ interface DansePaloListProps {
   onNavigateDanseTab?: (paloKey: string, tab: DanseSectionTab) => void;
   onOpenBibliotheque?: (paloKey: string) => void;
   onOpenAtelier?: (paloKey: string) => void;
+  discipline?: DisciplineMode;
 }
 
 export const DansePaloList: React.FC<DansePaloListProps> = ({
@@ -35,12 +38,21 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
   onPlayVideo,
   onNavigateDanseTab,
   onOpenBibliotheque,
-  onOpenAtelier
+  onOpenAtelier,
+  discipline = 'danse'
 }) => {
-  // Image d'arrière-plan du bloc BAILE avec fallback automatique
-  const [bgImageSrc, setBgImageSrc] = useState<string>(baileBgImg);
+  // Image d'arrière-plan du bloc avec fallback automatique (guitare flamenca avec mains sur cordes pour guitare, danseuse pour danse)
+  const defaultBgImg = discipline === 'guitare' ? guitareBgImg : baileBgImg;
+  const [bgImageSrc, setBgImageSrc] = useState<string>(defaultBgImg);
 
-  // Recherche Dédiée au Catalogue des Palos de Danse (à côté du titre Liste des palos)
+  // Synchronisation si la discipline change
+  useEffect(() => {
+    setBgImageSrc(discipline === 'guitare' ? guitareBgImg : baileBgImg);
+  }, [discipline]);
+
+  const currentCatalog = discipline === 'guitare' ? GUITARE_PALOS_CATALOG : BAILE_PALOS_CATALOG;
+
+  // Recherche Dédiée au Catalogue des Palos (à côté du titre Liste des palos)
   const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
   const catalogSearchInputRef = useRef<HTMLInputElement>(null);
@@ -59,10 +71,10 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
     });
   };
 
-  // Filtrage du catalogue des palos de danse
+  // Filtrage du catalogue des palos
   const filteredCatalogPalos = useMemo(() => {
     if (!catalogSearchTerm.trim()) {
-      return BAILE_PALOS_CATALOG;
+      return currentCatalog;
     }
     const cleanSearch = catalogSearchTerm
       .normalize('NFD')
@@ -70,7 +82,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
       .toLowerCase()
       .trim();
 
-    return BAILE_PALOS_CATALOG.filter(item => {
+    return currentCatalog.filter(item => {
       const matchName = item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
       const matchSubtitle = item.subtitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
       const matchTag = item.tag.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
@@ -80,21 +92,25 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
       );
       return matchName || matchSubtitle || matchTag || matchCompas || matchHighlights;
     });
-  }, [catalogSearchTerm]);
+  }, [catalogSearchTerm, currentCatalog]);
 
   return (
     <div className="space-y-6">
-      {/* Hero Danse */}
+      {/* Hero Danse / Guitare */}
       <div className="relative overflow-hidden bg-[#161310] border border-[#3e3022] rounded-2xl p-4 sm:p-6 shadow-xl min-h-[175px]">
-        {/* Image de fond danseuse flamenco avec équilibre parfait entre présence visuelle et lisibilité */}
+        {/* Image de fond avec équilibre parfait entre présence visuelle et lisibilité */}
         <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
           <img
             src={bgImageSrc}
-            alt="Danseuse Flamenco - Baile"
+            alt={discipline === 'guitare' ? "Guitare Flamenca" : "Danseuse Flamenco - Baile"}
             referrerPolicy="no-referrer"
             onError={() => {
-              if (bgImageSrc !== '/danseuse_guitariste_parquet.jpg') {
-                setBgImageSrc('/danseuse_guitariste_parquet.jpg');
+              if (discipline === 'guitare') {
+                setBgImageSrc('/guitariste_flamenco.jpg');
+              } else if (bgImageSrc !== '/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
+                setBgImageSrc('/maryam-tello-v07wdRY8qxo-unsplash.jpg');
+              } else if (bgImageSrc !== '/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
+                setBgImageSrc('/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg');
               }
             }}
             style={{ objectPosition: 'center 50%' }}
@@ -106,35 +122,59 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
-            <span className="text-[8.5px] sm:text-[9.5px] font-bold tracking-wider text-white/90 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pt-0.5 leading-tight">
-              Présentation<br />générale
-            </span>
+            <div className="flex items-center gap-2.5">
+              {discipline === 'guitare' ? (
+                <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#e5a93b] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  GUITARE
+                </span>
+              ) : (
+                <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  BAILE
+                </span>
+              )}
+            </div>
 
-            <h2 className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] leading-tight shrink-0 max-w-[100px] sm:max-w-[120px] pt-0.5">
-              Monter sa<br />danse flamenca
+            <h2 className="text-right text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-tight shrink-0">
+              {discipline === 'guitare' ? (
+                <>
+                  Monter son<br />jeu flamenco
+                </>
+              ) : (
+                <>
+                  Monter sa<br />danse flamenca
+                </>
+              )}
             </h2>
           </div>
 
-          {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide laissant voir la danseuse au travers */}
+          {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide */}
           <DanseArborescenceTree 
+            title={
+              <>
+                Présentation<br />générale
+              </>
+            } 
             onOpenLexique={onOpenLexique} 
             defaultExpanded={false}
             translucent={true}
+            maitresVideos={discipline === 'guitare' ? GUITARE_PALOS_DATA['Farruca']?.maitres : BAILE_PALOS_DATA['Farruca']?.maitres}
+            coursVideos={discipline === 'guitare' ? GUITARE_PALOS_DATA['Farruca']?.cours : undefined}
+            onPlayVideo={onPlayVideo ? (video, section) => onPlayVideo(video, 'Farruca', 'Farruca', section) : undefined}
           />
         </div>
       </div>
 
       {/* Palo Farruca Featured Card */}
       <div className="space-y-3">
-        {/* RECHERCHE DÉDIÉE AU CATALOGUE DES PALOS DE DANSE (À CÔTÉ DU TITRE) */}
+        {/* RECHERCHE DÉDIÉE AU CATALOGUE DES PALOS (À CÔTÉ DU TITRE) */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-              <span>Liste des palos (baile)</span>
+              <span>{discipline === 'guitare' ? 'Liste des palos (guitare)' : 'Liste des palos (baile)'}</span>
               <span className="text-xs text-[#8c8173] font-normal lowercase hidden sm:inline">(commençons avec la Farruca)</span>
             </h3>
 
-            {/* Symbole loupe à côté de Palos de Danse */}
+            {/* Symbole loupe à côté de Palos */}
             <button
               type="button"
               id="btn-search-danse-palos"
@@ -144,8 +184,8 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   ? 'bg-white text-[#121110] shadow-sm'
                   : 'text-white hover:text-white/80 hover:bg-white/10 bg-[#201a14] border border-[#3e3022]'
               }`}
-              title={isCatalogSearchOpen ? "Fermer la recherche" : "Filtrer la liste des palos de danse"}
-              aria-label="Filtrer la liste des palos de danse"
+              title={isCatalogSearchOpen ? "Fermer la recherche" : "Filtrer la liste des palos"}
+              aria-label="Filtrer la liste des palos"
             >
               <Search className="w-4 h-4 text-white" />
               <span className="text-[11px] font-medium hidden xs:inline">Filtrer</span>
@@ -159,7 +199,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
           )}
         </div>
 
-        {/* Champ de recherche déroulant affiché au clic sur la loupe de Palos de Danse avec loupe à droite */}
+        {/* Champ de recherche déroulant affiché au clic sur la loupe */}
         {isCatalogSearchOpen && (
           <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
             <input
@@ -168,7 +208,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
               id="danse-search-input"
               value={catalogSearchTerm}
               onChange={e => setCatalogSearchTerm(e.target.value)}
-              placeholder="Rechercher un palo de la liste (ex: Farruca, Alegrías, Soleá, Bulerías, compás...)"
+              placeholder={discipline === 'guitare' ? "Rechercher un palo de guitare (ex: Farruca, Alegrías, Soleá, Bulerías, compás...)" : "Rechercher un palo de la liste (ex: Farruca, Alegrías, Soleá, Bulerías, compás...)"}
               className="w-full pl-3.5 pr-24 py-2.5 rounded-xl bg-[#171410] border border-[#e5a93b]/60 text-[#f4efe6] placeholder-[#73685a] text-sm focus:outline-none focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b] transition-all shadow-inner"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -206,7 +246,7 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
         {filteredCatalogPalos.length === 0 ? (
           <div className="p-8 rounded-2xl bg-[#171410] border border-[#2b2219] text-center space-y-3">
             <p className="text-sm text-[#a69c8f]">
-              Aucun palo de danse ne correspond à « <span className="text-[#e5a93b] font-medium">{catalogSearchTerm}</span> »
+              Aucun palo ne correspond à « <span className="text-[#e5a93b] font-medium">{catalogSearchTerm}</span> »
             </p>
             <button
               type="button"
@@ -230,14 +270,19 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
                   }`}
                 >
                   <div className="space-y-3">
-                    {!item.isAvailable && (
-                      <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
+                      {item.isAvailable ? (
+                        <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Module complet disponible</span>
+                        </span>
+                      ) : (
                         <span className="text-[11px] font-medium text-[#7d7162] bg-[#1a1612] px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#2b2219]">
                           <Lock className="w-3 h-3" />
                           <span>Bientôt disponible</span>
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between gap-3 sm:gap-4">
                       <div className="min-w-0">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PALOS_DATA } from './data/flamencoData';
 import { BAILE_PALOS_DATA } from './data/baileData';
+import { GUITARE_PALOS_DATA } from './data/guitareData';
 import { PaloData, VideoItem, PaloCompas, DisciplineMode, DansePaloData, PracticeBookmark, DanseSectionTab, SectionTab } from './types';
 import { Header } from './components/Header';
 import { PaloList } from './components/PaloList';
@@ -283,7 +284,12 @@ export default function App() {
   };
 
   const activePalo = getCurrentPalo();
-  const activeDansePalo: DansePaloData = BAILE_PALOS_DATA[selectedPaloKey || 'Farruca'] || BAILE_PALOS_DATA['Farruca'];
+  const activeDansePalo: DansePaloData = useMemo(() => {
+    if (discipline === 'guitare') {
+      return GUITARE_PALOS_DATA[selectedPaloKey || 'Farruca'] || GUITARE_PALOS_DATA['Farruca'] || BAILE_PALOS_DATA['Farruca'];
+    }
+    return BAILE_PALOS_DATA[selectedPaloKey || 'Farruca'] || BAILE_PALOS_DATA['Farruca'];
+  }, [discipline, selectedPaloKey]);
 
   // Handle Metronome toggle
   const handleToggleMetronome = () => {
@@ -547,9 +553,11 @@ export default function App() {
       };
       return isFolderStudioCheck(danseCustomFolderId) ? 'studio' : 'biblio';
     }
+    if (danseTab === 'structure' || danseTab === 'montages') return 'studio';
     if (isStudioPageOpen) return 'studio';
+    if (isBiblioPageOpen) return 'biblio';
     return 'biblio';
-  }, [discipline, currentView, isStudioPageOpen, isBiblioPageOpen, danseCustomFolderId, selectedPaloKey]);
+  }, [discipline, currentView, isStudioPageOpen, isBiblioPageOpen, danseTab, danseCustomFolderId, selectedPaloKey]);
 
   return (
     <div className="min-h-screen bg-[#0f0e0d] text-[#f4efe6] flex flex-col font-sans selection:bg-[#e5a93b]/30">
@@ -629,10 +637,12 @@ export default function App() {
               onOpenAtelier={handleOpenAtelier}
             />
           ) : discipline === 'guitare' ? (
-            <PaloList
+            <DansePaloList
+              discipline="guitare"
               onSelectPalo={handleOpenPalo}
-              onOpenTangosVariants={handleOpenTangosVariants}
+              onBack={() => handleToggleDiscipline('danse')}
               onOpenInstall={() => setIsInstallGuideOpen(true)}
+              onOpenLibrary={() => handleToggleDiscipline('danse')}
               onOpenArborescence={() => handleOpenTools('arborescence')}
               onOpenLexique={() => handleOpenTools('lexique')}
               onOpenBibliotheque={handleOpenBibliotheque}
@@ -645,6 +655,7 @@ export default function App() {
                   sectionName
                 });
               }}
+              onNavigateDanseTab={handleNavigateDanseTab}
             />
           ) : (
             <div className="bg-[#171410] border-2 border-[#382d22] rounded-2xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
@@ -692,87 +703,61 @@ export default function App() {
         )}
 
         {currentView === 'palo-detail' && (
-          discipline === 'danse' ? (
-            <DansePaloDetail
-              key={`${activeDansePalo.id}-${customVideosVersion}`}
-              palo={activeDansePalo}
-              isMetronomePlaying={isMetronomePlaying}
-              onToggleMetronome={handleToggleMetronome}
-              onPlayVideo={(video, sectionName) => {
-                setActiveVideoData({
-                  video,
-                  paloName: `${activeDansePalo.name} (Danse)`,
-                  paloId: activeDansePalo.id,
-                  sectionName
+          <DansePaloDetail
+            key={`${activeDansePalo.id}-${discipline}-${customVideosVersion}`}
+            discipline={discipline}
+            palo={activeDansePalo}
+            isMetronomePlaying={isMetronomePlaying}
+            onToggleMetronome={handleToggleMetronome}
+            onPlayVideo={(video, sectionName) => {
+              setActiveVideoData({
+                video,
+                paloName: `${activeDansePalo.name} (${discipline === 'guitare' ? 'Guitare' : 'Danse'})`,
+                paloId: activeDansePalo.id,
+                sectionName
+              });
+            }}
+            onOpenAddVideo={section => setAddVideoSection(section)}
+            onBack={handleGoBack}
+            activeTab={danseTab}
+            isBiblioPageOpen={isBiblioPageOpen}
+            onToggleBiblioPage={setIsBiblioPageOpen}
+            isStudioPageOpen={isStudioPageOpen}
+            onToggleStudioPage={setIsStudioPageOpen}
+            activeCustomFolderId={danseCustomFolderId}
+            onCustomFolderChange={setDanseCustomFolderId}
+            initialTreeFolder={danseInitialTreeFolder}
+            onTabChange={tab => {
+              setDanseTab(tab);
+              if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
+                setIsBiblioPageOpen(true);
+                setIsStudioPageOpen(false);
+              } else if (tab === 'structure' || tab === 'montages') {
+                setIsStudioPageOpen(true);
+                setIsBiblioPageOpen(false);
+              }
+              if (tab === 'hub') {
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    const el = document.getElementById('danse-espaces-etude');
+                    if (el) {
+                      const headerOffset = 70;
+                      const elementPosition = el.getBoundingClientRect().top;
+                      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                      window.scrollTo({
+                        top: Math.max(0, offsetPosition),
+                        behavior: 'smooth'
+                      });
+                    } else {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }, 60);
                 });
-              }}
-              onOpenAddVideo={section => setAddVideoSection(section)}
-              onBack={handleGoBack}
-              activeTab={danseTab}
-              isBiblioPageOpen={isBiblioPageOpen}
-              onToggleBiblioPage={setIsBiblioPageOpen}
-              isStudioPageOpen={isStudioPageOpen}
-              onToggleStudioPage={setIsStudioPageOpen}
-              activeCustomFolderId={danseCustomFolderId}
-              onCustomFolderChange={setDanseCustomFolderId}
-              initialTreeFolder={danseInitialTreeFolder}
-              onTabChange={tab => {
-                setDanseTab(tab);
-                if (tab === 'maitres' || tab === 'cours' || tab === 'letras' || tab === 'compas') {
-                  setIsBiblioPageOpen(true);
-                }
-                if (tab === 'hub') {
-                  requestAnimationFrame(() => {
-                    setTimeout(() => {
-                      const el = document.getElementById('danse-espaces-etude');
-                      if (el) {
-                        const headerOffset = 70;
-                        const elementPosition = el.getBoundingClientRect().top;
-                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                        window.scrollTo({
-                          top: Math.max(0, offsetPosition),
-                          behavior: 'smooth'
-                        });
-                      } else {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
-                    }, 60);
-                  });
-                } else {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            />
-          ) : activePalo ? (
-            <GuitarePaloDetail
-              key={`${activePalo.id}-${customVideosVersion}`}
-              palo={activePalo}
-              paloKey={selectedVariantKey || selectedPaloKey || ''}
-              isMetronomePlaying={isMetronomePlaying}
-              onToggleMetronome={handleToggleMetronome}
-              onPlayVideo={(video, sectionName) => {
-                setActiveVideoData({
-                  video,
-                  paloName: `${activePalo.name} (Guitare)`,
-                  paloId: activePalo.id,
-                  sectionName
-                });
-              }}
-              onOpenAddVideo={section => setAddVideoSection(section)}
-              onBack={handleGoBack}
-              activeTab={danseTab as any}
-              isBiblioPageOpen={isBiblioPageOpen}
-              onToggleBiblioPage={setIsBiblioPageOpen}
-              isStudioPageOpen={isStudioPageOpen}
-              onToggleStudioPage={setIsStudioPageOpen}
-              activeCustomFolderId={danseCustomFolderId}
-              onCustomFolderChange={setDanseCustomFolderId}
-              onTabChange={tab => {
-                setDanseTab(tab as any);
+              } else {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            />
-          ) : null
+              }
+            }}
+          />
         )}
 
         {currentView === 'favorites' && (

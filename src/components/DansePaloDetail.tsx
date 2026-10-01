@@ -35,6 +35,8 @@ import { AddDanseFolderModal } from './AddDanseFolderModal';
 import { RenameDanseFolderModal } from './RenameDanseFolderModal';
 import { FlamencoCantaorIcon } from './FlamencoCantaorIcon';
 import { FlamencoBailaoraIcon } from './FlamencoBailaoraIcon';
+import { FlamencoGuitaristeIcon } from './FlamencoGuitaristeIcon';
+import { DisciplineMode } from '../types';
 
 const YOUTUBE_EXACT_TITLES: Record<string, string> = {
   "pziQ1VcL740": "Ivan Vargas & Kasandra \"La China\" - Farruca, flamenco dancers",
@@ -46,7 +48,14 @@ const YOUTUBE_EXACT_TITLES: Record<string, string> = {
   "qposVIHEY2E": "BG Flamenco - Salida y Marcaje para FARRUCA",
   "31pvJlUXa78": "Rafael de Utrera - Letra por Farruca (Una farruca en Galicia)",
   "trABVQebNLY": "José Menese - Farruca (Cayó al suelo una paloma)",
-  "DZv_-vdPWuE": "Antonio Mairena - Farruca \"amargamente\""
+  "DZv_-vdPWuE": "Antonio Mairena - Farruca \"amargamente\"",
+  "AqHuFQ4cHEA": "Paco de Lucía - Farruca de Lucía",
+  "8RxEHqFuunE": "Sabicas - Punta y Tacón (Farruca)",
+  "izNxtsC1b4k": "Paco Peña & John Williams - Farruca in D",
+  "QfP-J7gB50c": "Juan Martín - Farruca (El Arte Flamenco de la Guitarra)",
+  "hR-05f329dY": "Jerónimo de Carmen - FARRUCA FÁCIL con Falseta",
+  "yB_5J8n1L2E": "Kai Narezo - Farruca Compás Explained (Flamenco Guitar)",
+  "d-d65t6N2W4": "Sabicas - Punta y Tacón (Tutorial & Tablature)"
 };
 
 const getExactVideoTitle = (video: VideoItem): string => {
@@ -82,6 +91,7 @@ interface DansePaloDetailProps {
   activeCustomFolderId?: string | null;
   onCustomFolderChange?: (folderId: string | null) => void;
   initialTreeFolder?: 'biblio' | 'studio' | null;
+  discipline?: DisciplineMode;
 }
 
 const ESPACE_INFO_MAP: Record<Exclude<DanseSectionTab, 'hub'>, { title: string; subtitle: string; icon: string }> = {
@@ -141,7 +151,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   onToggleStudioPage,
   activeCustomFolderId: activeCustomFolderIdProp,
   onCustomFolderChange,
-  initialTreeFolder
+  initialTreeFolder,
+  discipline = 'danse'
 }) => {
   const [internalTab, setInternalTab] = useState<DanseSectionTab>('hub');
   const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
@@ -1201,10 +1212,14 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
   const getCoursVideos = () => {
     const deletedIds = getDeletedVideoIds();
     const replacedVideos = getReplacedVideos();
+    const rawStaticList = palo.cours || [];
+    const staticList = rawStaticList
+      .filter(v => !deletedIds.includes(v.id))
+      .map(v => replacedVideos[v.id] || v);
     const customList = ((paloCustom['cours'] || []) as VideoItem[])
       .filter(v => !deletedIds.includes(v.id))
       .map(v => replacedVideos[v.id] || v);
-    return customList;
+    return [...staticList, ...customList];
   };
 
   // Filtrage textuel et tri alphabétique des médias (en prenant en compte les noms d'artistes en premier)
@@ -2479,6 +2494,15 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <button
                   type="button"
+                  onClick={onBack}
+                  className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] hover:bg-emerald-900/90 hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)] cursor-pointer shrink-0"
+                  title={discipline === 'guitare' ? "Retourner à la liste des palos de guitare" : "Retourner à la liste des palos de danse"}
+                  aria-label="Retourner à la liste des palos"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => toggleFolderCollapse('farruca_root')}
                   className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
@@ -2739,6 +2763,15 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <button
                   type="button"
+                  onClick={onBack}
+                  className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] hover:bg-blue-900/90 hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)] cursor-pointer shrink-0"
+                  title={discipline === 'guitare' ? "Retourner à la liste des palos de guitare" : "Retourner à la liste des palos de danse"}
+                  aria-label="Retourner à la liste des palos"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => toggleFolderCollapse('farruca_studio_root')}
                   className="p-1 -ml-1 rounded-md text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
@@ -2975,7 +3008,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="space-y-4">
                 {renderDualPaves(isStudioFolder)}
 
-                {/* En haut : Farruca */}
+                {/* En haut : Farruca avec flèche de retour colorée */}
                 <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
                   <button
                     type="button"
@@ -2995,6 +3028,13 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     }`}
                     title={`Retourner à l'arborescence ${palo.name}`}
                   >
+                    <div className={`p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all ${
+                      isStudioFolder 
+                        ? 'bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]' 
+                        : 'bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]'
+                    }`}>
+                      <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                    </div>
                     <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                     <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
                       isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
@@ -3188,7 +3228,33 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
       {/* TAB 1: Structure traditionnelle de la Farruca */}
       {activeTab === 'structure' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {renderDualPaves(true)}
+
+          {/* En haut : Farruca avec flèche de retour bleue (Atelier) */}
+          <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCustomFolderId(null);
+                setIsStudioPageOpen(true);
+                setIsBiblioPageOpen(false);
+                setActiveTab('hub');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 text-left group hover:text-[#60a5fa] transition-colors cursor-pointer"
+              title={`Retourner à l'arborescence ${palo.name}`}
+            >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <FolderOpen className="w-5 h-5 text-[#60a5fa] shrink-0" />
+              <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-blue-300">
+                {palo.name}
+              </span>
+            </button>
+          </div>
+
           {/* Card Guide Global */}
           <div className="bg-[#171411] border border-[#302820] rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#29221b] pb-3">
@@ -3418,19 +3484,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca */}
+          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
                 setActiveCustomFolderId(null);
                 setIsBiblioPageOpen(true);
+                setIsStudioPageOpen(false);
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -3564,19 +3634,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca */}
+          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
                 setActiveCustomFolderId(null);
                 setIsBiblioPageOpen(true);
+                setIsStudioPageOpen(false);
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -3601,6 +3675,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+                {renderViewModeControl(false)}
+
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#201912] border border-[#3d2f1f] text-xs font-semibold text-[#e5a93b]">
                   <Languages className="w-3.5 h-3.5" />
                   <span>Bilingue ES / FR</span>
@@ -3675,7 +3751,49 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           </div>
 
           {/* List of Letras */}
-          <div className="space-y-6">
+          {mediaViewMode === 'list' ? (
+            <div className="space-y-1.5">
+              {palo.letras && palo.letras.length > 0 ? (
+                palo.letras.map((letra, index) => (
+                  <div
+                    key={letra.id}
+                    onClick={() => onPlayVideo(letra.video, `Letra: ${letra.title}`)}
+                    className="group relative flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all cursor-pointer select-none shadow-xs bg-[#121814] hover:bg-[#18261c] border border-emerald-900/50 hover:border-emerald-500/70"
+                    title="Cliquer pour écouter le cante de cette letra"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs bg-emerald-950/80 group-hover:bg-emerald-400 text-[#86efac] group-hover:text-[#0b1710] border border-emerald-500/30">
+                        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-white transition-colors truncate">
+                            {letra.title}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#201912] text-[#e5a93b] border border-[#3d2f1f]">
+                            {letra.category}
+                          </span>
+                          <span className="text-xs text-[#8c8173] truncate">
+                            ({letra.cantaorReference})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] font-semibold text-[#86efac] hidden xs:inline">
+                        Écouter le chant ›
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center bg-[#171411] border border-[#2e261f] rounded-2xl text-[#8c8173]">
+                  Aucune letra enregistrée pour ce palo.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
             {palo.letras && palo.letras.length > 0 ? (
               palo.letras.map((letra, index) => {
                 const isBookmarked = !!bookmarks[letra.video.id];
@@ -3877,6 +3995,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
       )}
@@ -3886,19 +4005,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca */}
+          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
                 setActiveCustomFolderId(null);
                 setIsBiblioPageOpen(true);
+                setIsStudioPageOpen(false);
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -4074,19 +4197,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca */}
+          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
                 setActiveCustomFolderId(null);
                 setIsBiblioPageOpen(true);
+                setIsStudioPageOpen(false);
                 setActiveTab('hub');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -4296,7 +4423,33 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
       {/* TAB 6: Mon carnet de montage */}
       {activeTab === 'montages' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {renderDualPaves(true)}
+
+          {/* En haut : Farruca avec flèche de retour bleue (Atelier) */}
+          <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCustomFolderId(null);
+                setIsStudioPageOpen(true);
+                setIsBiblioPageOpen(false);
+                setActiveTab('hub');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 text-left group hover:text-[#60a5fa] transition-colors cursor-pointer"
+              title={`Retourner à l'arborescence ${palo.name}`}
+            >
+              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]">
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <FolderOpen className="w-5 h-5 text-[#60a5fa] shrink-0" />
+              <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-blue-300">
+                {palo.name}
+              </span>
+            </button>
+          </div>
+
           {/* Sub-sections tabs: Mon atelier de création dynamique */}
           <div className="bg-[#171411] border border-[#2e261e] p-3 sm:p-3.5 rounded-2xl space-y-2.5">
             <div className="flex items-center justify-between gap-2.5 flex-wrap">

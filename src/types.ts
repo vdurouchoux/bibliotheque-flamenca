@@ -156,6 +156,7 @@ export interface DansePaloData {
   };
   letras?: LetraItem[];
   maitres: VideoItem[];
+  cours?: VideoItem[];
 }
 
 export interface PracticeBookmark {
