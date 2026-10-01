@@ -918,7 +918,50 @@ si je te paye en retour par le mal.`,
   "Verdiales": VERDIALES,
   "Taranto": TARANTO,
   "Guajiras": GUAJIRAS,
-  "Fandangos": FANDANGOS
+  "Fandangos": FANDANGOS,
+  "Farruca": {
+    id: "farruca",
+    name: "Farruca",
+    subtitle: "Guitare flamenca – Compás binaire sobre, dramatique et virtuose",
+    tag: "4 temps binaire",
+    origin: "Galice / Andalousie",
+    character: "Sobre, noble, fier et dramatique",
+    compas: {
+      beats: 4,
+      accents: [1, 2, 3, 4],
+      defaultBpm: 92,
+      minBpm: 75,
+      maxBpm: 125,
+      description: "Compás binaire à 4 temps. Cadence rigoureuse en La mineur (Am).",
+      rhythmType: '4-temps'
+    },
+    harmonie: {
+      summary: "La <strong>Farruca</strong> se joue traditionnellement en <strong>La mineur (Am)</strong>. Cadence mineure avec passages en Do majeur et résolutions caractéristiques sur Mi 7ème (E7).",
+      tonality: "La mineur (Am)",
+      cadence: ["Am", "G", "F", "E7"],
+      cejillaTips: "Généralement jouée al aire (sans cejilla) ou avec cejilla case 1 ou 2.",
+      chords: [
+        { name: "Am (La mineur)", fretText: "x-0-2-2-1-0", description: "Tonique principale de la Farruca" },
+        { name: "E7 (Mi 7ème)", fretText: "0-2-0-1-0-0", description: "Dominante majeure de résolution" },
+        { name: "Dm (Ré mineur)", fretText: "x-x-0-2-3-1", description: "Sous-dominante mineure" },
+        { name: "C (Do majeur)", fretText: "x-3-2-0-1-0", description: "Passage lumineux relatif majeur" }
+      ]
+    },
+    intro: {
+      title: "Entrada por Farruca",
+      concept: "L'entrée installe la solennité et la rigueur du compás à 4 temps en La mineur.",
+      howToStart: "Poser le compás avec un rasgueo sec et net.",
+      compasAdvice: "4 temps réguliers, tempo maîtrisé.",
+      tonalAmbience: "La mineur sobre et dramatique.",
+      videos: []
+    },
+    falsetas: {},
+    cante: {},
+    baile: {
+      structure: "Structure de la Farruca",
+      letraSpanish: ""
+    }
+  }
 };
 
 export const FLAMENCO_TECHNIQUES = [

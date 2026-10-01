@@ -1733,3 +1733,139 @@ export function updateLocalMediaUrl(
     return false;
   }
 }
+
+const STORAGE_GUITARE_FOLDERS_KEY = 'flamenco_guitare_folders_v1';
+
+export function getGuitareFolders(paloId: string): DanseFolderNode[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_GUITARE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    let folders = store[paloId] || [];
+    let hasChanges = false;
+
+    // Initialisation des dossiers par défaut de l'Atelier pour la Guitare :
+    // 1. Mes falsetas, 2. Mes morceaux, 3. Mes techniques
+    const hasStudioFalsetas = folders.some(f => (f.category === 'studio' || f.id.includes('falsetas')) && f.name.toLowerCase().includes('falseta'));
+    if (!hasStudioFalsetas) {
+      const defaultStudioFolders: DanseFolderNode[] = [
+        {
+          id: `folder_guitare_${paloId}_falsetas`,
+          paloId,
+          name: 'Mes falsetas',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000010
+        },
+        {
+          id: `folder_guitare_${paloId}_morceaux`,
+          paloId,
+          name: 'Mes morceaux',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000020
+        },
+        {
+          id: `folder_guitare_${paloId}_techniques`,
+          paloId,
+          name: 'Mes techniques & exercices',
+          parentId: null,
+          category: 'studio',
+          createdAt: 1700000000030
+        }
+      ];
+      folders = [...folders, ...defaultStudioFolders];
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      store[paloId] = folders;
+      try {
+        localStorage.setItem(STORAGE_GUITARE_FOLDERS_KEY, JSON.stringify(store));
+      } catch {}
+    }
+
+    return folders;
+  } catch {
+    return [];
+  }
+}
+
+export function saveGuitareFolder(paloId: string, name: string, parentId?: string | null, category?: 'biblio' | 'studio'): DanseFolderNode {
+  const folders = getGuitareFolders(paloId);
+  let effectiveCategory = category;
+  if (parentId) {
+    const parent = folders.find(f => f.id === parentId);
+    if (parent?.category === 'studio') {
+      effectiveCategory = 'studio';
+    }
+  }
+  const newFolder: DanseFolderNode = {
+    id: `folder_g_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    paloId,
+    name: name.trim(),
+    parentId: parentId || null,
+    category: effectiveCategory,
+    createdAt: Date.now()
+  };
+  const updated = [...folders, newFolder];
+  try {
+    const raw = localStorage.getItem(STORAGE_GUITARE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_GUITARE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_guitare_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to save guitare folder', e);
+  }
+  return newFolder;
+}
+
+export function renameGuitareFolder(paloId: string, folderId: string, newName: string): DanseFolderNode[] {
+  const folders = getGuitareFolders(paloId);
+  const updated = folders.map(f => f.id === folderId ? { ...f, name: newName.trim() } : f);
+  try {
+    const raw = localStorage.getItem(STORAGE_GUITARE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_GUITARE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_guitare_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to rename guitare folder', e);
+  }
+  return updated;
+}
+
+export function deleteGuitareFolder(paloId: string, folderId: string): DanseFolderNode[] {
+  const folders = getGuitareFolders(paloId);
+  const toDelete = new Set<string>([folderId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const f of folders) {
+      if (f.parentId && toDelete.has(f.parentId) && !toDelete.has(f.id)) {
+        toDelete.add(f.id);
+        added = true;
+      }
+    }
+  }
+  const updated = folders.filter(f => !toDelete.has(f.id));
+  try {
+    const raw = localStorage.getItem(STORAGE_GUITARE_FOLDERS_KEY);
+    const store: Record<string, DanseFolderNode[]> = raw ? JSON.parse(raw) : {};
+    store[paloId] = updated;
+    localStorage.setItem(STORAGE_GUITARE_FOLDERS_KEY, JSON.stringify(store));
+    scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_guitare_folders_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to delete guitare folder', e);
+  }
+  return updated;
+}

@@ -1,26 +1,52 @@
-import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, Flame, Layers, BookOpen, Smartphone } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import {
+  Activity,
+  Search,
+  X,
+  BookOpen,
+  Film
+} from 'lucide-react';
 import { PALOS_DATA } from '../data/flamencoData';
-import { FlamencoGuitarIcon } from './FlamencoGuitarIcon';
+import { GuitareArborescenceTree } from './GuitareArborescenceTree';
+import { VideoItem } from '../types';
 
 interface PaloListProps {
   onSelectPalo: (paloKey: string) => void;
-  onOpenTangosVariants: () => void;
+  onOpenTangosVariants?: () => void;
   onOpenInstall?: () => void;
   onOpenArborescence?: () => void;
   onOpenLexique?: () => void;
-  onPlayVideo?: (video: any, paloName: string, paloKey: string, sectionName: string) => void;
+  onPlayVideo?: (video: VideoItem, paloName: string, paloKey: string, sectionName: string) => void;
+  onOpenBibliotheque?: (paloKey: string) => void;
+  onOpenAtelier?: (paloKey: string) => void;
 }
 
 export const PaloList: React.FC<PaloListProps> = ({
   onSelectPalo,
-  onOpenTangosVariants,
-  onOpenInstall,
-  onOpenArborescence,
-  onOpenLexique
+  onOpenLexique,
+  onOpenBibliotheque,
+  onOpenAtelier
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [bgImageSrc, setBgImageSrc] = useState<string>('/guitariste_flamenco.jpg');
+
+  // Recherche dédiée au catalogue des palos de guitare
+  const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
+  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
+  const catalogSearchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleCatalogSearch = () => {
+    setIsCatalogSearchOpen(prev => {
+      const nextState = !prev;
+      if (nextState) {
+        setTimeout(() => {
+          catalogSearchInputRef.current?.focus();
+        }, 60);
+      } else {
+        setCatalogSearchTerm('');
+      }
+      return nextState;
+    });
+  };
 
   const palos = useMemo(() => {
     return Object.keys(PALOS_DATA).map(key => ({
@@ -29,211 +55,214 @@ export const PaloList: React.FC<PaloListProps> = ({
     })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   }, []);
 
-  // Filter palos
+  // Filtrage du catalogue des palos de guitare
   const filteredPalos = useMemo(() => {
-    return palos.filter(palo => {
-      const matchesSearch =
-        palo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        palo.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        palo.character.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (palo.origin && palo.origin.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (!catalogSearchTerm.trim()) {
+      return palos;
+    }
+    const cleanSearch = catalogSearchTerm
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
 
-      const matchesTag =
-        selectedTag === 'all' ||
-        (selectedTag === '12-temps' && palo.compas.rhythmType === '12-temps') ||
-        (selectedTag === '4-temps' && palo.compas.rhythmType === '4-temps') ||
-        (selectedTag === '3-temps' && palo.compas.rhythmType === '3-temps') ||
-        (selectedTag === 'libre' && palo.compas.rhythmType === 'libre');
-
-      return matchesSearch && matchesTag;
+    return palos.filter(item => {
+      const matchName = item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
+      const matchSubtitle = (item.subtitle || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
+      const matchTag = (item.tag || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
+      const matchCharacter = (item.character || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(cleanSearch);
+      return matchName || matchSubtitle || matchTag || matchCharacter;
     });
-  }, [palos, searchTerm, selectedTag]);
+  }, [palos, catalogSearchTerm]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Hero Welcome banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#221c17] via-[#1a1714] to-[#161311] border border-[#3b3228] p-5 sm:p-6 shadow-xl">
-        <div className="relative z-10 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e5a93b]/15 text-[#e5a93b] text-xs font-semibold border border-[#e5a93b]/30 mb-2.5">
-            <Flame className="w-3.5 h-3.5" />
-            <span>Répertoire & Étude de la Guitare Flamenca</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#f4efe6] tracking-tight font-serif">
-            Médiathèque Flamenca
-          </h2>
-          <p className="text-xs sm:text-sm text-[#b5a99a] mt-1.5 leading-relaxed">
-            Choisissez un palo pour explorer ses falsetas par niveau (1, 2, 3), l'accompagnement du cante et du baile, ses cadences harmoniques et son compás interactif.
-          </p>
-
-          <div className="pt-3 flex items-center gap-2.5 flex-wrap">
-            {onOpenArborescence && (
-              <button
-                type="button"
-                onClick={onOpenArborescence}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] text-xs font-bold transition-all cursor-pointer shadow-md"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>🌳 Arborescence des Palos</span>
-              </button>
-            )}
-            {onOpenLexique && (
-              <button
-                type="button"
-                onClick={onOpenLexique}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#282119] hover:bg-[#382d22] text-[#e5a93b] border border-[#e5a93b]/40 text-xs font-bold transition-all cursor-pointer shadow-sm"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>📖 Lexique Flamenco</span>
-              </button>
-            )}
-            {onOpenInstall && (
-              <button
-                type="button"
-                onClick={onOpenInstall}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#e5a93b]/20 hover:bg-[#e5a93b]/30 text-[#e5a93b] border border-[#e5a93b]/50 text-xs font-bold transition-all cursor-pointer shadow-sm"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>Installer sur mon téléphone</span>
-              </button>
-            )}
-          </div>
+    <div className="space-y-6">
+      {/* Hero Guitare */}
+      <div className="relative overflow-hidden bg-[#161310] border border-[#3e3022] rounded-2xl p-4 sm:p-6 shadow-xl min-h-[175px]">
+        {/* Image de fond guitariste flamenco */}
+        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <img
+            src={bgImageSrc}
+            alt="Guitariste Flamenco"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              if (bgImageSrc !== '/guitare_flamenca_penchee.jpg') {
+                setBgImageSrc('/guitare_flamenca_penchee.jpg');
+              }
+            }}
+            style={{ objectPosition: 'center 45%' }}
+            className="w-full h-full object-cover opacity-72 sm:opacity-76 transition-opacity duration-300 filter brightness-110 contrast-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-black/20" />
         </div>
-        {/* Subtle background decoration */}
-        <div className="absolute -right-2 -bottom-4 opacity-15 pointer-events-none select-none">
-          <FlamencoGuitarIcon className="w-36 h-36" />
+
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-[8.5px] sm:text-[9.5px] font-bold tracking-wider text-white/90 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pt-0.5 leading-tight">
+              Présentation<br />générale
+            </span>
+
+            <h2 className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] leading-tight shrink-0 max-w-[120px] sm:max-w-[140px] pt-0.5">
+              Étudier la<br />guitare flamenca
+            </h2>
+          </div>
+
+          {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide */}
+          <GuitareArborescenceTree 
+            onOpenLexique={onOpenLexique} 
+            defaultExpanded={false}
+            translucent={true}
+          />
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search input */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c8173]" />
-          <input
-            id="palo-search-input"
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Rechercher un palo, une ville (Cádiz, Jerez, Triana)..."
-            className="w-full bg-[#171412] border border-[#312a23] focus:border-[#e5a93b] rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#f4efe6] placeholder-[#6b6256] outline-none transition-colors"
-          />
-          {searchTerm && (
+      {/* Liste des Palos de Guitare */}
+      <div className="space-y-3">
+        {/* RECHERCHE DÉDIÉE AU CATALOGUE DES PALOS DE GUITARE */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <span>Liste des palos (guitare)</span>
+            </h3>
+
+            {/* Symbole loupe à côté de Palos de Guitare */}
             <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#8c8173] hover:text-[#f4efe6]"
+              type="button"
+              id="btn-search-guitare-palos"
+              onClick={handleToggleCatalogSearch}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+                isCatalogSearchOpen || catalogSearchTerm
+                  ? 'bg-white text-[#121110] shadow-sm'
+                  : 'text-white hover:text-white/80 hover:bg-white/10 bg-[#201a14] border border-[#3e3022]'
+              }`}
+              title={isCatalogSearchOpen ? "Fermer la recherche" : "Filtrer la liste des palos"}
+              aria-label="Filtrer la liste des palos de guitare"
             >
-              Effacer
+              <Search className="w-4 h-4 text-white" />
+              <span className="text-[11px] font-medium hidden xs:inline">Filtrer</span>
             </button>
+          </div>
+
+          {catalogSearchTerm && (
+            <span className="text-xs text-[#a69c8f]">
+              {filteredPalos.length} résultat{filteredPalos.length > 1 ? 's' : ''}
+            </span>
           )}
         </div>
 
-        {/* Tag Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0">
-          {[
-            { id: 'all', label: 'Tous' },
-            { id: '12-temps', label: '12 temps (Bulerías, Soleá, Guajiras…)' },
-            { id: '4-temps', label: '4 temps (Tangos, Rumba, Taranto…)' },
-            { id: '3-temps', label: '3 temps (Sevillanas, Fandangos, Verdiales…)' },
-            { id: 'libre', label: 'Toque Libre (Taranta, Minera, Granaínas…)' }
-          ].map(tag => (
-            <button
-              key={tag.id}
-              onClick={() => setSelectedTag(tag.id)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border ${
-                selectedTag === tag.id
-                  ? 'bg-[#e5a93b] text-[#121110] border-[#e5a93b]'
-                  : 'bg-[#1e1a16] text-[#8c8173] border-[#312a23] hover:text-[#d4c9ba]'
-              }`}
-            >
-              {tag.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Palos Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        {filteredPalos.map(palo => {
-          const isTangos = palo.name === 'Tangos';
-
-          return (
-            <div
-              key={palo.key}
-              id={`palo-card-${palo.id}`}
-              onClick={() => {
-                if (isTangos) {
-                  onOpenTangosVariants();
-                } else {
-                  onSelectPalo(palo.key);
-                }
-              }}
-              className="group relative bg-[#171412] hover:bg-[#1f1b17] border border-[#2f2821] hover:border-[#e5a93b]/70 rounded-2xl p-4 sm:p-5 transition-all duration-150 cursor-pointer shadow-lg hover:shadow-[#e5a93b]/5 flex flex-col justify-between"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                    palo.compas.rhythmType === '12-temps'
-                      ? 'bg-[#3b2b1b] text-[#f5b742] border-[#e5a93b]/40'
-                      : palo.compas.rhythmType === '4-temps'
-                      ? 'bg-[#2b3524] text-[#8ae096] border-[#8ae096]/30'
-                      : 'bg-[#292238] text-[#c0a2ff] border-[#c0a2ff]/30'
-                  }`}>
-                    {palo.tag}
-                  </span>
-
-                  {palo.origin && (
-                    <span className="text-[11px] text-[#8c8173] font-medium">
-                      📍 {palo.origin}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[#f4efe6] group-hover:text-[#e5a93b] transition-colors font-serif">
-                    {palo.name}
-                  </h3>
-                  <p className="text-xs text-[#a69c8f] mt-0.5 line-clamp-1">
-                    {palo.subtitle}
-                  </p>
-                </div>
-
-                <p className="text-xs text-[#7d7265] italic line-clamp-1">
-                  « {palo.character} »
-                </p>
-              </div>
-
-              {/* Card Footer */}
-              <div className="mt-4 pt-3 border-t border-[#26211b] flex items-center justify-between text-xs text-[#8c8173]">
-                <span>
-                  {isTangos ? '5 variantes de styles' : `${palo.harmonie.tonality.split('(')[0].trim()}`}
-                </span>
-                <span className="inline-flex items-center gap-1 font-semibold text-[#e5a93b] group-hover:translate-x-0.5 transition-transform">
-                  <span>{isTangos ? 'Voir les variantes' : 'Ouvrir'}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
+        {/* Champ de recherche déroulant */}
+        {isCatalogSearchOpen && (
+          <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
+            <input
+              ref={catalogSearchInputRef}
+              type="text"
+              id="guitare-search-input"
+              value={catalogSearchTerm}
+              onChange={e => setCatalogSearchTerm(e.target.value)}
+              placeholder="Rechercher un palo de guitare (ex: Soleá, Bulerías, Alegrías, Tangos...)"
+              className="w-full pl-3.5 pr-24 py-2.5 rounded-xl bg-[#171410] border border-[#e5a93b]/60 text-[#f4efe6] placeholder-[#73685a] text-sm focus:outline-none focus:border-[#e5a93b] focus:ring-1 focus:ring-[#e5a93b] transition-all shadow-inner"
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {catalogSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCatalogSearchTerm('');
+                    catalogSearchInputRef.current?.focus();
+                  }}
+                  className="px-2 py-1 text-xs text-[#8c8173] hover:text-[#f4efe6] rounded bg-[#241c15] hover:bg-[#2e241c] transition-colors cursor-pointer"
+                  title="Effacer le texte"
+                >
+                  Effacer
+                </button>
+              )}
+              <Search className="w-4 h-4 text-[#e5a93b] pointer-events-none drop-shadow-sm shrink-0" />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCatalogSearchOpen(false);
+                  setCatalogSearchTerm('');
+                }}
+                className="p-1 text-[#8c8173] hover:text-[#e5a93b] rounded transition-colors cursor-pointer"
+                title="Fermer la recherche"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        )}
 
-      {filteredPalos.length === 0 && (
-        <div className="text-center py-12 bg-[#171412] rounded-2xl border border-[#2f2821] p-6">
-          <p className="text-sm text-[#a69c8f]">
-            Aucun palo trouvé pour « {searchTerm} ».
-          </p>
-          <button
-            onClick={() => { setSearchTerm(''); setSelectedTag('all'); }}
-            className="mt-3 text-xs text-[#e5a93b] underline font-medium"
-          >
-            Réinitialiser les filtres
-          </button>
-        </div>
-      )}
+        {filteredPalos.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-[#171410] border border-[#2b2219] text-center space-y-3">
+            <p className="text-sm text-[#a69c8f]">
+              Aucun palo de guitare ne correspond à « <span className="text-[#e5a93b] font-medium">{catalogSearchTerm}</span> »
+            </p>
+            <button
+              type="button"
+              onClick={() => setCatalogSearchTerm('')}
+              className="text-xs text-[#e5a93b] underline font-medium cursor-pointer"
+            >
+              Réinitialiser la recherche
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredPalos.map(item => {
+              return (
+                <div
+                  key={item.key}
+                  id={`guitare-palo-card-${item.id}`}
+                  className="bg-[#171410] border rounded-2xl p-4 sm:p-5 transition-all shadow-xl relative overflow-hidden border-[#3e3022] hover:border-[#e5a93b]/70 hover:shadow-[#e5a93b]/5"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4">
+                      <div className="min-w-0">
+                        <h4 className="text-xl sm:text-2xl font-bold font-serif text-[#f4efe6]">
+                          {item.name}
+                        </h4>
+                        <p className="text-xs text-[#e5a93b] font-medium flex items-center gap-1.5 mt-1">
+                          <Activity className="w-3.5 h-3.5 text-[#e5a93b] shrink-0" />
+                          <span>{item.tag}</span>
+                        </p>
+                      </div>
 
-      {/* Footer info note */}
-      <div className="text-center text-xs text-[#6e6355] pt-4 pb-2">
-        Médiathèque Flamenca
+                      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                        {/* Bouton Médiathèque */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenBibliotheque ? onOpenBibliotheque(item.key) : onSelectPalo(item.key)}
+                          className="w-[84px] sm:w-[96px] h-[70px] sm:h-[76px] px-1.5 py-2 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 flex flex-col items-center justify-center gap-1.5 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                          title={`Ouvrir la Médiathèque de la ${item.name}`}
+                          aria-label={`Ouvrir la Médiathèque de la ${item.name}`}
+                        >
+                          <BookOpen className="w-5 h-5 text-[#86efac] group-hover:scale-110 transition-transform shrink-0" />
+                          <span className="text-[10.5px] sm:text-[11.5px] font-bold leading-tight whitespace-nowrap">
+                            Médiathèque
+                          </span>
+                        </button>
+
+                        {/* Bouton Atelier */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenAtelier ? onOpenAtelier(item.key) : onSelectPalo(item.key)}
+                          className="w-[84px] sm:w-[96px] h-[70px] sm:h-[76px] px-1.5 py-2 rounded-xl bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-100 border border-blue-500/40 flex flex-col items-center justify-center gap-1.5 text-center transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+                          title={`Ouvrir l'Atelier de la ${item.name}`}
+                          aria-label={`Ouvrir l'Atelier de la ${item.name}`}
+                        >
+                          <Film className="w-5 h-5 text-[#60a5fa] group-hover:scale-110 transition-transform shrink-0" />
+                          <span className="text-[10.5px] sm:text-[11.5px] font-bold leading-tight whitespace-nowrap">
+                            Atelier
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
