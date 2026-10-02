@@ -1,5 +1,4 @@
 import { DansePaloData } from '../../types';
-import { FARRUCA_LETRAS } from '../baile/farrucaLetras';
 
 export const FARRUCA_GUITARE: DansePaloData = {
   id: "farruca-guitare",
@@ -113,89 +112,7 @@ export const FARRUCA_GUITARE: DansePaloData = {
   marcajes: {},
   zapateado: {},
   llamadas: {},
-  letras: FARRUCA_LETRAS,
-  maitres: [
-    {
-      id: "far-g-paco-delucia",
-      title: "Paco de Lucía - Farruca de Lucía",
-      url: "https://www.youtube.com/watch?v=AqHuFQ4cHEA",
-      level: 3,
-      startSeconds: 0,
-      landmarks: [
-        { timeSeconds: 0, label: "0:00 - Introduction & Falseta d'entrée", type: "intro" },
-        { timeSeconds: 42, label: "0:42 - Première falseta en La mineur", type: "falseta" },
-        { timeSeconds: 88, label: "1:28 - Alzapúa & Golpeador", type: "remate" },
-        { timeSeconds: 135, label: "2:15 - Falseta lyrique en arpèges", type: "falseta" },
-        { timeSeconds: 195, label: "3:15 - Picado virtuose & Subida", type: "subida" },
-        { timeSeconds: 232, label: "3:52 - Cierre final foudroyant", type: "cierre" }
-      ],
-      description: "Le chef-d'œuvre absolu de Paco de Lucía. Une leçon de pureté, de dynamique sonore et de vélocité légendaire."
-    },
-    {
-      id: "far-g-sabicas",
-      title: "Sabicas - Punta y Tacón (Farruca)",
-      url: "https://www.youtube.com/watch?v=8RxEHqFuunE",
-      level: 3,
-      startSeconds: 0,
-      landmarks: [
-        { timeSeconds: 0, label: "0:00 - Thème fondateur & Compás", type: "intro" },
-        { timeSeconds: 38, label: "0:38 - Alzapúa mythique de Sabicas", type: "remate" },
-        { timeSeconds: 76, label: "1:16 - Falseta en trémolo", type: "falseta" },
-        { timeSeconds: 120, label: "2:00 - Picado percutant et cierre", type: "cierre" }
-      ],
-      description: "La pièce fondatrice du répertoire de concert pour guitare flamenca. Technique d'alzapúa et de picado inégalée."
-    },
-    {
-      id: "far-g-paco-pena",
-      title: "Paco Peña & John Williams - Farruca in D",
-      url: "https://www.youtube.com/watch?v=izNxtsC1b4k",
-      level: 3,
-      startSeconds: 0,
-      landmarks: [
-        { timeSeconds: 0, label: "0:00 - Dialogue d'introduction", type: "intro" },
-        { timeSeconds: 52, label: "0:52 - Thème en Ré et rasgueados", type: "falseta" },
-        { timeSeconds: 140, label: "2:20 - Accélération et compás", type: "subida" }
-      ],
-      description: "Interprétation de concert d'anthologie unissant le maître Paco Peña et John Williams. Clarté polyphonique exemplaire."
-    },
-    {
-      id: "far-g-juan-martin",
-      title: "Juan Martín - Farruca (El Arte Flamenco de la Guitarra)",
-      url: "https://www.youtube.com/watch?v=QfP-J7gB50c",
-      level: 2,
-      startSeconds: 0,
-      landmarks: [
-        { timeSeconds: 0, label: "0:00 - Entrée posée et accords de base", type: "intro" },
-        { timeSeconds: 45, label: "0:45 - Falseta mélodique traditionnelle", type: "falseta" },
-        { timeSeconds: 95, label: "1:35 - Alzapúa et fermeture", type: "cierre" }
-      ],
-      description: "L'école classique andalouse : pulsation rigoureuse, sonorité ronde et ornementation sobre conforme à la tradition."
-    }
-  ],
-  cours: [
-    {
-      id: "far-c-jeronimo-carmen",
-      title: "Jerónimo de Carmen - FARRUCA FÁCIL con Falseta",
-      url: "https://www.youtube.com/watch?v=hR-05f329dY",
-      level: 1,
-      startSeconds: 0,
-      description: "Le cours le plus populaire et pédagogue sur YouTube : positions d'accords simples, compás à 4 temps et première falseta complète."
-    },
-    {
-      id: "far-c-kai-narezo",
-      title: "Kai Narezo - Farruca Compás Explained (Flamenco Guitar)",
-      url: "https://www.youtube.com/watch?v=yB_5J8n1L2E",
-      level: 2,
-      startSeconds: 0,
-      description: "Masterclass de référence de Flamenco Explained : placement des accents 1 et 3, technique de rasgueado et jeu de main droite."
-    },
-    {
-      id: "far-c-sabicas-tuto",
-      title: "Sabicas - Punta y Tacón (Tutorial & Tablature)",
-      url: "https://www.youtube.com/watch?v=d-d65t6N2W4",
-      level: 3,
-      startSeconds: 0,
-      description: "Étude pas à pas de la légendaire Farruca de Sabicas avec tablature synchronisée pour travailler lentement chez soi."
-    }
-  ]
+  letras: [],
+  maitres: [],
+  cours: []
 };

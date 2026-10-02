@@ -12,8 +12,8 @@ import { BAILE_PALOS_CATALOG, BAILE_PALOS_DATA } from '../data/baileData';
 import { GUITARE_PALOS_CATALOG, GUITARE_PALOS_DATA } from '../data/guitareData';
 import { DanseArborescenceTree } from './DanseArborescenceTree';
 import { VideoItem, DanseSectionTab, DisciplineMode } from '../types';
-import baileBgImg from '../assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg';
-import guitareBgImg from '../assets/images/guitare_mains_flamenco_1790872455832.jpg';
+import baileBgImg from '../assets/images/danseuse_guitariste_parquet_1790850568980.jpg';
+import guitareBgImg from '../assets/images/guitare_flamenco_bois_1790931284235.jpg';
 
 interface DansePaloListProps {
   onSelectPalo: (paloKey: string) => void;
@@ -106,11 +106,13 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
             referrerPolicy="no-referrer"
             onError={() => {
               if (discipline === 'guitare') {
-                setBgImageSrc('/guitariste_flamenco.jpg');
-              } else if (bgImageSrc !== '/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
-                setBgImageSrc('/maryam-tello-v07wdRY8qxo-unsplash.jpg');
-              } else if (bgImageSrc !== '/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg') {
-                setBgImageSrc('/assets/images/maryam-tello-v07wdRY8qxo-unsplash.jpg');
+                if (bgImageSrc !== '/guitare_flamenco_bois.jpg') {
+                  setBgImageSrc('/guitare_flamenco_bois.jpg');
+                }
+              } else {
+                if (bgImageSrc !== '/danseuse_guitariste_parquet.jpg') {
+                  setBgImageSrc('/danseuse_guitariste_parquet.jpg');
+                }
               }
             }}
             style={{ objectPosition: 'center 50%' }}
@@ -122,22 +124,14 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              {discipline === 'guitare' ? (
-                <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#e5a93b] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                  GUITARE
-                </span>
-              ) : (
-                <span className="text-base sm:text-lg font-extrabold tracking-widest text-[#ff8f82] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                  BAILE
-                </span>
-              )}
-            </div>
+            <span className="text-[8.5px] sm:text-[9.5px] font-bold tracking-wider text-white/90 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pt-0.5 leading-tight">
+              Présentation<br />générale
+            </span>
 
-            <h2 className="text-right text-xs sm:text-sm font-bold uppercase tracking-wider text-[#e5a93b] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-tight shrink-0">
+            <h2 className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] leading-tight shrink-0 max-w-[120px] sm:max-w-[140px] pt-0.5">
               {discipline === 'guitare' ? (
                 <>
-                  Monter son<br />jeu flamenco
+                  Étudier la<br />guitare flamenca
                 </>
               ) : (
                 <>
@@ -149,11 +143,6 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
 
           {/* Arborescence réelle reprenant fidèlement le design avec cadre translucide */}
           <DanseArborescenceTree 
-            title={
-              <>
-                Présentation<br />générale
-              </>
-            } 
             onOpenLexique={onOpenLexique} 
             defaultExpanded={false}
             translucent={true}

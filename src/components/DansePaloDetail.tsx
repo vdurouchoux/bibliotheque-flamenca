@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Play, Plus, Bookmark, ChevronLeft, ArrowLeft, ArrowUp, ArrowDown, Layers, Volume2, 
+  Play, Plus, Bookmark, ChevronLeft, ArrowUp, ArrowDown, Layers, Volume2, 
   Sparkles, CheckCircle2, Circle, Clock, Flame, ShieldAlert, Award, Footprints, 
   Activity, Video, Music, ExternalLink, BookOpen, Quote, Languages, Trash2, RefreshCw, RotateCcw, X,
   LayoutGrid, List, ArrowRight, GraduationCap, Film, Pencil, ChevronRight, ChevronDown, ChevronUp, AlignLeft, Eye, Link2, Search, Share2, GripVertical, Lightbulb,
@@ -48,14 +48,7 @@ const YOUTUBE_EXACT_TITLES: Record<string, string> = {
   "qposVIHEY2E": "BG Flamenco - Salida y Marcaje para FARRUCA",
   "31pvJlUXa78": "Rafael de Utrera - Letra por Farruca (Una farruca en Galicia)",
   "trABVQebNLY": "José Menese - Farruca (Cayó al suelo una paloma)",
-  "DZv_-vdPWuE": "Antonio Mairena - Farruca \"amargamente\"",
-  "AqHuFQ4cHEA": "Paco de Lucía - Farruca de Lucía",
-  "8RxEHqFuunE": "Sabicas - Punta y Tacón (Farruca)",
-  "izNxtsC1b4k": "Paco Peña & John Williams - Farruca in D",
-  "QfP-J7gB50c": "Juan Martín - Farruca (El Arte Flamenco de la Guitarra)",
-  "hR-05f329dY": "Jerónimo de Carmen - FARRUCA FÁCIL con Falseta",
-  "yB_5J8n1L2E": "Kai Narezo - Farruca Compás Explained (Flamenco Guitar)",
-  "d-d65t6N2W4": "Sabicas - Punta y Tacón (Tutorial & Tablature)"
+  "DZv_-vdPWuE": "Antonio Mairena - Farruca \"amargamente\""
 };
 
 const getExactVideoTitle = (video: VideoItem): string => {
@@ -315,6 +308,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
       structure: true
     };
   });
+
+  const [isMaitresSubfolderExpanded, setIsMaitresSubfolderExpanded] = useState<boolean>(false);
 
   // Mettre à jour la mémoire d'emplacement quand l'utilisateur navigue
   useEffect(() => {
@@ -2236,6 +2231,121 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     );
   };
 
+  const renderFolderItemInList = (sub: DanseFolderNode, isStudio: boolean) => {
+    const isSubStandard = sub.id === 'maitres' || sub.id === 'cours' || sub.id === 'letras' || sub.id === 'compas' || sub.id === 'structure' || sub.id === 'montages';
+    const counts = getFolderItemCount(sub.id);
+    return (
+      <div
+        key={sub.id}
+        onClick={() => handleOpenCustomFolder(sub.id)}
+        className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#161310] hover:bg-[#1f1a15] border ${
+          isStudio
+            ? 'border-blue-900/40 hover:border-[#60a5fa]/70 shadow-[0_0_10px_rgba(96,165,250,0.1)]'
+            : 'border-emerald-900/40 hover:border-[#86efac]/70 shadow-[0_0_10px_rgba(134,239,172,0.1)]'
+        } transition-all cursor-pointer group shadow-xs`}
+        title={`Ouvrir le dossier « ${sub.name} »`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`p-1.5 rounded-lg ${
+            isStudio ? 'bg-blue-950/70 text-[#60a5fa]' : 'bg-emerald-950/70 text-[#86efac]'
+          } group-hover:scale-105 transition-transform shrink-0`}>
+            <Folder className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-white truncate">
+            {sub.name}
+          </span>
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+            isStudio
+              ? 'bg-blue-950/40 text-[#60a5fa] border-blue-500/30'
+              : 'bg-emerald-950/40 text-[#86efac] border-emerald-500/30'
+          }`}>
+            Dossier{counts.files > 0 ? ` • ${counts.files} fichier${counts.files > 1 ? 's' : ''}` : counts.subfolders > 0 ? ` • ${counts.subfolders} sous-dossier${counts.subfolders > 1 ? 's' : ''}` : ''}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!isSubStandard && (
+            <div className="relative dropdown-menu-trigger">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === `sub_list_${sub.id}` ? null : `sub_list_${sub.id}`);
+                }}
+                className={`p-1 rounded text-[#73685a] ${
+                  isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
+                } cursor-pointer`}
+                title="Options du dossier"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+              {renderFolderDropdownMenu(`sub_list_${sub.id}`, sub.name, sub.id, isStudio)}
+            </div>
+          )}
+          <ChevronRight className={`w-4 h-4 ${
+            isStudio ? 'text-[#60a5fa]/60 group-hover:text-[#60a5fa]' : 'text-[#86efac]/60 group-hover:text-[#86efac]'
+          } transition-colors`} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderFolderItemInGrid = (sub: DanseFolderNode, isStudio: boolean) => {
+    const isSubStandard = sub.id === 'maitres' || sub.id === 'cours' || sub.id === 'letras' || sub.id === 'compas' || sub.id === 'structure' || sub.id === 'montages';
+    const counts = getFolderItemCount(sub.id);
+    return (
+      <div
+        key={sub.id}
+        onClick={() => handleOpenCustomFolder(sub.id)}
+        className={`p-3 rounded-xl bg-[#161310] hover:bg-[#1f1a15] border ${
+          isStudio
+            ? 'border-blue-900/40 hover:border-[#60a5fa]/70 shadow-[0_0_10px_rgba(96,165,250,0.1)]'
+            : 'border-emerald-900/40 hover:border-[#86efac]/70 shadow-[0_0_10px_rgba(134,239,172,0.1)]'
+        } flex flex-col justify-between gap-2.5 transition-all cursor-pointer group shadow-xs relative min-h-[95px]`}
+        title={`Ouvrir le dossier « ${sub.name} »`}
+      >
+        <div className="flex items-start justify-between gap-1.5">
+          <div className={`p-2 rounded-xl ${
+            isStudio ? 'bg-blue-950/70 text-[#60a5fa]' : 'bg-emerald-950/70 text-[#86efac]'
+          } group-hover:scale-105 transition-transform shrink-0`}>
+            <Folder className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          {!isSubStandard && (
+            <div className="relative dropdown-menu-trigger">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === `sub_grid_${sub.id}` ? null : `sub_grid_${sub.id}`);
+                }}
+                className={`p-1 rounded text-[#73685a] ${
+                  isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
+                } cursor-pointer`}
+                title="Options du dossier"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+              {renderFolderDropdownMenu(`sub_grid_${sub.id}`, sub.name, sub.id, isStudio)}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h4 className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-white truncate">
+            {sub.name}
+          </h4>
+          <span className={`text-[10px] font-semibold mt-0.5 inline-block px-1.5 py-0.2 rounded border ${
+            isStudio
+              ? 'bg-blue-950/40 text-[#60a5fa] border-blue-500/30'
+              : 'bg-emerald-950/40 text-[#86efac] border-emerald-500/30'
+          }`}>
+            Dossier{counts.files > 0 ? ` • ${counts.files} fichier${counts.files > 1 ? 's' : ''}` : counts.subfolders > 0 ? ` • ${counts.subfolders} sous-dossier${counts.subfolders > 1 ? 's' : ''}` : ''}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const renderFarrucaTreeSidebar = () => (
     <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-3.5 sm:p-4 shadow-xl space-y-3.5 md:sticky md:top-20">
       {/* En haut : Farruca avec trois petits points */}
@@ -2494,17 +2604,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <button
                   type="button"
-                  onClick={onBack}
-                  className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] hover:bg-emerald-900/90 hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)] cursor-pointer shrink-0"
-                  title={discipline === 'guitare' ? "Retourner à la liste des palos de guitare" : "Retourner à la liste des palos de danse"}
-                  aria-label="Retourner à la liste des palos"
-                >
-                  <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => toggleFolderCollapse('farruca_root')}
-                  className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                  className="p-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                   aria-label={collapsedFolderIds['farruca_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                 >
@@ -2763,17 +2864,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <button
                   type="button"
-                  onClick={onBack}
-                  className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] hover:bg-blue-900/90 hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)] cursor-pointer shrink-0"
-                  title={discipline === 'guitare' ? "Retourner à la liste des palos de guitare" : "Retourner à la liste des palos de danse"}
-                  aria-label="Retourner à la liste des palos"
-                >
-                  <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => toggleFolderCollapse('farruca_studio_root')}
-                  className="p-1 -ml-1 rounded-md text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
+                  className="p-1 rounded-md text-[#60a5fa]/90 hover:text-blue-300 hover:bg-blue-950/60 border border-blue-500/25 hover:border-blue-500/50 transition-colors cursor-pointer shrink-0"
                   title={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                   aria-label={collapsedFolderIds['farruca_studio_root'] ? "Déplier l'arborescence" : "Replier l'arborescence"}
                 >
@@ -3028,13 +3120,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     }`}
                     title={`Retourner à l'arborescence ${palo.name}`}
                   >
-                    <div className={`p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all ${
-                      isStudioFolder 
-                        ? 'bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]' 
-                        : 'bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]'
-                    }`}>
-                      <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-                    </div>
                     <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                     <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
                       isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
@@ -3067,30 +3152,18 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {/* Dessous : Le dossier */}
                 <div className="p-3.5 sm:p-4 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    {/* Dossier cliquable pour ouvrir/fermer ses sous-dossiers + Barre de recherche à droite */}
+                    {/* Titre du dossier & Barre de recherche à droite */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => toggleMediaFolderSubfolders(currentFolder.id)}
-                        className="flex items-center gap-2 shrink-0 text-left cursor-pointer group/folder py-1 px-1.5 -ml-1.5 rounded-xl hover:bg-white/[0.05] transition-all"
-                        title={isSubfoldersOpen ? "Fermer le dossier et masquer les sous-dossiers" : "Ouvrir le dossier et afficher les sous-dossiers"}
-                      >
-                        {isSubfoldersOpen ? (
-                          <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                        ) : (
-                          <Folder className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                        )}
-                        <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap group-hover/folder:text-white transition-colors">
+                      <div className="flex items-center gap-2 shrink-0 py-1 px-1.5 -ml-1.5">
+                        <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
+                        <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap">
                           {currentFolder.name}
                         </h3>
                         <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
                           {folderVideos.length} {folderVideos.length > 1 ? 'fichiers' : 'fichier'}
-                          {subfolders.length > 0 && ` • ${subfolders.length} sous-dossier${subfolders.length > 1 ? 's' : ''}`}
+                          {subfolders.length > 0 && ` • ${subfolders.length} ${subfolders.length > 1 ? 'dossiers' : 'dossier'}`}
                         </span>
-                        {subfolders.length > 0 && (
-                          <ChevronDown className={`w-4 h-4 text-[#8c8173] group-hover/folder:text-white transition-transform duration-200 ${isSubfoldersOpen ? 'rotate-180' : ''}`} />
-                        )}
-                      </button>
+                      </div>
 
                       {/* Barre de recherche à droite du dossier / nombre de fichiers (au-dessus de vue liste / vue icônes sur mobile) */}
                       <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
@@ -3115,9 +3188,23 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       </div>
                     </div>
 
-                    {/* Actions : Vue liste / Vue icônes & Ajouter une vidéo à droite de la ligne */}
+                    {/* Actions : Vue liste / Vue icônes & Ajouter un sous-dossier / vidéo */}
                     <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
                       {renderViewModeControl(isStudioFolder)}
+
+                      <button
+                        type="button"
+                        onClick={() => setAddFolderModal({ isOpen: true, parentId: currentFolder.id, parentName: currentFolder.name, isStudio: isStudioFolder })}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+                          isStudioFolder
+                            ? 'bg-blue-950/60 hover:bg-blue-900/80 text-[#60a5fa] border border-blue-500/30'
+                            : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-[#86efac] border border-emerald-500/30'
+                        }`}
+                        title="Nouveau sous-dossier"
+                        aria-label="Nouveau sous-dossier"
+                      >
+                        <FolderPlus className="w-4 h-4 stroke-[2.2]" />
+                      </button>
 
                       <button
                         type="button"
@@ -3136,90 +3223,93 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   </div>
                 </div>
 
-                {/* Sous-dossiers au niveau inférieur affichés si le dossier est ouvert */}
-                {isSubfoldersOpen && subfolders.length > 0 && (
-                  <div className={`space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border ${isStudioFolder ? 'border-[#60a5fa]/30' : 'border-[#86efac]/30'} animate-in fade-in duration-150`}>
-                    <div className={`text-[11px] font-bold uppercase tracking-wider flex items-center justify-between ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`}>
-                      <div className="flex items-center gap-1.5">
-                        <FolderOpen className={`w-3.5 h-3.5 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                        <span>Sous-dossiers ({subfolders.length})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleMediaFolderSubfolders(currentFolder.id)}
-                        className={`text-[10px] text-[#8c8173] ${isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'} transition-colors cursor-pointer`}
-                      >
-                        Fermer
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {subfolders.map(sub => (
-                        <div
-                          key={sub.id}
-                          onClick={() => handleOpenCustomFolder(sub.id)}
-                          className={`p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] ${
-                            isStudioFolder ? 'hover:border-[#60a5fa]/60' : 'hover:border-[#86efac]/60'
-                          } flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs`}
-                          title={`Ouvrir le dossier « ${sub.name} »`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Folder className={`w-4 h-4 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                            <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
-                              {sub.name}
-                            </span>
-                          </div>
-                          <div className="relative dropdown-menu-trigger">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
-                              }}
-                              className={`p-1 rounded text-[#73685a] ${isStudioFolder ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'} cursor-pointer`}
-                              title="Options"
-                            >
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
-                            {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id, isStudioFolder)}
-                          </div>
+                {/* Contenu du dossier : sous-dossiers & vidéos toujours visibles */}
+                {(() => {
+                  const cleanQuery = mediaSearchQuery.toLowerCase().trim();
+                  const filteredSubs = subfolders.filter(s => s.name.toLowerCase().includes(cleanQuery));
+                  const filteredVideos = filterAndSortVideos(folderVideos);
+
+                  if (filteredSubs.length === 0 && filteredVideos.length === 0) {
+                    if (mediaSearchQuery) {
+                      return (
+                        <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
+                          <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
+                          <p className="text-sm font-medium text-[#d5cabb]">Aucun élément ne correspond à « {mediaSearchQuery} »</p>
+                          <button
+                            type="button"
+                            onClick={() => setMediaSearchQuery('')}
+                            className="mt-2 text-xs text-[#e5a93b] hover:underline cursor-pointer"
+                          >
+                            Effacer la recherche
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Vidéos dans ce dossier */}
-                {folderVideos.length > 0 ? (
-                  <>
-                    {renderMediaSearchBar(`Rechercher dans ${currentFolder.name} (par titre ou artiste)...`, filterAndSortVideos(folderVideos).length)}
-
-                    {filterAndSortVideos(folderVideos).length === 0 ? (
-                      <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
-                        <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
-                        <p className="text-sm font-medium text-[#d5cabb]">Aucun média ne correspond à « {mediaSearchQuery} »</p>
-                        <button
-                          type="button"
-                          onClick={() => setMediaSearchQuery('')}
-                          className="mt-2 text-xs text-[#e5a93b] hover:underline cursor-pointer"
-                        >
-                          Effacer la recherche
-                        </button>
+                      );
+                    }
+                    return (
+                      <div className="py-10 px-4 text-center rounded-2xl bg-[#14110e] border border-[#261f18] text-[#8c8173] space-y-3">
+                        <Folder className={`w-8 h-8 mx-auto ${isStudioFolder ? 'text-[#60a5fa]/50' : 'text-[#86efac]/50'}`} />
+                        <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
+                        <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setAddFolderModal({ isOpen: true, parentId: currentFolder.id, parentName: currentFolder.name, isStudio: isStudioFolder })}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                              isStudioFolder
+                                ? 'bg-blue-950/60 hover:bg-blue-900/80 text-[#60a5fa] border border-blue-500/30'
+                                : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-[#86efac] border border-emerald-500/30'
+                            }`}
+                          >
+                            <FolderPlus className="w-3.5 h-3.5" />
+                            <span>Nouveau sous-dossier</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                              isStudioFolder
+                                ? 'bg-blue-950/60 hover:bg-blue-900/80 text-[#60a5fa] border border-blue-500/30'
+                                : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-[#86efac] border border-emerald-500/30'
+                            }`}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Ajouter une vidéo</span>
+                          </button>
+                        </div>
                       </div>
-                    ) : mediaViewMode === 'list' ? (
+                    );
+                  }
+
+                  if (mediaViewMode === 'list') {
+                    return (
                       <div className="space-y-1.5">
-                        {filterAndSortVideos(folderVideos).map((v, i) => renderVideoListMinimal(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
+                        {filteredSubs.map(sub => renderFolderItemInList(sub, isStudioFolder))}
+                        {filteredVideos.map((v, i) => renderVideoListMinimal(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
                       </div>
-                    ) : mediaViewMode === 'icons' ? (
+                    );
+                  }
+
+                  if (mediaViewMode === 'icons') {
+                    return (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {filterAndSortVideos(folderVideos).map((v, i) => renderVideoGridIcons(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
+                        {filteredSubs.map(sub => renderFolderItemInGrid(sub, isStudioFolder))}
+                        {filteredVideos.map((v, i) => renderVideoGridIcons(v, currentFolder.name, `folder_${currentFolder.id}`, i))}
                       </div>
-                    ) : (
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {filteredSubs.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          {filteredSubs.map(sub => renderFolderItemInGrid(sub, isStudioFolder))}
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {filterAndSortVideos(folderVideos).map(v => renderVideoCard(v, currentFolder.name, `folder_${currentFolder.id}`))}
+                        {filteredVideos.map(v => renderVideoCard(v, currentFolder.name, `folder_${currentFolder.id}`))}
                       </div>
-                    )}
-                  </>
-                ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}
@@ -3231,7 +3321,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(true)}
 
-          {/* En haut : Farruca avec flèche de retour bleue (Atelier) */}
+          {/* En haut : Farruca (Atelier) */}
           <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -3245,9 +3335,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2 text-left group hover:text-[#60a5fa] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#60a5fa] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-blue-300">
                 {palo.name}
@@ -3484,7 +3571,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
+          {/* En haut : Farruca (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -3498,9 +3585,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -3515,27 +3599,35 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             return (
               <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  {/* Dossier cliquable pour ouvrir le dossier et tomber sur essais + Barre de recherche à droite */}
+                  {/* Dossier & Barre de recherche à droite */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const targetSub = maitresSubfolders.find(s => s.name.toLowerCase().includes('essai')) || maitresSubfolders[0];
-                        if (targetSub) {
-                          handleOpenCustomFolder(targetSub.id);
-                        }
-                      }}
-                      className="flex items-center gap-2 shrink-0 text-left cursor-pointer group/folder py-1 px-1.5 -ml-1.5 rounded-xl hover:bg-white/[0.06] transition-all"
-                      title={maitresSubfolders.length > 0 ? `Ouvrir le dossier ${maitresSubfolders.find(s => s.name.toLowerCase().includes('essai'))?.name || maitresSubfolders[0].name}` : "Dossier Grands Maîtres"}
-                    >
-                      <Folder className="w-5 h-5 text-[#86efac] group-hover/folder:text-emerald-300 shrink-0 transition-colors" />
-                      <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] group-hover/folder:text-white font-serif whitespace-nowrap transition-colors">
-                        {standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres'}
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 py-1 px-1 -ml-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsMaitresSubfolderExpanded(prev => !prev)}
+                        className="p-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                        title={isMaitresSubfolderExpanded ? "Replier le dossier (masquer le dossier essais)" : "Déplier le dossier (afficher le dossier essais)"}
+                        aria-label={isMaitresSubfolderExpanded ? "Replier le dossier (masquer le dossier essais)" : "Déplier le dossier (afficher le dossier essais)"}
+                      >
+                        {isMaitresSubfolderExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-[#86efac]" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-[#86efac]" />
+                        )}
+                      </button>
+                      {isMaitresSubfolderExpanded ? (
+                        <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
+                      ) : (
+                        <Folder className="w-5 h-5 text-[#86efac] shrink-0" />
+                      )}
+                      <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif whitespace-nowrap">
+                        {standardRenames['maitres'] || standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres'}
                       </h3>
                       <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
                         {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
+                        {maitresSubfolders.length > 0 && ` et ${maitresSubfolders.length} dossier${maitresSubfolders.length > 1 ? 's' : ''}`}
                       </span>
-                    </button>
+                    </div>
 
                 {/* Barre de recherche "Rechercher un média par titre" avec la loupe */}
                 <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
@@ -3544,7 +3636,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     type="text"
                     value={mediaSearchQuery}
                     onChange={(e) => setMediaSearchQuery(e.target.value)}
-                    placeholder="Rechercher un média par titre..."
+                    placeholder={isMaitresSubfolderExpanded ? "Rechercher un dossier..." : "Rechercher un média par titre..."}
                     className="w-full pl-8.5 pr-8 py-1.5 bg-[#14110e] hover:bg-[#191511] focus:bg-[#1a1612] border border-[#2c2219] focus:border-emerald-500 rounded-xl text-xs text-[#f4efe6] placeholder-[#6e6355] outline-none transition-all shadow-inner"
                   />
                   {mediaSearchQuery && (
@@ -3560,9 +3652,9 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 </div>
               </div>
 
-              {/* Actions : Vue liste / Vue icônes & Ajouter une vidéo */}
+              {/* Actions : Vue liste / Vue icônes (affiché seulement en vue médias) & Ajouter une vidéo + Menu trois points */}
               <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                {renderViewModeControl()}
+                {!isMaitresSubfolderExpanded && renderViewModeControl()}
 
                 <button
                   type="button"
@@ -3573,59 +3665,179 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
+
+                <div className="relative dropdown-menu-trigger">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdownId(prev => prev === 'header_maitres' ? null : 'header_maitres');
+                    }}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+                      openDropdownId === 'header_maitres'
+                        ? 'bg-emerald-900/90 text-white border border-[#86efac]'
+                        : 'bg-[#221c16] text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/60 border border-[#382d22] hover:border-emerald-500/40'
+                    }`}
+                    title="Options Grands Maîtres"
+                    aria-label="Options Grands Maîtres"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {renderFolderDropdownMenu(
+                    'header_maitres',
+                    standardRenames['maitres'] || standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
+                    'maitres',
+                    false
+                  )}
+                </div>
               </div>
             </div>
           </div>
             );
           })()}
 
-          {/* Rendu des médias selon le mode choisi (vue liste / vue icônes / cartes) */}
-          {filterAndSortVideos(getMaitresVideos()).length === 0 ? (
-            <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-emerald-900/30 text-[#8c8173]">
-              <Search className="w-6 h-6 mx-auto mb-2 text-[#86efac]/50" />
-              <p className="text-sm font-medium text-[#d5cabb]">Aucun média ne correspond à « {mediaSearchQuery} »</p>
-              <button
-                type="button"
-                onClick={() => setMediaSearchQuery('')}
-                className="mt-2 text-xs text-[#86efac] hover:underline cursor-pointer"
-              >
-                Effacer la recherche
-              </button>
-            </div>
-          ) : mediaViewMode === 'list' ? (
-            <div className="space-y-1.5">
-              {filterAndSortVideos(getMaitresVideos()).map((v, i) =>
-                renderVideoListMinimal(
-                  v,
-                  standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
-                  'maitres',
-                  i,
-                  'emerald'
-                )
-              )}
-            </div>
-          ) : mediaViewMode === 'icons' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {filterAndSortVideos(getMaitresVideos()).map((v, i) =>
-                renderVideoGridIcons(
-                  v,
-                  standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
-                  'maitres',
-                  i
-                )
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filterAndSortVideos(getMaitresVideos()).map(v =>
-                renderVideoCard(
-                  v,
-                  standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
-                  'maitres'
-                )
-              )}
-            </div>
-          )}
+          {/* Rendu conditionnel selon la position de la flèche du dossier Grands Maîtres :
+              - Flèche fermée (droite) : on affiche la liste des 10 médias de Grands Maîtres (les sous-dossiers restent masqués)
+              - Flèche ouverte (bas) : on affiche seulement l'arborescence des sous-dossiers (Essais, etc.), et au clic sur un sous-dossier on accède à ses fichiers */}
+          {(() => {
+            const maitresSubfolders = getSortedSubfoldersOf('maitres');
+            const cleanQuery = mediaSearchQuery.toLowerCase().trim();
+
+            if (isMaitresSubfolderExpanded) {
+              // Flèche ouverte : on affiche uniquement l'arborescence des sous-dossiers (ex: Essais)
+              const filteredSubs = maitresSubfolders.filter(s => s.name.toLowerCase().includes(cleanQuery));
+
+              if (filteredSubs.length === 0) {
+                return (
+                  <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-emerald-900/30 text-[#8c8173]">
+                    <Folder className="w-6 h-6 mx-auto mb-2 text-[#86efac]/50" />
+                    <p className="text-sm font-medium text-[#d5cabb]">
+                      {cleanQuery ? `Aucun sous-dossier ne correspond à « ${mediaSearchQuery} »` : "Aucun sous-dossier dans Grands Maîtres"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAddFolderModal({ isOpen: true, parentId: 'maitres', parentName: 'Grands Maîtres', isStudio: false })}
+                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/90 text-[#86efac] border border-emerald-500/40 text-xs font-semibold cursor-pointer transition-all shadow-xs"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      <span>Créer un sous-dossier</span>
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="ml-3 sm:ml-5 pl-3 sm:pl-5 border-l-2 border-[#2b2118] space-y-2 pt-1 animate-in fade-in duration-150">
+                  {filteredSubs.map(sub => {
+                    const subCounts = getFolderItemCount(sub.id);
+                    return (
+                      <div key={sub.id} className="relative group flex items-center">
+                        <div className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 w-3 sm:w-5 h-0.5 bg-[#2b2118] group-hover:bg-emerald-500/60 transition-colors" />
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleOpenCustomFolder(sub.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCustomFolder(sub.id); }}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-emerald-500/60 transition-all text-left cursor-pointer group shadow-xs"
+                          title={`Ouvrir le dossier « ${sub.name} »`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-1.5 rounded-lg bg-emerald-950/70 text-[#86efac] group-hover:scale-105 transition-transform shrink-0">
+                              <Folder className="w-4 h-4 stroke-[2.2]" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs sm:text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                {sub.name}
+                              </span>
+                              <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
+                                {subCounts.subfolders > 0 && `${subCounts.subfolders} dossier${subCounts.subfolders > 1 ? 's' : ''} • `}
+                                {subCounts.files} {subCounts.files > 1 ? 'fichiers' : 'fichier'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/40 text-[#86efac] border border-emerald-500/30">
+                              {subCounts.files}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-[#5e5346] group-hover:text-[#86efac] transition-all shrink-0" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Flèche fermée : liste des 10 médias de Grands Maîtres (le sous-dossier essais reste masqué)
+            const filteredVideos = filterAndSortVideos(getMaitresVideos());
+
+            if (filteredVideos.length === 0) {
+              return (
+                <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-emerald-900/30 text-[#8c8173]">
+                  <Search className="w-6 h-6 mx-auto mb-2 text-[#86efac]/50" />
+                  <p className="text-sm font-medium text-[#d5cabb]">
+                    {mediaSearchQuery ? `Aucun média ne correspond à « ${mediaSearchQuery} »` : "Aucun média dans ce dossier"}
+                  </p>
+                  {mediaSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMediaSearchQuery('')}
+                      className="mt-2 text-xs text-[#86efac] hover:underline cursor-pointer"
+                    >
+                      Effacer la recherche
+                    </button>
+                  )}
+                </div>
+              );
+            }
+
+            if (mediaViewMode === 'list') {
+              return (
+                <div className="space-y-1.5">
+                  {filteredVideos.map((v, i) =>
+                    renderVideoListMinimal(
+                      v,
+                      standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
+                      'maitres',
+                      i,
+                      'emerald'
+                    )
+                  )}
+                </div>
+              );
+            }
+
+            if (mediaViewMode === 'icons') {
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {filteredVideos.map((v, i) =>
+                    renderVideoGridIcons(
+                      v,
+                      standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
+                      'maitres',
+                      i
+                    )
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {filteredVideos.map(v =>
+                    renderVideoCard(
+                      v,
+                      standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres',
+                      'maitres'
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -3634,7 +3846,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
+          {/* En haut : Farruca (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -3648,9 +3860,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -4005,7 +4214,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
+          {/* En haut : Farruca (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -4019,9 +4228,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -4197,7 +4403,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="w-full space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
 
-          {/* En haut : Farruca avec flèche de retour verte (Médiathèque) */}
+          {/* En haut : Farruca (Médiathèque) */}
           <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -4211,9 +4417,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2.5 text-left group hover:text-[#86efac] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-emerald-950/70 border border-[#86efac]/60 text-[#86efac] group-hover:bg-emerald-900/90 group-hover:border-[#86efac] shadow-[0_0_10px_rgba(134,239,172,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-emerald-300">
                 {palo.name}
@@ -4225,28 +4428,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => toggleMediaFolderSubfolders('cours')}
-                  className="flex items-center gap-2 shrink-0 text-left cursor-pointer group/folder py-1 px-1.5 -ml-1.5 rounded-xl hover:bg-white/[0.05] transition-all"
-                  title={openMediaFolderSubfolders['cours'] ? "Fermer le dossier et masquer les sous-dossiers" : "Ouvrir le dossier et afficher les sous-dossiers"}
-                >
-                  {openMediaFolderSubfolders['cours'] ? (
-                    <FolderOpen className="w-5 h-5 text-[#86efac] shrink-0" />
-                  ) : (
-                    <Folder className="w-5 h-5 text-[#86efac] shrink-0" />
-                  )}
-                  <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] whitespace-nowrap group-hover/folder:text-white transition-colors">
+                <div className="flex items-center gap-2 shrink-0 py-1 px-1.5 -ml-1.5">
+                  <Folder className="w-5 h-5 text-[#86efac] shrink-0" />
+                  <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] whitespace-nowrap">
                     Mes Cours & Stages
                   </h3>
                   <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap">
                     {getCoursVideos().length} {getCoursVideos().length > 1 ? 'fichiers' : 'fichier'}
-                    {getSubfoldersOf('cours').length > 0 && ` • ${getSubfoldersOf('cours').length} sous-dossier${getSubfoldersOf('cours').length > 1 ? 's' : ''}`}
+                    {getSubfoldersOf('cours').length > 0 && ` • ${getSubfoldersOf('cours').length} ${getSubfoldersOf('cours').length > 1 ? 'dossiers' : 'dossier'}`}
                   </span>
-                  {getSubfoldersOf('cours').length > 0 && (
-                    <ChevronDown className={`w-4 h-4 text-[#8c8173] group-hover/folder:text-white transition-transform duration-200 ${openMediaFolderSubfolders['cours'] ? 'rotate-180' : ''}`} />
-                  )}
-                </button>
+                </div>
 
                 {/* Barre de recherche "Rechercher un média par titre" avec la loupe à droite des fichiers (au-dessus de vue liste / vue icônes sur mobile) */}
                 <div className="relative flex-1 min-w-[170px] w-full sm:w-auto">
@@ -4276,6 +4467,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => setAddFolderModal({ isOpen: true, parentId: 'cours', parentName: 'Mes Cours & Stages', isStudio: false })}
+                  className="w-8 h-8 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-[#86efac] border border-emerald-500/30 flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                  title="Nouveau sous-dossier"
+                  aria-label="Nouveau sous-dossier"
+                >
+                  <FolderPlus className="w-4 h-4 stroke-[2.2]" />
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => onOpenAddVideo('cours')}
                   className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
                   title="Ajouter une vidéo"
@@ -4290,55 +4491,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </p>
           </div>
 
-          {/* Sous-dossiers au niveau inférieur dans Cours & Stages affichés si le dossier est ouvert */}
-          {openMediaFolderSubfolders['cours'] && getSubfoldersOf('cours').length > 0 && (
-            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-[#14120f] border border-[#2b2219] animate-in fade-in duration-150">
-              <div className="text-[11px] font-bold text-[#86efac] uppercase tracking-wider flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5 text-[#86efac]" />
-                  <span>Sous-dossiers ({getSubfoldersOf('cours').length})</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleMediaFolderSubfolders('cours')}
-                  className="text-[10px] text-[#8c8173] hover:text-[#86efac] transition-colors cursor-pointer"
-                >
-                  Fermer
-                </button>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {getSubfoldersOf('cours').map(sub => (
-                  <div
-                    key={sub.id}
-                    onClick={() => handleOpenCustomFolder(sub.id)}
-                    className="p-2.5 rounded-xl bg-[#1a1713] hover:bg-[#231e18] border border-[#33281d] hover:border-emerald-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
-                      <span className="text-xs font-semibold text-[#ded3c5] group-hover:text-white truncate">
-                        {sub.name}
-                      </span>
-                    </div>
-                    <div className="relative dropdown-menu-trigger">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(prev => prev === `sub_${sub.id}` ? null : `sub_${sub.id}`);
-                        }}
-                        className="p-1 rounded text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/40 cursor-pointer"
-                        title="Options"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
-                      {renderFolderDropdownMenu(`sub_${sub.id}`, sub.name, sub.id)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Bandeau Conseil Synchronisation Multi-écrans */}
           <div className="p-3.5 sm:p-4 rounded-xl bg-[#1c1813] border border-[#382d20] flex items-start gap-3 text-xs text-[#c9bcaa] shadow-sm">
             <Lightbulb className="w-4 h-4 text-[#e5a93b] shrink-0 mt-0.5" />
@@ -4347,15 +4499,37 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             </p>
           </div>
 
-          {/* Affichage des vidéos de cours selon le mode choisi */}
-          {getCoursVideos().length > 0 ? (
-            <>
-              {renderMediaSearchBar("Rechercher dans vos cours (par titre ou artiste)...", filterAndSortVideos(getCoursVideos()).length)}
+          {/* Affichage des sous-dossiers & vidéos de cours selon le mode choisi */}
+          {(() => {
+            const coursSubfolders = getSortedSubfoldersOf('cours');
+            const cleanQuery = mediaSearchQuery.toLowerCase().trim();
+            const filteredSubs = coursSubfolders.filter(s => s.name.toLowerCase().includes(cleanQuery));
+            const filteredVideos = filterAndSortVideos(getCoursVideos());
 
-              {filterAndSortVideos(getCoursVideos()).length === 0 ? (
+            if (coursSubfolders.length === 0 && getCoursVideos().length === 0) {
+              return (
+                <div className="bg-[#171411] border border-[#302820] rounded-2xl p-6 sm:p-8 shadow-lg text-center max-w-2xl mx-auto space-y-4">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-[#e5a93b]/15 border border-[#e5a93b]/30 flex items-center justify-center text-[#e5a93b]">
+                    <GraduationCap className="w-7 h-7" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h4 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif">
+                      Votre carnet d'entraînement est prêt
+                    </h4>
+                    <p className="text-xs sm:text-sm text-[#a69c8f] max-w-lg mx-auto leading-relaxed">
+                      Ajoutez ici vos vidéos de cours réguliers, retours de stages, tutoriels et enregistrements de répétitions pour la Farruca.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            if (filteredSubs.length === 0 && filteredVideos.length === 0) {
+              return (
                 <div className="py-8 px-4 text-center rounded-xl bg-[#14110e] border border-[#261f18] text-[#8c8173]">
                   <Search className="w-6 h-6 mx-auto mb-2 text-[#e5a93b]/50" />
-                  <p className="text-sm font-medium text-[#d5cabb]">Aucun cours ne correspond à « {mediaSearchQuery} »</p>
+                  <p className="text-sm font-medium text-[#d5cabb]">Aucun élément ne correspond à « {mediaSearchQuery} »</p>
                   <button
                     type="button"
                     onClick={() => setMediaSearchQuery('')}
@@ -4364,61 +4538,42 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     Effacer la recherche
                   </button>
                 </div>
-              ) : mediaViewMode === 'list' ? (
+              );
+            }
+
+            if (mediaViewMode === 'list') {
+              return (
                 <div className="space-y-1.5">
-                  {filterAndSortVideos(getCoursVideos()).map((v, i) => renderVideoListMinimal(v, 'Mes Cours & Stages', 'cours', i))}
+                  {filteredSubs.map(sub => renderFolderItemInList(sub, false))}
+                  {filteredVideos.map((v, i) => renderVideoListMinimal(v, 'Mes Cours & Stages', 'cours', i))}
                 </div>
-              ) : mediaViewMode === 'icons' ? (
+              );
+            }
+
+            if (mediaViewMode === 'icons') {
+              return (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {filterAndSortVideos(getCoursVideos()).map((v, i) => renderVideoGridIcons(v, 'Mes Cours & Stages', 'cours', i))}
+                  {filteredSubs.map(sub => renderFolderItemInGrid(sub, false))}
+                  {filteredVideos.map((v, i) => renderVideoGridIcons(v, 'Mes Cours & Stages', 'cours', i))}
                 </div>
-              ) : (
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {filteredSubs.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {filteredSubs.map(sub => renderFolderItemInGrid(sub, false))}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {filterAndSortVideos(getCoursVideos()).map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
+                  {filteredVideos.map(v => renderVideoCard(v, 'Mes Cours & Stages', 'cours'))}
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="bg-[#171411] border border-[#302820] rounded-2xl p-6 sm:p-8 shadow-lg text-center max-w-2xl mx-auto space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#e5a93b]/15 border border-[#e5a93b]/30 flex items-center justify-center text-[#e5a93b]">
-                <GraduationCap className="w-7 h-7" />
               </div>
-
-              <div className="space-y-1.5">
-                <h4 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif">
-                  Votre carnet d'entraînement est prêt
-                </h4>
-                <p className="text-xs sm:text-sm text-[#a69c8f] max-w-lg mx-auto leading-relaxed">
-                  Ajoutez ici vos vidéos de cours réguliers, retours de stages, tutoriels et enregistrements de répétitions pour la Farruca.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#1f1a15] border border-[#332a21] text-xs text-[#c9bcaa] max-w-md mx-auto space-y-2 text-left">
-                <div className="flex items-center gap-2 text-[#e5a93b] font-bold">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Fonctionnalités incluses :</span>
-                </div>
-                <ul className="space-y-1 pl-1 text-[11px] text-[#9b9082]">
-                  <li>• Importation immédiate de vos liens de cours et stages</li>
-                  <li>• Repères chronométrés personnalisés (ralentis, boucles)</li>
-                  <li>• Liaison directe possible avec les blocs de votre atelier de création</li>
-                  <li>• Synchronisation instantanée entre votre PC et votre mobile</li>
-                </ul>
-              </div>
-
-              <div className="pt-2 flex justify-center">
-                <button
-                  onClick={() => onOpenAddVideo('cours')}
-                  className="px-4 py-2.5 rounded-xl bg-[#e5a93b] hover:bg-[#f5b84c] text-[#121110] text-xs font-bold inline-flex items-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Ajouter une première vidéo de cours</span>
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
+          </div>
         </div>
-      </div>
       )}
 
       {/* TAB 6: Mon carnet de montage */}
@@ -4426,7 +4581,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         <div className="space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(true)}
 
-          {/* En haut : Farruca avec flèche de retour bleue (Atelier) */}
+          {/* En haut : Farruca (Atelier) */}
           <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
@@ -4440,9 +4595,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               className="flex items-center gap-2 text-left group hover:text-[#60a5fa] transition-colors cursor-pointer"
               title={`Retourner à l'arborescence ${palo.name}`}
             >
-              <div className="p-1.5 rounded-xl flex items-center justify-center shadow-xs transition-all bg-blue-950/70 border border-[#60a5fa]/60 text-[#60a5fa] group-hover:bg-blue-900/90 group-hover:border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.3)]">
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </div>
               <FolderOpen className="w-5 h-5 text-[#60a5fa] shrink-0" />
               <span className="text-lg sm:text-xl font-bold font-serif text-[#f4efe6] group-hover:text-blue-300">
                 {palo.name}
