@@ -4,7 +4,7 @@ import {
   Sparkles, CheckCircle2, Circle, Clock, Flame, ExternalLink, BookOpen, 
   Trash2, RotateCcw, X, LayoutGrid, List, ArrowRight, Film, Pencil, 
   ChevronRight, ChevronDown, ChevronUp, Search, Share2, MoreVertical, 
-  Folder, FolderOpen, ArrowDownAZ, ArrowUpAZ, ArrowUpDown, Music
+  Folder, FolderOpen, ArrowDownAZ, ArrowUpAZ, ArrowUpDown, Music, ArrowUp
 } from 'lucide-react';
 import { PaloData, VideoItem, Level, PracticeBookmark } from '../types';
 import { 
@@ -179,38 +179,19 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
   const customStore = getCustomVideos();
   const paloCustom = customStore[palo.id] || customStore[paloKey] || {};
 
-  // Standard videos extraction
+  // Standard videos extraction (empty unless user added custom videos)
   const getFalsetasVideos = (): VideoItem[] => {
-    const staticGroup = palo.falsetas || {};
-    const customList = (paloCustom['falsetas'] || []) as VideoItem[];
-    const result: VideoItem[] = [];
-    [1, 2, 3].forEach(lvl => {
-      const lvlKey = lvl as Level;
-      const staticVideos = (staticGroup[lvlKey] || []).map(v => ({ ...v, level: lvlKey }));
-      const customs = customList.filter(v => v.level === lvlKey);
-      result.push(...staticVideos, ...customs);
-    });
-    return result;
+    return ((paloCustom['falsetas'] || []) as VideoItem[]);
   };
 
   const getCoursVideos = (): VideoItem[] => {
-    const staticIntro = palo.intro?.videos || [];
     const customIntro = (paloCustom['intro'] || []) as VideoItem[];
     const customCours = (paloCustom['cours'] || []) as VideoItem[];
-    return [...staticIntro, ...customIntro, ...customCours];
+    return [...customIntro, ...customCours];
   };
 
   const getCanteVideos = (): VideoItem[] => {
-    const staticGroup = palo.cante || {};
-    const customList = (paloCustom['cante'] || []) as VideoItem[];
-    const result: VideoItem[] = [];
-    [1, 2, 3].forEach(lvl => {
-      const lvlKey = lvl as Level;
-      const staticVideos = (staticGroup[lvlKey] || []).map(v => ({ ...v, level: lvlKey }));
-      const customs = customList.filter(v => v.level === lvlKey);
-      result.push(...staticVideos, ...customs);
-    });
-    return result;
+    return ((paloCustom['cante'] || []) as VideoItem[]);
   };
 
   const getFolderVideos = (folderId: string): VideoItem[] => {
@@ -580,7 +561,7 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
 
           <div className="bg-[#141210] border border-[#2b2118] rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
             {/* Ligne d'en-tête du dossier */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-[#2b2118]">
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#2b2118]">
               <div className="flex items-center gap-2.5 min-w-0">
                 <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
                 <span className="text-lg font-bold font-serif text-[#f4efe6] truncate">
@@ -589,20 +570,22 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0 justify-end">
-                {renderViewModeControl(isStudioFolder)}
-                <button
-                  type="button"
-                  onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 ${
-                    isStudioFolder
-                      ? 'bg-[#60a5fa]/20 hover:bg-[#60a5fa]/35 text-[#60a5fa] hover:text-[#93c5fd] border border-[#60a5fa]/40 shadow-[0_0_10px_rgba(96,165,250,0.3)]'
-                      : 'bg-[#86efac]/20 hover:bg-[#86efac]/35 text-[#86efac] hover:text-[#bbf7d0] border border-[#86efac]/40 shadow-[0_0_10px_rgba(134,239,172,0.3)]'
-                  }`}
-                  title="Ajouter une vidéo"
-                  aria-label="Ajouter une vidéo"
-                >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                </button>
+                {(getSubfoldersOf(currentFolder.id).length > 0 || getFolderVideos(currentFolder.id).length > 0) && renderViewModeControl(isStudioFolder)}
+                {getSubfoldersOf(currentFolder.id).length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 ${
+                      isStudioFolder
+                        ? 'bg-[#60a5fa]/20 hover:bg-[#60a5fa]/35 text-[#60a5fa] hover:text-[#93c5fd] border border-[#60a5fa]/40 shadow-[0_0_10px_rgba(96,165,250,0.3)]'
+                        : 'bg-[#86efac]/20 hover:bg-[#86efac]/35 text-[#86efac] hover:text-[#bbf7d0] border border-[#86efac]/40 shadow-[0_0_10px_rgba(134,239,172,0.3)]'
+                    }`}
+                    title="Ajouter une vidéo"
+                    aria-label="Ajouter une vidéo"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -639,20 +622,8 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
                 )}
               </div>
             ) : (
-              <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118] space-y-3">
-                <p className="text-xs text-[#8c8173]">Ce dossier est vide.</p>
-                <button
-                  type="button"
-                  onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
-                    isStudioFolder 
-                      ? 'bg-[#60a5fa]/20 text-[#60a5fa] hover:bg-[#60a5fa]/30 border border-[#60a5fa]/40' 
-                      : 'bg-[#86efac]/20 text-[#86efac] hover:bg-[#86efac]/30 border border-[#86efac]/40'
-                  }`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Ajouter une première vidéo</span>
-                </button>
+              <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118]">
+                <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
               </div>
             )}
           </div>
@@ -681,9 +652,15 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              {getFalsetasVideos().map((v, i) => renderVideoCard(v, 'Falsetas', i))}
-            </div>
+            {getFalsetasVideos().length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {getFalsetasVideos().map((v, i) => renderVideoCard(v, 'Falsetas', i))}
+              </div>
+            ) : (
+              <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118]">
+                <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -710,9 +687,15 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              {getCoursVideos().map((v, i) => renderVideoCard(v, 'Cours', i))}
-            </div>
+            {getCoursVideos().length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {getCoursVideos().map((v, i) => renderVideoCard(v, 'Cours', i))}
+              </div>
+            ) : (
+              <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118]">
+                <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -739,14 +722,20 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              {getCanteVideos().map((v, i) => renderVideoCard(v, 'Cante', i))}
-            </div>
+            {getCanteVideos().length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {getCanteVideos().map((v, i) => renderVideoCard(v, 'Cante', i))}
+              </div>
+            ) : (
+              <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118]">
+                <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* VUE SECTION : COMPÁS & MÉTRONOME */}
+      {/* VUE SECTION : COMPÁS */}
       {activeTab === 'compas' && !activeCustomFolderId && (
         <div className="space-y-4 animate-in fade-in duration-200">
           {renderDualPaves(false)}
@@ -756,19 +745,36 @@ export const GuitarePaloDetail: React.FC<GuitarePaloDetailProps> = ({
               <div className="flex items-center gap-2.5">
                 <FolderOpen className="w-5 h-5 text-[#86efac]" />
                 <h3 className="text-lg font-bold font-serif text-[#f4efe6]">
-                  Compás & Métronome
+                  Compás
                 </h3>
               </div>
+              <button
+                type="button"
+                onClick={() => onOpenAddVideo('compas')}
+                className="w-8 h-8 rounded-xl bg-[#86efac]/20 hover:bg-[#86efac]/35 text-[#86efac] border border-[#86efac]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              </button>
             </div>
 
-            <CompasVisualizer 
-              compas={palo.compas}
-              isPlaying={isMetronomePlaying}
-              onTogglePlay={onToggleMetronome}
-            />
+            <div className="text-center py-10 rounded-xl bg-[#161310] border border-[#2b2118]">
+              <p className="text-sm font-medium text-[#d5cabb]">Ce dossier est vide.</p>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Flèche haut de page */}
+      <div className="pt-4 mt-6 border-t border-[#29221b] flex items-center justify-end">
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="inline-flex items-center gap-1.5 text-xs text-[#8c8173] hover:text-[#e5a93b] transition-colors py-1.5 px-2.5 rounded-lg cursor-pointer ml-auto"
+          title="Remonter en haut de la page"
+        >
+          <span>Haut de page</span>
+          <ArrowUp className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* MODAL CRÉATION DE DOSSIER */}
       {addFolderModal?.isOpen && (

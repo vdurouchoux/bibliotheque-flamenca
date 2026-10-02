@@ -231,14 +231,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                   💡 Pour la visionner sur tous vos appareils, préférez un lien YouTube en mode non répertorié.
                 </p>
               </div>
-            ) : (
-              <div className="mt-2 p-2.5 rounded-xl bg-[#1c1813] border border-[#382d20] flex items-start gap-2 text-[11px] text-[#a69c8f] leading-relaxed">
-                <Lightbulb className="w-3.5 h-3.5 text-[#e5a93b] shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[#e5a93b]">Conseil synchronisation :</strong> Privilégiez les liens web (ex. YouTube en « Non répertorié » <em>(invisible au public et au moteur de recherche)</em>, Vimeo ou Google Drive) pour visionner vos répétitions indifféremment sur votre PC et votre smartphone.
-                </span>
-              </div>
-            )}
+            ) : null}
           </div>
 
           {/* Description */}
