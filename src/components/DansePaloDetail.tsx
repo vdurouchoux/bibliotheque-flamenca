@@ -2145,6 +2145,30 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const getFolderFullPath = (fId: string | null, fName: string): string => {
+    if (!fId) return palo.name;
+    const pathParts: string[] = [fName];
+    let curr = danseFolders.find(f => f.id === fId);
+    while (curr && curr.parentId) {
+      const parentStandard = standardFolders.find(s => s.id === curr!.parentId);
+      if (parentStandard) {
+        pathParts.unshift(standardRenames[parentStandard.id] || parentStandard.name);
+        break;
+      }
+      const parentCustom = danseFolders.find(f => f.id === curr!.parentId);
+      if (parentCustom) {
+        pathParts.unshift(parentCustom.name);
+        curr = parentCustom;
+      } else {
+        break;
+      }
+    }
+    if (pathParts[0] !== palo.name) {
+      pathParts.unshift(palo.name);
+    }
+    return pathParts.join(' / ');
+  };
+
   const renderFolderDropdownMenu = (
     menuId: string,
     folderName: string,
@@ -2158,9 +2182,16 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
     return (
       <div 
-        className="dropdown-menu-container absolute right-0 top-full mt-2 z-50 w-60 rounded-2xl bg-[#1c1814] border border-[#3e3226] shadow-2xl p-2.5 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
+        className="dropdown-menu-container absolute right-0 top-full mt-2 z-50 w-72 rounded-2xl bg-[#1c1814] border border-[#3e3226] shadow-2xl p-2.5 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 text-xs font-sans select-none"
         onClick={e => e.stopPropagation()}
       >
+        {/* Rappel en haut sur une seule ligne du chemin exact, discret, petit, sans icône */}
+        <div className="px-2 py-1 bg-[#100e0c] border border-[#26201a] rounded-md overflow-x-auto whitespace-nowrap no-scrollbar select-all">
+          <p className="text-[8px] leading-tight font-mono text-[#8c8173] tracking-tight">
+            {getFolderFullPath(folderId, folderName)}
+          </p>
+        </div>
+
         {/* Action 1 : Ajouter un dossier (ou sous-dossier) */}
         <button
           type="button"
@@ -2180,6 +2211,26 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           <FolderPlus className={`w-4 h-4 group-hover:scale-110 transition-transform ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
           <span className={`font-semibold ${isStudio ? 'text-blue-300 group-hover:text-blue-200' : 'text-emerald-300 group-hover:text-emerald-200'}`}>
             {isFarruca ? 'Ajouter un dossier' : 'Ajouter un sous-dossier'}
+          </span>
+        </button>
+
+        {/* Action 2 : Ajouter un média */}
+        <button
+          type="button"
+          onClick={() => {
+            setOpenDropdownId(null);
+            const sectionKey = folderId
+              ? (['maitres', 'cours', 'letras', 'compas', 'structure', 'montages'].includes(folderId) ? folderId : `folder_${folderId}`)
+              : (activeTab !== 'hub' ? activeTab : 'maitres');
+            onOpenAddVideo(sectionKey);
+          }}
+          className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-[#ded3c5] hover:text-white transition-colors cursor-pointer group ${
+            isStudio ? 'hover:bg-blue-950/60' : 'hover:bg-emerald-950/60'
+          }`}
+        >
+          <Video className={`w-4 h-4 group-hover:scale-110 transition-transform ${isStudio ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
+          <span className={`font-semibold ${isStudio ? 'text-blue-300 group-hover:text-blue-200' : 'text-emerald-300 group-hover:text-emerald-200'}`}>
+            Ajouter un média
           </span>
         </button>
 
@@ -2245,13 +2296,13 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
         } transition-all cursor-pointer group shadow-xs`}
         title={`Ouvrir le dossier « ${sub.name} »`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className={`p-1.5 rounded-lg ${
             isStudio ? 'bg-blue-950/70 text-[#60a5fa]' : 'bg-emerald-950/70 text-[#86efac]'
           } group-hover:scale-105 transition-transform shrink-0`}>
             <Folder className="w-4 h-4 stroke-[2.2]" />
           </div>
-          <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-white truncate">
+          <span className="text-xs sm:text-sm font-bold text-[#f4efe6] group-hover:text-white break-words leading-tight">
             {sub.name}
           </span>
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
@@ -2263,28 +2314,29 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {!isSubStandard && (
-            <div className="relative dropdown-menu-trigger">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenDropdownId(prev => prev === `sub_list_${sub.id}` ? null : `sub_list_${sub.id}`);
-                }}
-                className={`p-1 rounded text-[#73685a] ${
-                  isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
-                } cursor-pointer`}
-                title="Options du dossier"
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
-              {renderFolderDropdownMenu(`sub_list_${sub.id}`, sub.name, sub.id, isStudio)}
-            </div>
-          )}
-          <ChevronRight className={`w-4 h-4 ${
-            isStudio ? 'text-[#60a5fa]/60 group-hover:text-[#60a5fa]' : 'text-[#86efac]/60 group-hover:text-[#86efac]'
-          } transition-colors`} />
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-center justify-center text-center shrink-0">
+            <ChevronRight className="w-4 h-4 text-[#86efac] group-hover:translate-x-0.5 transition-transform shrink-0" />
+            <span className="text-[7.5px] leading-[1.05] text-[#8c8173] group-hover:text-[#ded3c5] transition-colors whitespace-nowrap text-center mt-0.5">
+              voir les<br />médias
+            </span>
+          </div>
+          <div className="relative dropdown-menu-trigger">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenDropdownId(prev => prev === `sub_list_${sub.id}` ? null : `sub_list_${sub.id}`);
+              }}
+              className={`p-1.5 rounded-lg text-[#73685a] ${
+                isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
+              } cursor-pointer`}
+              title="Options du dossier"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+            {renderFolderDropdownMenu(`sub_list_${sub.id}`, sub.name, sub.id, isStudio)}
+          </div>
         </div>
       </div>
     );
@@ -2310,24 +2362,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           } group-hover:scale-105 transition-transform shrink-0`}>
             <Folder className="w-5 h-5 stroke-[2.2]" />
           </div>
-          {!isSubStandard && (
-            <div className="relative dropdown-menu-trigger">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenDropdownId(prev => prev === `sub_grid_${sub.id}` ? null : `sub_grid_${sub.id}`);
-                }}
-                className={`p-1 rounded text-[#73685a] ${
-                  isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
-                } cursor-pointer`}
-                title="Options du dossier"
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
-              {renderFolderDropdownMenu(`sub_grid_${sub.id}`, sub.name, sub.id, isStudio)}
-            </div>
-          )}
+          <div className="relative dropdown-menu-trigger">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenDropdownId(prev => prev === `sub_grid_${sub.id}` ? null : `sub_grid_${sub.id}`);
+              }}
+              className={`p-1.5 rounded-lg text-[#73685a] ${
+                isStudio ? 'hover:text-[#60a5fa] hover:bg-blue-950/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40'
+              } cursor-pointer`}
+              title="Options du dossier"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+            {renderFolderDropdownMenu(`sub_grid_${sub.id}`, sub.name, sub.id, isStudio)}
+          </div>
         </div>
 
         <div>
@@ -2428,7 +2478,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       : 'bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 text-[#ded3c5]'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     {hasSubfolders ? (
                       <button
                         type="button"
@@ -2436,12 +2486,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           e.stopPropagation();
                           toggleFolderCollapse(folderItem.id);
                         }}
-                        className="p-0.5 -ml-0.5 rounded text-[#86efac]/80 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                        className="p-1 -ml-0.5 rounded text-[#86efac]/80 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0 inline-flex flex-col items-center justify-center"
                         title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                         aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                       >
                         {isCollapsed ? (
-                          <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <ChevronRight className="w-3 h-3 text-[#86efac]" />
+                            <span className="text-[7px] leading-[1.05] text-[#8c8173] font-normal text-center whitespace-nowrap mt-0.5">
+                              voir les<br />dossiers
+                            </span>
+                          </div>
                         ) : (
                           <ChevronDown className="w-3.5 h-3.5 text-[#86efac]" />
                         )}
@@ -2452,8 +2507,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     ) : (
                       <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
                     )}
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs sm:text-sm truncate">
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-xs sm:text-sm break-words leading-tight">
                         {folderItem.name}
                       </span>
                       <span className="text-[10px] text-[#8c8173] font-normal leading-tight truncate">
@@ -2509,10 +2564,10 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               : 'bg-[#15120f] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 text-[#c7bcad]'
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
                             <Folder className="w-3.5 h-3.5 text-[#86efac] shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[11px] sm:text-xs truncate">{sub.name}</span>
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-[11px] sm:text-xs break-words leading-tight">{sub.name}</span>
                               <span className="text-[9px] text-[#8c8173] font-normal leading-tight truncate">
                                 {subCounts.subfolders} dossier{subCounts.subfolders > 1 ? 's' : ''} • {subCounts.files} {subCounts.files > 1 ? 'médias' : 'média'}
                               </span>
@@ -2522,6 +2577,27 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-1" />
                           )}
                         </button>
+
+                        {/* Bouton trois petits points en bout de ligne */}
+                        <div className="relative dropdown-menu-trigger ml-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(prev => prev === `side_${sub.id}` ? null : `side_${sub.id}`);
+                            }}
+                            className="p-1 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                            title={`Options ${sub.name}`}
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                          {renderFolderDropdownMenu(
+                            `side_${sub.id}`,
+                            sub.name,
+                            sub.id,
+                            false
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -2712,7 +2788,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           }}
                           className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-neutral-500/60 transition-all text-left cursor-pointer group shadow-xs"
                         >
-                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                             {hasSubfolders ? (
                               <button
                                 type="button"
@@ -2720,12 +2796,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                   e.stopPropagation();
                                   toggleFolderCollapse(folderItem.id);
                                 }}
-                                className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                className="p-1 -ml-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0 inline-flex flex-col items-center justify-center"
                                 title={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                                 aria-label={isCollapsed ? `Déplier ${folderItem.name}` : `Replier ${folderItem.name}`}
                               >
                                 {isCollapsed ? (
-                                  <ChevronRight className="w-4 h-4 text-[#86efac]" />
+                                  <div className="flex flex-col items-center justify-center text-center">
+                                    <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
+                                    <span className="text-[7.5px] leading-[1.05] text-[#8c8173] font-normal text-center whitespace-nowrap mt-0.5">
+                                      voir les<br />dossiers
+                                    </span>
+                                  </div>
                                 ) : (
                                   <ChevronDown className="w-4 h-4 text-[#86efac]" />
                                 )}
@@ -2734,8 +2815,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               <span className="w-5 h-5 shrink-0 -ml-0.5" />
                             )}
                             <Folder className="w-4 h-4 text-[#86efac] group-hover:text-emerald-300 shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors break-words leading-tight">
                                 {folderItem.name}
                               </span>
                               <span className="text-[11px] text-[#8c8173] font-normal leading-tight mt-0.5">
@@ -2743,7 +2824,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               </span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-[#73685a] group-hover:text-[#86efac] group-hover:translate-x-0.5 transition-all shrink-0" />
+                          <div className="flex flex-col items-center justify-center text-center shrink-0">
+                            <ChevronRight className="w-4 h-4 text-[#86efac] group-hover:translate-x-0.5 transition-all shrink-0" />
+                            <span className="text-[7.5px] leading-[1.05] text-[#8c8173] group-hover:text-[#ded3c5] transition-colors whitespace-nowrap text-center mt-0.5">
+                              voir les<br />médias
+                            </span>
+                          </div>
                         </div>
 
                         {/* Trois petits points pour chaque dossier */}
@@ -2786,7 +2872,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCustomFolder(sub.id); }}
                                     className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-neutral-500/50 transition-all text-left cursor-pointer group shadow-xs"
                                   >
-                                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                    <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                                       {hasSubSubfolders ? (
                                         <button
                                           type="button"
@@ -2794,19 +2880,24 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                             e.stopPropagation();
                                             toggleFolderCollapse(sub.id);
                                           }}
-                                          className="p-0.5 -ml-0.5 rounded text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                                          className="p-1 -ml-0.5 rounded text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/20 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0 inline-flex flex-col items-center justify-center"
                                           title={isSubCollapsed ? `Déplier ${sub.name}` : `Replier ${sub.name}`}
                                         >
                                           {isSubCollapsed ? (
-                                            <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                              <ChevronRight className="w-3 h-3 text-[#86efac]" />
+                                              <span className="text-[7px] leading-[1.05] text-[#8c8173] font-normal text-center whitespace-nowrap mt-0.5">
+                                                voir les<br />dossiers
+                                              </span>
+                                            </div>
                                           ) : (
                                             <ChevronDown className="w-3.5 h-3.5 text-[#86efac]" />
                                           )}
                                         </button>
                                       ) : null}
                                       <Folder className="w-3.5 h-3.5 text-[#86efac] shrink-0" />
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                      <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors break-words leading-tight">
                                           {sub.name}
                                         </span>
                                         <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
@@ -2814,7 +2905,33 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                         </span>
                                       </div>
                                     </div>
-                                    <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-[#86efac] transition-all shrink-0" />
+                                    <div className="flex flex-col items-center justify-center text-center shrink-0">
+                                      <ChevronRight className="w-3.5 h-3.5 text-[#86efac] group-hover:translate-x-0.5 transition-all shrink-0" />
+                                      <span className="text-[7px] leading-[1.05] text-[#8c8173] group-hover:text-[#ded3c5] transition-colors whitespace-nowrap text-center mt-0.5">
+                                        voir les<br />médias
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Trois petits points pour le sous-dossier en bout de ligne */}
+                                  <div className="relative dropdown-menu-trigger ml-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDropdownId(prev => prev === `tree_${sub.id}` ? null : `tree_${sub.id}`);
+                                      }}
+                                      className="p-2 rounded-xl text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
+                                      title={`Options ${sub.name}`}
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+                                    {renderFolderDropdownMenu(
+                                      `tree_${sub.id}`,
+                                      sub.name,
+                                      sub.id,
+                                      false
+                                    )}
                                   </div>
                                 </div>
 
@@ -2830,10 +2947,37 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                           onClick={() => handleOpenCustomFolder(subSub.id)}
                                           className="flex-1 min-w-0 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#14120f] hover:bg-[#1b1713] border border-neutral-700/30 text-left cursor-pointer"
                                         >
-                                          <div className="flex items-center gap-2 min-w-0">
+                                          <div className="flex items-center gap-2 flex-1 min-w-0">
                                             <Folder className="w-3 h-3 text-[#86efac] shrink-0" />
-                                            <span className="text-xs text-[#ded3c5] truncate">{subSub.name}</span>
+                                            <span className="text-xs text-[#ded3c5] break-words leading-tight">{subSub.name}</span>
                                           </div>
+                                          <div className="flex flex-col items-center justify-center text-center shrink-0">
+                                            <ChevronRight className="w-3 h-3 text-[#86efac] shrink-0" />
+                                            <span className="text-[7px] leading-[1.05] text-[#8c8173] group-hover:text-[#ded3c5] transition-colors whitespace-nowrap text-center mt-0.5">
+                                              voir les<br />médias
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Trois petits points pour subSub en bout de ligne */}
+                                        <div className="relative dropdown-menu-trigger ml-1">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setOpenDropdownId(prev => prev === `tree_${subSub.id}` ? null : `tree_${subSub.id}`);
+                                            }}
+                                            className="p-1 rounded-lg text-[#73685a] hover:text-[#86efac] hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                                            title={`Options ${subSub.name}`}
+                                          >
+                                            <MoreVertical className="w-3.5 h-3.5" />
+                                          </button>
+                                          {renderFolderDropdownMenu(
+                                            `tree_${subSub.id}`,
+                                            subSub.name,
+                                            subSub.id,
+                                            false
+                                          )}
                                         </div>
                                       </div>
                                     ))}
@@ -2962,7 +3106,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           }}
                           className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#1a1714] hover:bg-[#221e1a] border border-neutral-700/50 hover:border-blue-500/60 transition-all text-left cursor-pointer group shadow-xs"
                         >
-                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                             {hasSubfolders ? (
                               <button
                                 type="button"
@@ -2983,8 +3127,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               <span className="w-5 h-5 shrink-0 -ml-0.5" />
                             )}
                             <Folder className="w-4 h-4 text-[#60a5fa] group-hover:text-blue-300 shrink-0" />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors break-words leading-tight">
                                 {folderItem.name}
                               </span>
                               <span className="text-[11px] text-[#8c8173] font-normal leading-tight mt-0.5">
@@ -3036,7 +3180,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCustomFolder(sub.id); }}
                                     className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-blue-500/50 transition-all text-left cursor-pointer group shadow-xs"
                                   >
-                                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                    <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                                       {hasSubSubfolders ? (
                                         <button
                                           type="button"
@@ -3055,8 +3199,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                         </button>
                                       ) : null}
                                       <Folder className="w-3.5 h-3.5 text-[#60a5fa] shrink-0" />
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                                      <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="text-xs sm:text-sm text-[#ded3c5] group-hover:text-white transition-colors break-words leading-tight">
                                           {sub.name}
                                         </span>
                                         <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
@@ -3065,6 +3209,27 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                                       </div>
                                     </div>
                                     <ChevronRight className="w-3.5 h-3.5 text-[#5e5346] group-hover:text-[#60a5fa] transition-all shrink-0" />
+                                  </div>
+
+                                  {/* Trois petits points pour le sous-dossier dans l'atelier */}
+                                  <div className="relative dropdown-menu-trigger ml-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDropdownId(prev => prev === `tree_${sub.id}` ? null : `tree_${sub.id}`);
+                                      }}
+                                      className="p-2 rounded-xl text-[#73685a] hover:text-blue-300 hover:bg-blue-950/30 border border-transparent hover:border-[#382d22] transition-colors cursor-pointer"
+                                      title={`Options ${sub.name}`}
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+                                    {renderFolderDropdownMenu(
+                                      `tree_${sub.id}`,
+                                      sub.name,
+                                      sub.id,
+                                      true
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -3100,62 +3265,80 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               <div className="space-y-4">
                 {renderDualPaves(isStudioFolder)}
 
-                {/* En haut : Farruca avec flèche de retour colorée */}
-                <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveCustomFolderId(null);
-                      if (isStudioFolder) {
-                        setIsStudioPageOpen(true);
-                        setIsBiblioPageOpen(false);
-                      } else {
-                        setIsBiblioPageOpen(true);
-                        setIsStudioPageOpen(false);
-                      }
-                      setActiveTab('hub');
-                    }}
-                    className={`flex items-center gap-2 text-left group transition-colors cursor-pointer ${
-                      isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
-                    }`}
-                    title={`Retourner à l'arborescence ${palo.name}`}
-                  >
-                    <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                    <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
-                      isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
-                    }`}>
-                      {palo.name}
-                    </span>
-                  </button>
-                  {parentFolder && (
-                    <>
-                      <span className="text-[#8c8173]">/</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if ('tab' in parentFolder) {
-                            handleOpenStandardTab(parentFolder.tab as DanseSectionTab);
-                          } else {
-                            handleOpenCustomFolder(parentFolder.id);
-                          }
-                        }}
-                        className={`text-sm sm:text-base font-semibold text-[#a69c8f] transition-colors cursor-pointer ${
-                          isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
-                        }`}
-                      >
-                        {parentFolder.name}
-                      </button>
-                    </>
-                  )}
+                {/* En haut : Farruca avec flèche de retour colorée et 3 petits points */}
+                <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveCustomFolderId(null);
+                        if (isStudioFolder) {
+                          setIsStudioPageOpen(true);
+                          setIsBiblioPageOpen(false);
+                        } else {
+                          setIsBiblioPageOpen(true);
+                          setIsStudioPageOpen(false);
+                        }
+                        setActiveTab('hub');
+                      }}
+                      className={`flex items-center gap-2 text-left group transition-colors cursor-pointer ${
+                        isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
+                      }`}
+                      title={`Retourner à l'arborescence ${palo.name}`}
+                    >
+                      <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
+                      <span className={`text-lg sm:text-xl font-bold font-serif text-[#f4efe6] ${
+                        isStudioFolder ? 'group-hover:text-blue-300' : 'group-hover:text-emerald-300'
+                      }`}>
+                        {palo.name}
+                      </span>
+                    </button>
+                    {parentFolder && (
+                      <>
+                        <span className="text-[#8c8173]">/</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if ('tab' in parentFolder) {
+                              handleOpenStandardTab(parentFolder.tab as DanseSectionTab);
+                            } else {
+                              handleOpenCustomFolder(parentFolder.id);
+                            }
+                          }}
+                          className={`text-sm sm:text-base font-semibold text-[#a69c8f] transition-colors cursor-pointer break-words leading-tight ${
+                            isStudioFolder ? 'hover:text-[#60a5fa]' : 'hover:text-[#86efac]'
+                          }`}
+                        >
+                          {parentFolder.name}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Trois petits points pour Farruca */}
+                  <div className="relative dropdown-menu-trigger shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdownId(prev => prev === 'top_farruca_custom' ? null : 'top_farruca_custom');
+                      }}
+                      className={`p-1.5 rounded-xl text-[#a69c8f] ${isStudioFolder ? 'hover:text-[#60a5fa] hover:bg-blue-950/40 hover:border-blue-500/40' : 'hover:text-[#86efac] hover:bg-emerald-950/40 hover:border-emerald-500/40'} border border-[#382d22] transition-all cursor-pointer shadow-xs`}
+                      title={`Options ${palo.name}`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                    {renderFolderDropdownMenu('top_farruca_custom', palo.name, null, isStudioFolder)}
+                  </div>
                 </div>
 
                 {/* Dessous : Le dossier */}
                 <div className="p-3.5 sm:p-4 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
                   {/* Ligne 1 : Titre du dossier & Options trois points en bout de ligne, vraiment à droite, pas dessous */}
                   <div className="flex items-center justify-between gap-3 w-full">
-                    <div className="flex items-center gap-2 shrink-0 py-1 px-1.5 -ml-1.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-1 min-w-0 py-1 px-1.5 -ml-1.5">
                       <FolderOpen className={`w-5 h-5 shrink-0 ${isStudioFolder ? 'text-[#60a5fa]' : 'text-[#86efac]'}`} />
-                      <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif whitespace-nowrap truncate">
+                      <h3 className="text-base sm:text-lg font-bold text-[#f4efe6] font-serif break-words leading-tight">
                         {currentFolder.name}
                       </h3>
                       <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap shrink-0">
@@ -3164,26 +3347,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* S'il n'y a PAS de sous-dossiers, on peut laisser le bouton plus pour ajouter des vidéos. S'il y a des sous-dossiers, pas besoin de laisser le bouton plus */}
-                      {subfolders.length === 0 && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenAddVideo(`folder_${currentFolder.id}`)}
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 ${
-                            isStudioFolder
-                              ? 'bg-[#60a5fa]/20 hover:bg-[#60a5fa]/35 text-[#60a5fa] hover:text-[#93c5fd] border border-[#60a5fa]/40 shadow-[0_0_10px_rgba(96,165,250,0.3)]'
-                              : 'bg-[#86efac]/20 hover:bg-[#86efac]/35 text-[#86efac] hover:text-[#bbf7d0] border border-[#86efac]/40 shadow-[0_0_10px_rgba(134,239,172,0.3)]'
-                          }`}
-                          title="Ajouter une vidéo"
-                          aria-label="Ajouter une vidéo"
-                        >
-                          <Plus className="w-4 h-4 stroke-[2.5]" />
-                        </button>
-                      )}
-
-                      {/* Les trois petits points en bout de ligne, vraiment à droite */}
-                      <div className="relative dropdown-menu-trigger">
+                    {/* Les trois petits points en bout de ligne, vraiment à droite */}
+                    <div className="relative dropdown-menu-trigger">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -3208,7 +3373,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                         )}
                       </div>
                     </div>
-                  </div>
 
                   {/* Ligne 2 : Barre de recherche au-dessus de vue liste et vue icônes (uniquement si le dossier n'est pas vide) */}
                   {(subfolders.length > 0 || folderVideos.length > 0) && (
@@ -3313,7 +3477,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(true)}
 
           {/* En haut : Farruca (Atelier) */}
-          <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -3331,6 +3495,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_structure' ? null : 'top_farruca_structure');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#60a5fa] hover:bg-blue-950/40 border border-[#382d22] hover:border-blue-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_structure', palo.name, null, true)}
+            </div>
           </div>
 
           {/* Card Guide Global */}
@@ -3563,7 +3743,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(false)}
 
           {/* En haut : Farruca (Médiathèque) */}
-          <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -3581,6 +3761,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_maitres' ? null : 'top_farruca_maitres');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_maitres', palo.name, null, false)}
+            </div>
           </div>
 
           {/* Dessous : Grands Maîtres */}
@@ -3590,19 +3786,24 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
             return (
               <div className="p-3 sm:p-3.5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-md flex flex-col gap-2.5">
                 {/* Ligne 1 : Grand Maître en-tête avec les 3 petits points en bout de ligne, vraiment à droite, pas dessous */}
-                <div className="flex items-center justify-between gap-3 w-full">
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 py-1 px-1 -ml-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 py-1 px-1 -ml-1 overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setIsMaitresSubfolderExpanded(prev => !prev)}
-                      className="p-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0"
+                      className="p-1 rounded-md text-[#86efac]/90 hover:text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/25 hover:border-emerald-500/50 transition-colors cursor-pointer shrink-0 inline-flex flex-col items-center justify-center"
                       title={isMaitresSubfolderExpanded ? "Replier le dossier" : "Déplier le dossier"}
                       aria-label={isMaitresSubfolderExpanded ? "Replier le dossier" : "Déplier le dossier"}
                     >
                       {isMaitresSubfolderExpanded ? (
                         <ChevronDown className="w-4 h-4 text-[#86efac]" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-[#86efac]" />
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <ChevronRight className="w-3.5 h-3.5 text-[#86efac]" />
+                          <span className="text-[7.5px] leading-[1.05] text-[#8c8173] font-normal text-center whitespace-nowrap mt-0.5">
+                            voir les<br />dossiers
+                          </span>
+                        </div>
                       )}
                     </button>
                     {isMaitresSubfolderExpanded ? (
@@ -3610,30 +3811,17 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     ) : (
                       <Folder className="w-5 h-5 text-[#86efac] shrink-0" />
                     )}
-                    <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif whitespace-nowrap truncate">
+                    <h3 className="text-sm sm:text-base font-bold text-[#f4efe6] font-serif break-words leading-tight min-w-0">
                       {standardRenames['maitres'] || standardFolders.find(s => s.id === 'maitres')?.name || 'Grands Maîtres'}
                     </h3>
-                    <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap shrink-0">
+                    <span className="text-xs font-semibold text-[#a69c8f] bg-[#221c16] px-2 py-0.5 rounded-full border border-[#382d22] whitespace-nowrap shrink-0 hidden xs:inline">
                       {getMaitresVideos().length} {getMaitresVideos().length > 1 ? 'fichiers' : 'fichier'}
                       {maitresSubfolders.length > 0 && ` et ${maitresSubfolders.length} dossier${maitresSubfolders.length > 1 ? 's' : ''}`}
                     </span>
                   </div>
 
-                  {/* Bout de ligne, vraiment à droite de grand maître : pas dessous */}
+                  {/* Bout de ligne, vraiment à droite de grand maître : toujours visible et cliquable */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* S'il n'y a PAS de sous-dossiers, on peut laisser le bouton plus pour ajouter des vidéos. S'il y a des dossiers sous grand maître (comme ici essais), pas besoin de laisser le bouton plus */}
-                    {maitresSubfolders.length === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenAddVideo('maitres')}
-                        className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                        title="Ajouter une vidéo"
-                        aria-label="Ajouter une vidéo"
-                      >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                      </button>
-                    )}
-
                     <div className="relative dropdown-menu-trigger">
                       <button
                         type="button"
@@ -3738,12 +3926,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                           className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#161310] hover:bg-[#1e1915] border border-neutral-700/40 hover:border-emerald-500/60 transition-all text-left cursor-pointer group shadow-xs"
                           title={`Ouvrir le dossier « ${sub.name} »`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
                             <div className="p-1.5 rounded-lg bg-emerald-950/70 text-[#86efac] group-hover:scale-105 transition-transform shrink-0">
                               <Folder className="w-4 h-4 stroke-[2.2]" />
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs sm:text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors truncate">
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-xs sm:text-sm font-semibold text-[#ded3c5] group-hover:text-white transition-colors break-words leading-tight">
                                 {sub.name}
                               </span>
                               <span className="text-[10px] text-[#8c8173] font-normal leading-tight mt-0.5">
@@ -3757,6 +3945,12 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/40 text-[#86efac] border border-emerald-500/30">
                               {subCounts.files}
                             </span>
+                            <div className="flex flex-col items-center justify-center text-center shrink-0">
+                              <ChevronRight className="w-4 h-4 text-[#86efac] group-hover:translate-x-0.5 transition-all shrink-0" />
+                              <span className="text-[7.5px] leading-[1.05] text-[#8c8173] group-hover:text-[#ded3c5] transition-colors whitespace-nowrap text-center mt-0.5">
+                                voir les<br />médias
+                              </span>
+                            </div>
                             <div className="relative dropdown-menu-trigger">
                               <button
                                 type="button"
@@ -3772,7 +3966,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                               </button>
                               {renderFolderDropdownMenu(`sub_list_${sub.id}`, sub.name, sub.id, false)}
                             </div>
-                            <ChevronRight className="w-4 h-4 text-[#5e5346] group-hover:text-[#86efac] transition-all shrink-0" />
                           </div>
                         </div>
                       </div>
@@ -3859,7 +4052,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(false)}
 
           {/* En haut : Farruca (Médiathèque) */}
-          <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -3877,6 +4070,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_letras' ? null : 'top_farruca_letras');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_letras', palo.name, null, false)}
+            </div>
           </div>
           <div className="space-y-5">
             {/* Header Card & Actions */}
@@ -3894,20 +4103,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {getSubfoldersOf('letras').length === 0 && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenAddVideo('letras')}
-                      className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                      title="Ajouter une vidéo"
-                      aria-label="Ajouter une vidéo"
-                    >
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
-                    </button>
-                  )}
-
-                  <div className="relative dropdown-menu-trigger">
+                <div className="relative dropdown-menu-trigger">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -3932,7 +4128,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                     )}
                   </div>
                 </div>
-              </div>
 
               {/* Ligne 2 : Barre de recherche au-dessus de vue liste et vue icônes (si non vide) */}
               {(getSubfoldersOf('letras').length > 0 || ((paloCustom['letras'] || []) as VideoItem[]).length > 0) && (
@@ -4045,7 +4240,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(false)}
 
           {/* En haut : Farruca (Médiathèque) */}
-          <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -4063,6 +4258,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_compas' ? null : 'top_farruca_compas');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_compas', palo.name, null, false)}
+            </div>
           </div>
           <div className="p-4 sm:p-5 rounded-2xl bg-[#171411] border border-[#2e261f] shadow-lg flex flex-col gap-3">
             {/* Ligne 1 : Titre & Options trois points en bout de ligne, vraiment à droite, pas dessous */}
@@ -4079,18 +4290,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {getSubfoldersOf('compas').length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenAddVideo('compas')}
-                    className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                    title="Ajouter une vidéo"
-                    aria-label="Ajouter une vidéo"
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                )}
-
                 <div className="relative dropdown-menu-trigger">
                   <button
                     type="button"
@@ -4200,7 +4399,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(false)}
 
           {/* En haut : Farruca (Médiathèque) */}
-          <div className="flex items-center gap-2.5 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -4218,6 +4417,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_cours' ? null : 'top_farruca_cours');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#86efac] hover:bg-emerald-950/40 border border-[#382d22] hover:border-emerald-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_cours', palo.name, null, false)}
+            </div>
           </div>
           <div className="space-y-5">
             {/* Header Card & Actions */}
@@ -4236,19 +4451,6 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* S'il n'y a PAS de sous-dossiers, on peut laisser le bouton plus pour ajouter des vidéos. S'il y a des sous-dossiers, pas besoin de laisser le bouton plus */}
-                {getSubfoldersOf('cours').length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenAddVideo('cours')}
-                    className="w-8 h-8 rounded-xl bg-[#10b981]/25 hover:bg-[#10b981]/40 text-[#10b981] hover:text-[#34d399] border border-[#10b981]/40 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                    title="Ajouter une vidéo"
-                    aria-label="Ajouter une vidéo"
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                )}
-
                 {/* Les trois petits points en bout de ligne, vraiment à droite */}
                 <div className="relative dropdown-menu-trigger">
                   <button
@@ -4387,7 +4589,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
           {renderDualPaves(true)}
 
           {/* En haut : Farruca (Atelier) */}
-          <div className="flex items-center gap-2 pb-2 border-b border-[#2b2118]">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#2b2118]">
             <button
               type="button"
               onClick={() => {
@@ -4405,6 +4607,22 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
                 {palo.name}
               </span>
             </button>
+
+            {/* Trois petits points pour Farruca */}
+            <div className="relative dropdown-menu-trigger shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdownId(prev => prev === 'top_farruca_montages' ? null : 'top_farruca_montages');
+                }}
+                className="p-1.5 rounded-xl text-[#a69c8f] hover:text-[#60a5fa] hover:bg-blue-950/40 border border-[#382d22] hover:border-blue-500/40 transition-all cursor-pointer shadow-xs"
+                title={`Options ${palo.name}`}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {renderFolderDropdownMenu('top_farruca_montages', palo.name, null, true)}
+            </div>
           </div>
 
           {/* Sub-sections tabs: Mon atelier de création dynamique */}
