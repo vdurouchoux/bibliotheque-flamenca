@@ -15,7 +15,7 @@ import { MontageBlockModal } from './MontageBlockModal';
 import { MontageTimeline, getShortSpanishTitle } from './MontageTimeline';
 import { checkVideoDeviceAvailability, getCurrentDeviceType } from '../utils/deviceUtils';
 import { 
-  getBookmarks, toggleBookmark, getCustomVideos, 
+  getBookmarks, toggleBookmark, getCustomVideos, getCustomVideosForPalo, getFolderCustomVideos,
   getChoreographyChecklist, toggleChoreographyStep,
   getDeletedVideoIds, getReplacedVideos, deleteAnyVideo, replaceAnyVideo, resetAllDeletedVideos,
   getVideoCustomLandmarks, extractYouTubeInfo,
@@ -212,6 +212,15 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     getChoreographyChecklist(palo.id)
   );
   const [landmarksVersion, setLandmarksVersion] = useState<number>(0);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setVideoVersion(v => v + 1);
+    };
+    window.addEventListener('flamenco_custom_videos_updated', handleUpdate);
+    return () => window.removeEventListener('flamenco_custom_videos_updated', handleUpdate);
+  }, []);
+
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
   const [shareModalOptions, setShareModalOptions] = useState<ShareOptions | null>(null);
 
@@ -731,7 +740,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   const bookmarks = getBookmarks();
   const customStore = getCustomVideos();
-  const paloCustom = customStore[palo.id] || {};
+  const paloCustom = getCustomVideosForPalo(palo.id);
 
   // Active montage helpers
   const getMontageLabel = (key: string): string => {
@@ -1219,7 +1228,8 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
 
   // Filtrage textuel et tri alphabétique des médias (en prenant en compte les noms d'artistes en premier)
   const filterAndSortVideos = (videos: VideoItem[]): VideoItem[] => {
-    let result = [...videos];
+    const deletedIds = getDeletedVideoIds();
+    let result = videos.filter(v => !deletedIds.includes(v.id));
 
     // 1. Filtrage textuel selon la recherche
     if (mediaSearchQuery.trim()) {
@@ -2120,7 +2130,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
     } else if (folderId === 'compas') {
       files = ((paloCustom['compas'] || []) as VideoItem[]).length;
     } else {
-      files = (getCustomVideos()[palo.id]?.[`folder_${folderId}`] || []).length;
+      files = getFolderCustomVideos(palo.id, folderId).length;
     }
     return { files, subfolders: subs };
   };
@@ -3258,7 +3268,7 @@ export const DansePaloDetail: React.FC<DansePaloDetailProps> = ({
               danseFolders.find(f => f.id === currentFolder.parentId)
             ) : null;
             const subfolders = getSubfoldersOf(currentFolder.id);
-            const folderVideos = getCustomVideos()[palo.id]?.[`folder_${currentFolder.id}`] || [];
+            const folderVideos = getFolderCustomVideos(palo.id, currentFolder.id);
             const isSubfoldersOpen = !!openMediaFolderSubfolders[currentFolder.id];
 
             return (

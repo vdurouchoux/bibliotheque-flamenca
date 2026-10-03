@@ -286,7 +286,19 @@ export default function App() {
   const activePalo = getCurrentPalo();
   const activeDansePalo: DansePaloData = useMemo(() => {
     if (discipline === 'guitare') {
-      return GUITARE_PALOS_DATA[selectedPaloKey || 'Farruca'] || GUITARE_PALOS_DATA['Farruca'] || BAILE_PALOS_DATA['Farruca'];
+      if (selectedPaloKey && GUITARE_PALOS_DATA[selectedPaloKey]) {
+        return GUITARE_PALOS_DATA[selectedPaloKey];
+      }
+      if (selectedPaloKey && GUITARE_PALOS_DATA[selectedPaloKey.toLowerCase()]) {
+        return GUITARE_PALOS_DATA[selectedPaloKey.toLowerCase()];
+      }
+      const match = selectedPaloKey
+        ? Object.values(GUITARE_PALOS_DATA).find(
+            p => p.id.toLowerCase() === selectedPaloKey.toLowerCase() || p.name.toLowerCase() === selectedPaloKey.toLowerCase()
+          )
+        : null;
+      if (match) return match;
+      return GUITARE_PALOS_DATA['Farruca'] || BAILE_PALOS_DATA['Farruca'];
     }
     return BAILE_PALOS_DATA[selectedPaloKey || 'Farruca'] || BAILE_PALOS_DATA['Farruca'];
   }, [discipline, selectedPaloKey]);
@@ -471,23 +483,24 @@ export default function App() {
   } else if (currentView === 'tangos-variants') {
     headerSubtitle = "Tangos · Sélection de la variante";
   } else if (currentView === 'palo-detail') {
-    if (discipline === 'danse') {
+    if (discipline === 'danse' || discipline === 'guitare') {
+      const disciplineLabel = discipline === 'guitare' ? 'Guitare' : 'Danse';
       if (danseCustomFolderId) {
         headerSubtitle = `${activeDansePalo.name} · Arborescence`;
       } else if (danseTab === 'hub') {
         headerSubtitle = isBiblioPageOpen
           ? `${activeDansePalo.name} · Arborescence`
-          : `${activeDansePalo.name} · Danse · Les 6 espaces d'étude`;
+          : `${activeDansePalo.name} · ${disciplineLabel} · Les 6 espaces d'étude`;
       } else if (danseTab === 'maitres') {
-        headerSubtitle = `${activeDansePalo.name} · Grands Maîtres (Chorégraphies intégrales)`;
+        headerSubtitle = `${activeDansePalo.name} · Grands Maîtres`;
       } else if (danseTab === 'structure') {
-        headerSubtitle = `${activeDansePalo.name} · Structure traditionnelle (6 blocs)`;
+        headerSubtitle = `${activeDansePalo.name} · Structure traditionnelle`;
       } else if (danseTab === 'letras') {
-        headerSubtitle = `${activeDansePalo.name} · Letras & Couplets`;
+        headerSubtitle = `${activeDansePalo.name} · Letras & Falsetas`;
       } else if (danseTab === 'compas') {
         headerSubtitle = `${activeDansePalo.name} · Compás & Rythmique`;
       } else if (danseTab === 'cours') {
-        headerSubtitle = `${activeDansePalo.name} · Cours & Stages`;
+        headerSubtitle = `${activeDansePalo.name} · Cours & Tutoriels`;
       } else if (danseTab === 'montages') {
         headerSubtitle = `${activeDansePalo.name} · Mon atelier de création`;
       }
@@ -849,8 +862,8 @@ export default function App() {
       {/* Add Custom Video Modal */}
       {addVideoSection && (
         <AddVideoModal
-          paloId={discipline === 'danse' ? activeDansePalo.id : (selectedVariantKey || selectedPaloKey || '')}
-          paloName={discipline === 'danse' ? `${activeDansePalo.name} (Danse)` : (activePalo?.name || 'Guitare')}
+          paloId={activeDansePalo.id}
+          paloName={activeDansePalo.name}
           initialSection={addVideoSection}
           onClose={() => setAddVideoSection(null)}
           onAdded={() => {

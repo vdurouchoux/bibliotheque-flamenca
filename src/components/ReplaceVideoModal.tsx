@@ -62,7 +62,7 @@ export const ReplaceVideoModal: React.FC<ReplaceVideoModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-[#f4efe6]">
-                Remplacer cette vidéo
+                Renommer ou remplacer ce média
               </h3>
               <p className="text-xs text-[#8c8173] truncate max-w-[260px] sm:max-w-xs">
                 {video.title}
@@ -88,20 +88,20 @@ export const ReplaceVideoModal: React.FC<ReplaceVideoModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-[#a69c8f] mb-1.5">
-              Nouveau Titre de la vidéo <span className="text-[#e5a93b]">*</span>
+              Titre du média <span className="text-[#e5a93b]">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Ex : Marquage en 4 temps - Variante José Maya"
+              placeholder="Titre du média"
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#221d17] border border-[#383129] focus:border-[#e5a93b] text-[#f4efe6] text-sm focus:outline-none transition-colors"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-[#a69c8f] mb-1.5">
-              Nouvelle URL YouTube ou Identifiant <span className="text-[#e5a93b]">*</span>
+              Lien du média (URL YouTube, cloud ou fichier) <span className="text-[#e5a93b]">*</span>
             </label>
             <div className="relative">
               <input

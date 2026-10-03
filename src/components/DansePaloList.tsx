@@ -160,7 +160,9 @@ export const DansePaloList: React.FC<DansePaloListProps> = ({
           <div className="flex items-center gap-2.5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
               <span>{discipline === 'guitare' ? 'Liste des palos (guitare)' : 'Liste des palos (baile)'}</span>
-              <span className="text-xs text-[#8c8173] font-normal lowercase hidden sm:inline">(commençons avec la Farruca)</span>
+              <span className="text-xs text-[#8c8173] font-normal lowercase hidden sm:inline">
+                {discipline === 'guitare' ? `(${filteredCatalogPalos.length} palos complets disponibles)` : '(commençons avec la Farruca)'}
+              </span>
             </h3>
 
             {/* Symbole loupe à côté de Palos */}

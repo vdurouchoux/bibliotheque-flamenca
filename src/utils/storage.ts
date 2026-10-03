@@ -47,14 +47,71 @@ export function getCustomVideos(): CustomVideoStore {
   }
 }
 
+/**
+ * Récupère tous les médias personnalisés associés à un palo en unifiant les alias
+ * (ex: 'Farruca', 'farruca-guitare', 'farruca-baile', 'farruca')
+ */
+export function getCustomVideosForPalo(paloId: string): Record<string, VideoItem[]> {
+  const store = getCustomVideos();
+  const deletedIds = getDeletedVideoIds();
+  const normalized = (paloId || '').toLowerCase().trim();
+  const baseKey = normalized
+    .replace(/^guitare-/, '')
+    .replace(/-guitare$/, '')
+    .replace(/-baile$/, '');
+
+  const result: Record<string, VideoItem[]> = {};
+
+  for (const [key, sections] of Object.entries(store)) {
+    const keyNorm = key.toLowerCase().trim()
+      .replace(/^guitare-/, '')
+      .replace(/-guitare$/, '')
+      .replace(/-baile$/, '');
+
+    if (key === paloId || keyNorm === baseKey || key.toLowerCase() === normalized) {
+      for (const [secKey, list] of Object.entries(sections || {})) {
+        if (!Array.isArray(list)) continue;
+        if (!result[secKey]) result[secKey] = [];
+        for (const item of list) {
+          if (!deletedIds.includes(item.id) && !result[secKey].some(existing => existing.id === item.id)) {
+            result[secKey].push(item);
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Récupère les médias d'un dossier personnalisé en vérifiant toutes les variantes de clés
+ */
+export function getFolderCustomVideos(paloId: string, folderId: string): VideoItem[] {
+  const paloCustom = getCustomVideosForPalo(paloId);
+  const deletedIds = getDeletedVideoIds();
+  const clean = folderId.replace(/^folder_/, '').replace(/^folder_/, '');
+  const candidateKeys = [
+    folderId,
+    `folder_${folderId}`,
+    `folder_${clean}`,
+    `folder_folder_${clean}`,
+    clean
+  ];
+  for (const k of candidateKeys) {
+    if (Array.isArray(paloCustom[k]) && paloCustom[k].length > 0) {
+      return paloCustom[k].filter(v => !deletedIds.includes(v.id));
+    }
+  }
+  return [];
+}
+
 export function saveCustomVideo(
   paloKey: string,
   section: string,
   video: { title: string; url: string; level: Level; description?: string; sourceDevice?: 'pc' | 'mobile'; isLocalFile?: boolean }
 ): VideoItem {
   const store = getCustomVideos();
-  if (!store[paloKey]) store[paloKey] = {};
-  if (!store[paloKey][section]) store[paloKey][section] = [];
 
   const isLocal = video.isLocalFile ?? isLocalVideoUrl(video.url);
   const detectedDevice = video.sourceDevice || (isLocal ? (detectDeviceFromUrl(video.url) || getCurrentDeviceType()) : undefined);
@@ -70,10 +127,51 @@ export function saveCustomVideo(
     sourceDevice: detectedDevice
   };
 
+  // Enregistrer sur la clé exacte
+  if (!store[paloKey]) store[paloKey] = {};
+  if (!store[paloKey][section]) store[paloKey][section] = [];
   store[paloKey][section].push(newItem);
+
+  // Synchroniser sur les clés alias (ex: 'Farruca', 'farruca-guitare', 'farruca-baile', 'farruca')
+  const norm = paloKey.toLowerCase().trim();
+  const base = norm.replace(/^guitare-/, '').replace(/-guitare$/, '').replace(/-baile$/, '');
+  const aliasKeys = [
+    base,
+    `guitare-${base}`,
+    `${base}-guitare`,
+    `${base}-baile`,
+    base.charAt(0).toUpperCase() + base.slice(1)
+  ];
+
+  for (const alias of aliasKeys) {
+    if (!store[alias]) store[alias] = {};
+    if (!store[alias][section]) store[alias][section] = [];
+    if (!store[alias][section].some(v => v.id === newItem.id)) {
+      store[alias][section].push(newItem);
+    }
+  }
+
+  // Si c'est un dossier personnalisé, synchroniser les variantes de préfixe folder_
+  if (section.startsWith('folder_')) {
+    const cleanSection = section.replace(/^folder_/, '').replace(/^folder_/, '');
+    const folderVariants = [`folder_${cleanSection}`, `folder_folder_${cleanSection}`, cleanSection];
+    for (const targetPalo of [paloKey, ...aliasKeys]) {
+      if (!store[targetPalo]) store[targetPalo] = {};
+      for (const fv of folderVariants) {
+        if (!store[targetPalo][fv]) store[targetPalo][fv] = [];
+        if (!store[targetPalo][fv].some(v => v.id === newItem.id)) {
+          store[targetPalo][fv].push(newItem);
+        }
+      }
+    }
+  }
+
   try {
     localStorage.setItem(STORAGE_CUSTOM_VIDEOS_KEY, JSON.stringify(store));
     scheduleCloudPush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('flamenco_custom_videos_updated'));
+    }
   } catch (e) {
     console.error('Failed to save custom video', e);
   }
@@ -525,11 +623,28 @@ export function resetDanseSpacesOrder(paloId: string, defaultOrder: string[] = D
 
 export function deleteCustomVideo(paloKey: string, section: string, id: string) {
   const store = getCustomVideos();
-  if (store[paloKey] && store[paloKey][section]) {
-    store[paloKey][section] = store[paloKey][section].filter(item => item.id !== id);
+  let modified = false;
+
+  for (const p of Object.keys(store)) {
+    if (!store[p]) continue;
+    for (const sec of Object.keys(store[p])) {
+      if (Array.isArray(store[p][sec])) {
+        const initialLen = store[p][sec].length;
+        store[p][sec] = store[p][sec].filter(item => item.id !== id);
+        if (store[p][sec].length !== initialLen) {
+          modified = true;
+        }
+      }
+    }
+  }
+
+  if (modified) {
     try {
       localStorage.setItem(STORAGE_CUSTOM_VIDEOS_KEY, JSON.stringify(store));
       scheduleCloudPush();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('flamenco_custom_videos_updated'));
+      }
     } catch (e) {
       console.error('Failed to delete custom video', e);
     }
@@ -560,6 +675,9 @@ export function deleteAnyVideo(paloKey: string, section: string, videoId: string
     } catch (e) {
       console.error('Failed to save deleted video id', e);
     }
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('flamenco_custom_videos_updated'));
   }
 }
 
